@@ -1,0 +1,45 @@
+{
+  "name": "Sigfox",
+  "description": "/*\n * Source: ACSAC 2017\n * Title: Automated Analysis of Secure Internet of Things Protocols\n * Link: https://dl.acm.org/doi/10.1145/3134600.3134624\n * Authors:  Jun Young Kim,  Ralph Holz,  Wen Hu\n * Note: The text is excerpted from Section 3.1, page 5 in the original paper.\n *       The original description contains some explaination about the `fact`\n *       and MSRs in Tamarin, which are excluded here.\n */\n\nBoth the public keys of client and Server can be known by each. The secrect key is private, only known by himself.\nThe SigFox server (A) pushes an asymmetric-encrypted notification (na) with its signature to devices (B).\nThe server uses the public key of B (pkB) and generates a fresh data item na. It then encrypts the data and the server's public key\n(pkA) using the the public key of client, pkB to generate the message aenc(<pkA, na>, pkB).\nThen A signs the message using its own private key ltkA. A sends the message along with its signature (<mess, sig>) to the device B.\nB receives the asymmetrically encrypted message with a signature, then perform signature\nverification on received message.\n\nPublic ID A uses the public key of B (pkB) and generates a fresh data item na.\nIt then encrypts the data and A's ID using the the public key of B (pkB) to generate the message 1 (aenc(<A, na>, pkB)).\nA signs the message using its own private key ltkA.\nB receives the asymmetrically encrypted message with the signature.\nThen B performs signature verication asymmetric decryption using B's private key (ltkB).",
+  "goals": [
+    {
+      "name": "executable",
+      "type": "executability",
+      "description": "",
+      "trace_kind": "exists-trace",
+      "expected_result": "ProvedSatisfying",
+      "expected_state": "ProvedSatisfying"
+    },
+    {
+      "name": "secret_A",
+      "type": "secrecy",
+      "description": "",
+      "trace_kind": "all-traces",
+      "expected_result": "ProvedSatisfying",
+      "expected_state": "ProvedSatisfying"
+    },
+    {
+      "name": "secret_B",
+      "type": "secrecy",
+      "description": "",
+      "trace_kind": "all-traces",
+      "expected_result": "ProvedSatisfying",
+      "expected_state": "ProvedSatisfying"
+    },
+    {
+      "name": "secrecy_PFS_A",
+      "type": "secrecy",
+      "description": "",
+      "trace_kind": "all-traces",
+      "expected_result": "CounterexampleFound",
+      "expected_state": "CounterexampleFound"
+    }
+  ],
+  "assumptions": [],
+  "expected_results": {},
+  "notes": "Created from review UI NL input.",
+  "difficulty": "easy",
+  "source_files": {},
+  "reference_sapic": null,
+  "reference_tamarin": null
+}

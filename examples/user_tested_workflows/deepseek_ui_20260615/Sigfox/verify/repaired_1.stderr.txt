@@ -1,0 +1,6 @@
+maude tool: 'maude'
+ checking version: 3.5.1. OK.
+ checking installation: OK.
+"/Users/ella/code/TAMARIN-Agent-master/AutoSM-style/ui_experiment_pipeline/runs/ui_formal_deepseek_user_20260615/active/models/repaired_1.spthy" (line 31, column 3):
+unexpected ")"
+expecting "@", "+", "||", "|", "else", "heuristic", "tactic", "builtins", "options", "functions", "function", "equations", "macros", "restriction", "axiom", "test", "lemma", "rule", letter, top-level process, "let", "equivLemma", "diffEquivLemma", predicate block, export block, "#ifdef", "#define", "#include" or "end"

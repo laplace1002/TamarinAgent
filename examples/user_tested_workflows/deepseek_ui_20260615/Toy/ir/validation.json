@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "errors": [],
+  "warnings": [],
+  "checks": [
+    {
+      "name": "roles_present",
+      "result": "pass",
+      "detail": "roles are available"
+    },
+    {
+      "name": "messages_present",
+      "result": "pass",
+      "detail": "3 message declaration(s)"
+    },
+    {
+      "name": "message_labels_unique",
+      "result": "pass",
+      "detail": "message labels are unique"
+    },
+    {
+      "name": "target_claims_present",
+      "result": "pass",
+      "detail": "all proof_spec targets have claim records"
+    },
+    {
+      "name": "message_tags_present",
+      "result": "pass",
+      "detail": "encrypted/message-authenticated messages have public tags or none detected"
+    }
+  ],
+  "repair_target": "ProtocolIR"
+}

@@ -1,0 +1,41 @@
+theory Toy
+begin
+
+functions: kdf/2
+builtins: hashing
+
+let A() =
+  new ~na;
+  out(~na);
+  in(nb);
+  let sk = kdf(~na, nb) in
+  event Install_SK('A', sk, 'B');
+  event Secret('A', sk, 'B');
+  out('ACK');
+  event RoleDone('A')
+
+let B() =
+  in(na);
+  new ~nb;
+  out(~nb);
+  in(ack);
+  if ack = 'ACK' then (
+    let sk = kdf(na, ~nb) in
+    event Install_SK('B', sk, 'A');
+    event Secret('B', sk, 'A');
+    event RoleDone('B')
+  )
+
+process:
+  (A() | B())
+
+lemma successful_run:
+  exists-trace
+  "Ex #i #j. RoleDone('A') @ i & RoleDone('B') @ j"
+
+lemma sk_secret_a:
+  "All a b sk #i. Secret(a, sk, b) @ i ==> not (Ex #j. K(sk) @ j)"
+
+lemma sk_secret_b:
+  "All a b sk #i. Secret(a, sk, b) @ i ==> not (Ex #j. K(sk) @ j)"
+end

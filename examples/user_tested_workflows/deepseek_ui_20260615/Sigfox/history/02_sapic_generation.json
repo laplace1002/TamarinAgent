@@ -1,0 +1,13 @@
+{
+  "sapic_plus": "theory Sigfox_A_B\nbegin\n\nbuiltins: asymmetric-encryption, signing\n\nlet A(skA, pkB) =\n  new na;\n  let pkA = pk(skA) in\n  let enc = aenc(<pkA, na>, pkB) in\n  let sig = sign(enc, skA) in\n  let m = <sig, enc> in\n  event Role('A');\n  event Send(pkA, m);\n  event Secret_A(na, pkB);\n  out(m)\n\nlet B(skB, pkA) =\n  let pkB = pk(skB) in\n  in(m);\n  let <sig, enc> = m in\n  if verify(sig, enc, pkA) = true then (\n    let plain = adec(enc, skB) in\n    let <pk_recv, na> = plain in\n    if pk_recv = pkA then (\n      event Role('B');\n      event Recv(pkB, m);\n      event Secret_B(na, pkB);\n      event End()\n    )\n  )\n\nlet RevealLTK(sk) =\n  in(any);\n  event Reveal(pk(sk));\n  out(sk)\n\nprocess:\n  new skA;\n  new skB;\n  let pkA = pk(skA) in\n  let pkB = pk(skB) in\n  ( !A(skA, pkB) | !B(skB, pkA) | !RevealLTK(skA) | !RevealLTK(skB) )\n\nlemma executable:\n  exists-trace\n  \"Ex pkA pkB m #i #j. Send(pkA, m) @ i & Recv(pkB, m) @ j\"\n\nlemma secret_A:\n  \"All na pkB #i. Secret_A(na, pkB) @ i ==> (not Ex #j. K(na) @ j) | (Ex #k. Reveal(pkB) @ k)\"\n\nlemma secret_B:\n  \"All na pkB #i. Secret_B(na, pkB) @ i ==> (not Ex #j. K(na) @ j) | (Ex #k. Reveal(pkB) @ k)\"\n\nlemma secrecy_PFS_A:\n  \"All na pkB #i. Secret_A(na, pkB) @ i ==> not Ex #j. K(na) @ j\"\n\nend",
+  "modeling_notes": [
+    "Reveal process allows adversary to trigger key compromise at any time via in(any) then out(sk), with preceding Reveal(pk) event.",
+    "Secrecy lemmas use weak disjunction: either the adversary never knows na, or the relevant public key (pkB) is revealed at some time.",
+    "Secret events now include the encryption public key (pkB) to link the secret to the key needed for compromise in lemmas.",
+    "Executability lemma relies on Send/Recv events that carry the same message term m over the network."
+  ],
+  "expected_limitations": [
+    "secrecy_PFS_A is expected to falsify (CounterexampleFound) because after-the-fact Reveal of pkB allows decryption of the recorded ciphertext.",
+    "secret_A and secret_B are weak secrecy properties that trivially hold if a Reveal event occurs; they may need strengthening for stronger guarantees."
+  ]
+}

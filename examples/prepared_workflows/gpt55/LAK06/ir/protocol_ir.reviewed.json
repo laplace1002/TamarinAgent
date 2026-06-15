@@ -1,0 +1,882 @@
+{
+  "schema": "autosm_style_protocol_ir_v1",
+  "protocol_name": "LAK06",
+  "roles": [
+    "R",
+    "T",
+    "B"
+  ],
+  "principals": [
+    {
+      "name": "R",
+      "role_hint": "R"
+    },
+    {
+      "name": "T",
+      "role_hint": "T"
+    },
+    {
+      "name": "B",
+      "role_hint": "B"
+    }
+  ],
+  "crypto": {
+    "builtins": [
+      "hashing",
+      "xor"
+    ],
+    "functions": [
+      "h/1",
+      "xor/2"
+    ],
+    "equations": [
+      "xor is intended to model the protocol operator ⊕; use ACUN-style semantics if the target backend supports XOR: associativity, commutativity, identity zero, and self-cancellation",
+      "h is modeled as a Dolev-Yao hash constructor with no inverse"
+    ],
+    "assumptions": [
+      "Use the standard Dolev-Yao adversarial network model.",
+      "Model only the protocol behavior described by the current IR and modeling contract.",
+      "Do not use the reference Sapic+ or Tamarin models during generation; they are evaluation metadata only."
+    ]
+  },
+  "fresh_terms": [
+    {
+      "name": "~s",
+      "owner": "R",
+      "purpose": "reader-generated pseudorandom challenge saved by R and sent to T"
+    },
+    {
+      "name": "~r1",
+      "owner": "T",
+      "purpose": "tag-generated pseudorandom nonce used to compute r2"
+    }
+  ],
+  "long_term_keys": [
+    {
+      "name": "k_T",
+      "owner": "T_and_backend_database_B",
+      "public_term": "none",
+      "policy": "private synchronized RFID secret stored by T as k and by B in database fields K and/or Klast; updated by hashing; reveal only via explicit Reveal(...) if modeled"
+    },
+    {
+      "name": "K",
+      "owner": "B",
+      "public_term": "none",
+      "policy": "private current database field for the tag secret; if matched during lookup then copied to Klast and replaced by h(K)"
+    },
+    {
+      "name": "Klast",
+      "owner": "B",
+      "public_term": "none",
+      "policy": "private previous database field for desynchronization recovery; if matched during lookup then no database update is made"
+    }
+  ],
+  "messages": [
+    {
+      "label": "M1",
+      "step": 1,
+      "from": "R",
+      "to": "T",
+      "term": "~s",
+      "meaning": "R generates and saves pseudorandom s and sends s to T in the clear.",
+      "protection": "none/plaintext",
+      "sender_knows": [
+        "~s"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2",
+      "step": 2,
+      "from": "T",
+      "to": "R",
+      "term": "<~r1, h(xor(~r1,xor(k_T,s)))>",
+      "meaning": "After receiving s, T generates r1 and sends r1 together with r2 = h(r1 ⊕ k ⊕ s).",
+      "protection": "keyed hash relationship only; r1 and r2 are sent in the clear",
+      "sender_knows": [
+        "~r1",
+        "k_T",
+        "s"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": [
+        "r2 is not independently checkable by R unless R has access to k or to backend B"
+      ]
+    },
+    {
+      "label": "M3",
+      "step": 3,
+      "from": "R",
+      "to": "B",
+      "term": "<s_saved, r1_in, r2_in>",
+      "meaning": "R delivers the tag response values r1 and r2 together with the saved challenge s to B for database lookup.",
+      "protection": "unspecified/plaintext or local backend transfer; no cryptographic protection is described",
+      "sender_knows": [
+        "s_saved",
+        "r1_in",
+        "r2_in"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M4",
+      "step": 4,
+      "from": "B",
+      "to": "R",
+      "term": "h(xor(r2_in,xor(k_found,s_saved)))",
+      "meaning": "Implicit backend-to-reader return of the response value r3 computed after successful key lookup, needed only if B and R are modeled as separate roles. The natural-language text says R calculates/sends r3 but also says R delivers values to B for lookup.",
+      "protection": "implicit/unspecified backend transfer",
+      "sender_knows": [
+        "s_saved",
+        "r2_in",
+        "k_found"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": [
+        "If R and B are separate, R may only need to forward this value and need not learn k_found"
+      ]
+    },
+    {
+      "label": "M5",
+      "step": 6,
+      "from": "R",
+      "to": "T",
+      "term": "h(xor(r2_in,xor(k_found,s_saved)))",
+      "meaning": "R sends r3 to T, where r3 = h(r2 ⊕ k ⊕ s), in order to inform the update.",
+      "protection": "keyed hash relationship only; r3 is sent in the clear",
+      "sender_knows": [
+        "s_saved",
+        "r2_in",
+        "k_found if R has database access",
+        "or r3 returned by B if B is separate"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "Setup_shared_tag_secret",
+      "role": "setup_B_T",
+      "kind": "setup_state",
+      "generates": [
+        "k_T"
+      ],
+      "message_in": [],
+      "message_out": [],
+      "checks": [],
+      "events": [
+        "Secret(T,B,k_T)"
+      ]
+    },
+    {
+      "action_id": "R_send_M1",
+      "role": "R",
+      "kind": "send",
+      "generates": [
+        "~s"
+      ],
+      "message_in": [],
+      "message_out": [
+        "M1"
+      ],
+      "checks": [],
+      "events": [
+        "Start_READER(R,T,~s)",
+        "OUT_M1(~s)"
+      ]
+    },
+    {
+      "action_id": "T_recv_M1_send_M2",
+      "role": "T",
+      "kind": "receive_compute_send",
+      "generates": [
+        "~r1"
+      ],
+      "message_in": [
+        "M1"
+      ],
+      "message_out": [
+        "M2"
+      ],
+      "checks": [],
+      "events": [
+        "Running_TAG(T,R,s,~r1,h(xor(~r1,xor(T.k,s))),T.k)",
+        "OUT_M2(<~r1,h(xor(~r1,xor(T.k,s)))>)"
+      ]
+    },
+    {
+      "action_id": "R_recv_M2_forward_M3",
+      "role": "R",
+      "kind": "receive_forward",
+      "generates": [],
+      "message_in": [
+        "M2"
+      ],
+      "message_out": [
+        "M3"
+      ],
+      "checks": [],
+      "events": [
+        "Forward_READER_TO_BACKEND(R,B,s_saved,r1_in,r2_in)",
+        "OUT_M3(<s_saved,r1_in,r2_in>)"
+      ]
+    },
+    {
+      "action_id": "B_lookup_update_compute_M4",
+      "role": "B",
+      "kind": "receive_check_update_compute_send",
+      "generates": [],
+      "message_in": [
+        "M3"
+      ],
+      "message_out": [
+        "M4"
+      ],
+      "checks": [
+        "Find exactly one database key k_found in fields K or Klast such that h(xor(r1_in,xor(k_found,s_saved))) = r2_in"
+      ],
+      "events": [
+        "DB_Found(B,T,k_found,s_saved,r1_in,r2_in)",
+        "Commit_READER(R,T,s_saved,r1_in,r2_in,h(xor(r2_in,xor(k_found,s_saved))),k_found)",
+        "Running_READER(R,T,s_saved,r1_in,r2_in,h(xor(r2_in,xor(k_found,s_saved))),k_found)",
+        "OUT_M4(h(xor(r2_in,xor(k_found,s_saved))))"
+      ]
+    },
+    {
+      "action_id": "R_send_M5",
+      "role": "R",
+      "kind": "receive_forward_send",
+      "generates": [],
+      "message_in": [
+        "M4"
+      ],
+      "message_out": [
+        "M5"
+      ],
+      "checks": [],
+      "events": [
+        "OUT_M5(h(xor(r2_in,xor(k_found,s_saved))))"
+      ]
+    },
+    {
+      "action_id": "T_recv_M5_verify_update",
+      "role": "T",
+      "kind": "receive_check_update",
+      "generates": [],
+      "message_in": [
+        "M5"
+      ],
+      "message_out": [],
+      "checks": [
+        "T computes r3_expected := h(xor(r2,xor(T.k,s))) using its stored session r2, current k, and received s; prose says T accepts when received r3 equals r3_expected"
+      ],
+      "events": [
+        "Commit_TAG(T,R,s,r1,r2,r3_expected,T.k)"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "role": "B",
+      "condition": "search database fields K and Klast for a key k satisfying h(xor(r1_in,xor(k,s_saved))) = r2_in",
+      "source_message": "M3"
+    },
+    {
+      "role": "B",
+      "condition": "proceed only if exactly one k satisfies the lookup equation; if k is found in K then update Klast := k and K := h(k)",
+      "source_message": "M3"
+    },
+    {
+      "role": "B",
+      "condition": "if k is found in Klast, no database update is made",
+      "source_message": "M3"
+    },
+    {
+      "role": "T",
+      "condition": "verify received r3 against h(xor(r2,xor(k,s))) before updating k to h(k), following the prose step; the figure contains a contradictory inequality update condition",
+      "source_message": "M5"
+    }
+  ],
+  "events": [
+    {
+      "name": "Secret",
+      "arguments": [
+        "T",
+        "B",
+        "k"
+      ],
+      "role": "setup_B_T",
+      "when": "initial synchronized secret is installed or a current synchronized secret is treated as private state"
+    },
+    {
+      "name": "Start_READER",
+      "arguments": [
+        "R",
+        "T",
+        "s"
+      ],
+      "role": "R",
+      "when": "R generates and sends challenge s"
+    },
+    {
+      "name": "Running_TAG",
+      "arguments": [
+        "T",
+        "R",
+        "s",
+        "r1",
+        "r2",
+        "k_epoch"
+      ],
+      "role": "T",
+      "when": "T sends r1,r2 computed from its current key and received s"
+    },
+    {
+      "name": "DB_Found",
+      "arguments": [
+        "B",
+        "T",
+        "k_found",
+        "s",
+        "r1",
+        "r2"
+      ],
+      "role": "B",
+      "when": "B finds a unique database key matching h(r1 ⊕ k ⊕ s) = r2"
+    },
+    {
+      "name": "Commit_READER",
+      "arguments": [
+        "R",
+        "T",
+        "s",
+        "r1",
+        "r2",
+        "r3",
+        "k_epoch"
+      ],
+      "role": "B_R",
+      "when": "the reader/backend side accepts the tag response after successful database lookup and computes r3"
+    },
+    {
+      "name": "Running_READER",
+      "arguments": [
+        "R",
+        "T",
+        "s",
+        "r1",
+        "r2",
+        "r3",
+        "k_epoch"
+      ],
+      "role": "B_R",
+      "when": "the reader/backend side prepares the r3 response for T"
+    },
+    {
+      "name": "Commit_TAG",
+      "arguments": [
+        "T",
+        "R",
+        "s",
+        "r1",
+        "r2",
+        "r3",
+        "k_epoch"
+      ],
+      "role": "T",
+      "when": "T verifies the received r3 value and updates k to h(k)"
+    }
+  ],
+  "claims": [
+    {
+      "lemma_name": "executable",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "There exists an honest trace completing the described LAK06 exchange, including reader challenge, tag response, backend lookup/update, reader response, and tag update.",
+      "event_schema": [
+        "Start_READER(R,T,s)",
+        "Running_TAG(T,R,s,r1,r2,k)",
+        "DB_Found(B,T,k,s,r1,r2)",
+        "Running_READER(R,T,s,r1,r2,r3,k)",
+        "Commit_TAG(T,R,s,r1,r2,r3,k)"
+      ],
+      "witness": "Honest execution with initial synchronized key k_T, fresh s, fresh r1, r2 = h(xor(r1,xor(k_T,s))), successful unique DB lookup, r3 = h(xor(r2,xor(k_T,s))), and T accepting r3.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "helpingSecrecy",
+      "goal_type": "secrecy",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "User-supplied secrecy goal; the exact secret target is not described in the natural-language goal text. The protocol-relevant candidate target is the synchronized secret k/current key state, absent explicit reveal.",
+      "event_schema": [
+        "Secret(T,B,k_current)"
+      ],
+      "witness": "Unknown; no counterexample expected by supplied metadata.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "noninjectiveagreementTAG",
+      "goal_type": "authentication",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "Non-injective agreement for the tag-side completion: if T commits after verifying r3, then some reader/backend-side run should have prepared a matching r3 for the same session data.",
+      "event_schema": [
+        "Commit_TAG(T,R,s,r1,r2,r3,k_epoch) implies exists Running_READER(R,T,s,r1,r2,r3,k_epoch)"
+      ],
+      "witness": "Unknown; no counterexample expected by supplied metadata.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "noninjectiveagreementREADER",
+      "goal_type": "authentication",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "Non-injective agreement for the reader/backend-side completion: if R/B commits after database lookup, then some matching tag run should exist. Supplied metadata expects this authentication goal to be falsified.",
+      "event_schema": [
+        "Commit_READER(R,T,s,r1,r2,r3,k_epoch) implies exists Running_TAG(T,R,s,r1,r2,k_epoch)"
+      ],
+      "witness": "Expected falsified trace metadata supplied, but no concrete trace is given in the input. Preserve public replay/injection surface of M1, M2, M3, and K/Klast behavior for later verification.",
+      "expected_raw": "falsified - found trace"
+    }
+  ],
+  "compromise": {
+    "reveal_events": [],
+    "policy": "No explicit reveal, corruption, or compromise behavior is described in the protocol input or supplied goals. Treat k_T, K, and Klast as private setup/state values unless an explicit Reveal(...) event is added by a later modeling contract. Lemma exceptions for compromise are therefore not present in this parser-stage IR."
+  },
+  "abstractions": [
+    "PRNG is abstracted as generation of fresh names ~s and ~r1.",
+    "The database search over records is abstracted as a symbolic unique-existence check for k_found in K or Klast satisfying h(xor(r1,xor(k,s))) = r2.",
+    "The RFID database fields K and Klast are represented as private backend state with the two update branches described in the text.",
+    "The text alternates between R computing/updating and B searching the database; this IR keeps B as the role with database evidence and uses an implicit B-to-R transfer M4 if R and B are separate.",
+    "Network messages are plaintext except for hash-based relationships; no encryption, signatures, or MAC verification beyond the stated hash equations is added.",
+    "Hash collisions and probabilistic PRNG details are not modeled.",
+    "The tag update condition is represented according to the prose equality check, while the contradictory inequality condition in the figure is retained as an open proof-critical issue."
+  ],
+  "modeling_assumptions": [
+    "Use the standard Dolev-Yao adversarial network model.",
+    "Model only the protocol behavior described by the current IR and modeling contract.",
+    "Do not use the reference Sapic+ or Tamarin models during generation; they are evaluation metadata only.",
+    "The operator ⊕ is modeled by xor with ACUN behavior unless the target modeling contract explicitly chooses an uninterpreted function.",
+    "The reader R stores the same s it sent in M1 and forwards that saved value to B in M3.",
+    "R performs no cryptographic validation of r1,r2 before forwarding them to B.",
+    "B can identify T only through successful unique lookup of k in K or Klast; if no key or multiple keys match, the protocol behavior is unspecified and no commit event should be emitted.",
+    "If R and B are modeled as one trust boundary, M4 may be compiled as an internal transition rather than a Dolev-Yao network message; if separate, the protection of the R-B channel is unspecified by the input.",
+    "The prose step 7 equality condition is used for T's acceptance/update in this candidate; the figure's inequality update condition must be reviewed before final proof generation."
+  ],
+  "resolved_open_questions": [],
+  "semantic_constraints": [
+    {
+      "kind": "text_policy",
+      "policy": "M1 carries only s and is sent before T generates r1."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "M2 carries r1 and r2, where r2 must be computed as h(xor(r1,xor(k,s))) using T's current key k and the s received in M1."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "M3 must contain the saved reader challenge s together with the r1,r2 values received from the network; it must not silently replace attacker-provided r1,r2 with honest values."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "B's DB lookup must test both K and Klast fields exactly as described."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "B emits reader/backend authentication events only after finding exactly one matching k."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "If k_found is in K, B updates Klast to the old k and K to h(k)."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "If k_found is in Klast, B makes no update to the database."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "r3 must be computed as h(xor(r2,xor(k,s))) from the accepted/forwarded r2, the saved s, and the found key k."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "T must compare the received r3 value with its locally computed h(xor(r2,xor(k,s))) using the session r2 it previously computed/sent and its current key."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Under the prose acceptance branch, T updates k to h(k) only after accepting r3."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "No encryption, signing, or explicit channel authentication is described for any message."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The expected counterexample for noninjectiveagreementREADER must not be precluded by adding undocumented freshness checks, signatures, encrypted channels, or stronger reader-side validation."
+    }
+  ],
+  "field_evidence": [
+    {
+      "field_path": "protocol_name",
+      "source_quote": "/* Protocol: LAK06",
+      "evidence_kind": "direct",
+      "reason": "Protocol name appears explicitly in the header.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.6
+    },
+    {
+      "field_path": "roles",
+      "source_quote": "The RFID system has two main components: Tag T , and Reader R.",
+      "evidence_kind": "direct",
+      "reason": "T and R are explicitly identified as main components.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "roles[2]",
+      "source_quote": "R delivers responses of T with the saved value s to B, i.e., s, r1, and r2.",
+      "evidence_kind": "direct",
+      "reason": "The backend/database role B is explicitly referenced in the numbered description, even though the figure shows only Reader and Tag.",
+      "priority_llm": 0.85,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.65,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "crypto.builtins",
+      "source_quote": "r2 <- h(r1⊕k⊕s)",
+      "evidence_kind": "direct",
+      "reason": "The protocol uses a hash h and the XOR-like operator ⊕.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "fresh_terms[0]",
+      "source_quote": "R generates and saves a new pseudorandom number s by utilizing PRNG",
+      "evidence_kind": "direct",
+      "reason": "s is explicitly generated by R using a PRNG.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "fresh_terms[1]",
+      "source_quote": "T also generates a new pseudorandom number r1",
+      "evidence_kind": "direct",
+      "reason": "r1 is explicitly generated by T using a PRNG.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "long_term_keys[0]",
+      "source_quote": "B searches k from the fields K and Klast",
+      "evidence_kind": "direct",
+      "reason": "The shared secret k is stored in backend database fields K and Klast and also used by T.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages[0]",
+      "source_quote": "and sends s to T.",
+      "evidence_kind": "direct",
+      "reason": "M1 is exactly the reader challenge s.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "messages[0].protection",
+      "source_quote": "|          s            | | --------------------->|",
+      "evidence_kind": "nearby",
+      "reason": "The diagram and prose show s sent directly with no encryption or MAC.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages[1]",
+      "source_quote": "then send r1, r2 to R, where s was sent by R.",
+      "evidence_kind": "direct",
+      "reason": "M2 contains r1 and r2 from T to R.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "messages[1].term",
+      "source_quote": "constructs r2, i.e., h(r1⊕k⊕s)",
+      "evidence_kind": "direct",
+      "reason": "The exact dependency of r2 on r1, k, and s is stated.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages[2]",
+      "source_quote": "R delivers responses of T with the saved value s to B, i.e., s, r1, and r2.",
+      "evidence_kind": "direct",
+      "reason": "M3 is the reader-to-backend delivery of s,r1,r2.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.85,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "messages[3]",
+      "source_quote": "From s, r2, and k, which are received values from T and the value found by testing Eq.(1), R calculates r3",
+      "evidence_kind": "assumption",
+      "reason": "A B-to-R response is not explicitly described, but is needed if B and R are separate roles because B performs the lookup while R sends r3.",
+      "priority_llm": 0.95,
+      "evidence_confidence_score": 0.45,
+      "consistency_confidence_score": 0.55,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "messages[4].term",
+      "source_quote": "R calculates r3, i.e., h(r2⊕k⊕s), and sends r3 to T",
+      "evidence_kind": "direct",
+      "reason": "The final response value and direction are explicitly stated.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks[0]",
+      "source_quote": "h(r1⊕k⊕s) ? =r2",
+      "evidence_kind": "direct",
+      "reason": "B's lookup equation is explicitly given.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks[1]",
+      "source_quote": "If only one k satisfies the equation, then we can know ID corresponding to k",
+      "evidence_kind": "direct",
+      "reason": "Uniqueness of the matching key is a proof-relevant condition.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "actions[4].state_updates",
+      "source_quote": "If k is found in the field K of a record, k is copied to the field Klast of the record, and the field K is set to h(k). If k is found in the field Klast, no update is made to D.",
+      "evidence_kind": "direct",
+      "reason": "Backend database update semantics are stated exactly.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks[3]",
+      "source_quote": "To test the correctness of the value Reader sends, T verifies the following equation: r3 = r3. If the equation is correct, T updates k to h(k).",
+      "evidence_kind": "direct",
+      "reason": "The prose describes equality verification before tag update.",
+      "priority_llm": 0.95,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.55,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "actions[6].state_updates",
+      "source_quote": "IF r3' != r3 THEN k <- h(k)",
+      "evidence_kind": "direct",
+      "reason": "The figure contradicts the prose by showing an inequality condition before update; this is preserved as an open issue.",
+      "priority_llm": 1.0,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.25,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "events.Commit_READER",
+      "source_quote": "If only one k satisfies the equation, then we can know ID corresponding to k in D is ID of T",
+      "evidence_kind": "nearby",
+      "reason": "Reader/backend-side authentication evidence is available only after successful unique DB lookup.",
+      "priority_llm": 0.55,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.75,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "events.Commit_TAG",
+      "source_quote": "If the equation is correct, T updates k to h(k).",
+      "evidence_kind": "direct",
+      "reason": "Tag-side completion is tied to verification of r3 and key update.",
+      "priority_llm": 0.65,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.65,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims[0].lemma_name",
+      "source_quote": "\"name\": \"executable\"",
+      "evidence_kind": "direct",
+      "reason": "User-supplied goal name preserved.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "claims[0].expected_state",
+      "source_quote": "\"expected_state\": \"ProvedSatisfying\"",
+      "evidence_kind": "direct",
+      "reason": "Expected result metadata preserved exactly.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims[0].trace_kind",
+      "source_quote": "\"trace_kind\": \"exists-trace\"",
+      "evidence_kind": "direct",
+      "reason": "Trace kind metadata preserved exactly.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims[1].lemma_name",
+      "source_quote": "\"name\": \"helpingSecrecy\"",
+      "evidence_kind": "direct",
+      "reason": "User-supplied goal name preserved.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "claims[1].expected_state",
+      "source_quote": "\"expected_state\": \"ProvedSatisfying\"",
+      "evidence_kind": "direct",
+      "reason": "Expected result metadata preserved exactly.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims[1].event_schema",
+      "source_quote": "\"description\": \"\"",
+      "evidence_kind": "none",
+      "reason": "The supplied secrecy goal has no natural-language description of the target secret; the synchronized key is inferred from protocol context and must be reviewed.",
+      "priority_llm": 0.9,
+      "evidence_confidence_score": 0.35,
+      "consistency_confidence_score": 0.6,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims[2].lemma_name",
+      "source_quote": "\"name\": \"noninjectiveagreementTAG\"",
+      "evidence_kind": "direct",
+      "reason": "User-supplied goal name preserved.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "claims[2].expected_state",
+      "source_quote": "\"expected_state\": \"ProvedSatisfying\"",
+      "evidence_kind": "direct",
+      "reason": "Expected result metadata preserved exactly.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims[2].trace_kind",
+      "source_quote": "\"trace_kind\": \"all-traces\"",
+      "evidence_kind": "direct",
+      "reason": "Trace kind metadata preserved exactly.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims[3].lemma_name",
+      "source_quote": "\"name\": \"noninjectiveagreementREADER\"",
+      "evidence_kind": "direct",
+      "reason": "User-supplied goal name preserved.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "claims[3].expected_state",
+      "source_quote": "\"expected_state\": \"CounterexampleFound\"",
+      "evidence_kind": "direct",
+      "reason": "Expected counterexample metadata preserved exactly.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims[3].trace_kind",
+      "source_quote": "\"trace_kind\": \"all-traces\"",
+      "evidence_kind": "direct",
+      "reason": "Trace kind metadata preserved exactly.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "compromise.reveal_events",
+      "source_quote": "Use the standard Dolev-Yao adversarial network model.",
+      "evidence_kind": "none",
+      "reason": "The input mentions Dolev-Yao network adversary but no explicit long-term key reveal, compromise, or corruption events.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.85,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "modeling_assumptions[7]",
+      "source_quote": "R delivers responses of T with the saved value s to B",
+      "evidence_kind": "nearby",
+      "reason": "The security of the R-B channel is not specified, yet the role split affects proof behavior.",
+      "priority_llm": 0.95,
+      "evidence_confidence_score": 0.7,
+      "consistency_confidence_score": 0.55,
+      "semantic_impact_score": 1.0
+    }
+  ],
+  "open_questions": [],
+  "review": {
+    "status": "reviewed",
+    "updated_at": "2026-06-10T21:58:59",
+    "source": "codex_nl_only_human_edit",
+    "policy": "Reviewed against the LAK06 natural-language input and GPT-5.5 raw IR. Gold/reference IR was used only as a sanity check, not as the edit target.",
+    "decision": "NL-only review keeps the raw LAK06 RFID flow with Reader, Tag, and backend/database B because the prose explicitly sends T responses to B for key lookup/update before R notifies T. Gold/reference IR was used only as a sanity check."
+  }
+}

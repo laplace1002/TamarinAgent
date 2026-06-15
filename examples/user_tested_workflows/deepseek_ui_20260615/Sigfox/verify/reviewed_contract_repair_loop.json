@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "status": "clean",
+  "returncode": 0,
+  "returncode_ok": true,
+  "has_warnings": false,
+  "warnings": [],
+  "lint_issues": [],
+  "command": [
+    "tamarin-prover",
+    "/Users/ella/code/TAMARIN-Agent-master/AutoSM-style/ui_experiment_pipeline/runs/ui_formal_deepseek_user_20260615/active/models/repaired_2.spthy",
+    "-m=msr",
+    "--derivcheck-timeout=0"
+  ],
+  "output_path": "/Users/ella/code/TAMARIN-Agent-master/AutoSM-style/ui_experiment_pipeline/runs/ui_formal_deepseek_user_20260615/active/models/repaired_2.spthy",
+  "elapsed_sec": 0.171,
+  "stdout_tail": "ate_1112121( skA.1, skB.1 ) ]\n  -->\n   [ State_11121211( skA.1, skB.1 ), State_11121212( skA.1, skB.1 ) ]\n\nrule (modulo E) RevealLTKskA_0_11121211[color=#ffffff,\n                                        process=\"RevealLTK(skA.1)\", issapicrule, role='Process']:\n   [ State_11121211( skA.1, skB.1 ) ]\n  -->\n   [ State_111212111( skA.1, skB.1 ), State_111212112( skA.1, skB.1 ) ]\n\nrule (modulo E) inany_0_111212111[color=#805040, process=\"in(any.1);\",\n                                  issapicrule, role='RevealLTK']:\n   [ State_111212111( skA.1, skB.1 ), In( any.1 ) ]\n  -->\n   [ State_1112121111( any.1, skA.1, skB.1 ) ]\n\nrule (modulo E) eventRevealpkskA_0_1112121111[color=#805040,\n                                              process=\"event Reveal( pk(skA.1) );\", issapicrule,\n                                              role='RevealLTK']:\n   [ State_1112121111( any.1, skA.1, skB.1 ) ]\n  --[ Reveal( pk(skA.1) ) ]->\n   [ State_11121211111( any.1, skA.1, skB.1 ) ]\n\nrule (modulo E) outskA_0_11121211111[color=#805040,\n                                     process=\"out(skA.1);\", issapicrule, role='RevealLTK']:\n   [ State_11121211111( any.1, skA.1, skB.1 ) ]\n  -->\n   [ State_111212111111( any.1, skA.1, skB.1 ), Out( skA.1 ) ]\n\nrule (modulo E) p_0_111212111111[color=#805040, process=\"0\", issapicrule,\n                                 role='RevealLTK']:\n   [ State_111212111111( any.1, skA.1, skB.1 ) ] --> [ ]\n\nrule (modulo E) p_0_111212112[color=#ffffff, process=\"0\", issapicrule,\n                              role='Process']:\n   [ State_111212112( skA.1, skB.1 ) ] --> [ ]\n\nrule (modulo E) p_0_11121212[color=#ffffff, process=\"!\", issapicrule,\n                             role='Process']:\n   [ State_11121212( skA.1, skB.1 ) ]\n  -->\n   [ !Semistate_111212121( skA.1, skB.1 ) ]\n\nrule (modulo E) p_1_11121212[color=#ffffff, process=\"!\", issapicrule,\n                             role='Process']:\n   [ !Semistate_111212121( skA.1, skB.1 ) ]\n  -->\n   [ State_111212121( skA.1, skB.1 ) ]\n\nrule (modulo E) RevealLTKskB_0_111212121[color=#ffffff,\n                                         process=\"RevealLTK(skB.1)\", issapicrule, role='Process']:\n   [ State_111212121( skA.1, skB.1 ) ]\n  -->\n   [ State_1112121211( skA.1, skB.1 ), State_1112121212( skA.1, skB.1 ) ]\n\nrule (modulo E) inany_0_1112121211[color=#805040, process=\"in(any.2);\",\n                                   issapicrule, role='RevealLTK']:\n   [ State_1112121211( skA.1, skB.1 ), In( any.2 ) ]\n  -->\n   [ State_11121212111( skA.1, skB.1, any.2 ) ]\n\nrule (modulo E) eventRevealpkskB_0_11121212111[color=#805040,\n                                               process=\"event Reveal( pk(skB.1) );\", issapicrule,\n                                               role='RevealLTK']:\n   [ State_11121212111( skA.1, skB.1, any.2 ) ]\n  --[ Reveal( pk(skB.1) ) ]->\n   [ State_111212121111( skA.1, skB.1, any.2 ) ]\n\nrule (modulo E) outskB_0_111212121111[color=#805040,\n                                      process=\"out(skB.1);\", issapicrule, role='RevealLTK']:\n   [ State_111212121111( skA.1, skB.1, any.2 ) ]\n  -->\n   [ State_1112121211111( skA.1, skB.1, any.2 ), Out( skB.1 ) ]\n\nrule (modulo E) p_0_1112121211111[color=#805040, process=\"0\",\n                                  issapicrule, role='RevealLTK']:\n   [ State_1112121211111( skA.1, skB.1, any.2 ) ] --> [ ]\n\nrule (modulo E) p_0_1112121212[color=#ffffff, process=\"0\", issapicrule,\n                               role='Process']:\n   [ State_1112121212( skA.1, skB.1 ) ] --> [ ]\n\nrestriction predicate_eq:\n  \"∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)\"\n  // safety formula\n\nrestriction predicate_not_eq:\n  \"∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))\"\n  // safety formula\n\nrestriction single_session:\n  \"∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)\"\n  // safety formula\n\n/* All wellformedness checks were successful. */\n\n/*\nGenerated from:\nTamarin version 1.12.0\nMaude version 3.5.1\nGit revision: UNKNOWN, branch: UNKNOWN\nCompiled at: 2026-03-08 09:49:47.765662 UTC\n*/\n\nend\n",
+  "stderr_tail": "maude tool: 'maude'\n checking version: 3.5.1. OK.\n checking installation: OK.\n[Theory Sigfox_A_B] Theory loaded\n[Theory Sigfox_A_B] Theory translated\n",
+  "max_rounds": 2,
+  "accepted_round": 2,
+  "attempts": [
+    {
+      "round": 1,
+      "generation_round": 1,
+      "accepted": false,
+      "reason": "candidate_worse_status",
+      "ok": false,
+      "status": "failed",
+      "warning_count": 0,
+      "lint_issue_count": 0,
+      "repair_scope": "local_patch"
+    },
+    {
+      "round": 2,
+      "generation_round": 1,
+      "accepted": true,
+      "reason": "improved",
+      "ok": true,
+      "status": "clean",
+      "warning_count": 0,
+      "lint_issue_count": 0,
+      "repair_scope": "local_patch"
+    }
+  ],
+  "model_path": "/Users/ella/code/TAMARIN-Agent-master/AutoSM-style/ui_experiment_pipeline/runs/ui_formal_deepseek_user_20260615/active/final/model.spthy",
+  "generation_rounds_used": 1,
+  "abstraction_hints_enabled": false,
+  "abstraction_hints": {
+    "enabled": false,
+    "selected": [],
+    "reason": "disabled"
+  }
+}

@@ -1,0 +1,31 @@
+== successful_run ==
+maude tool: 'maude'
+ checking version: 3.5.1. OK.
+ checking installation: OK.
+[Theory Toy] Theory loaded
+[Theory Toy] Theory translated
+[Theory Toy] Theory closed
+[Saturating Sources] Step 1 (Max 5)
+[Saturating Sources] Done
+
+
+== sk_secret_a ==
+maude tool: 'maude'
+ checking version: 3.5.1. OK.
+ checking installation: OK.
+[Theory Toy] Theory loaded
+[Theory Toy] Theory translated
+[Theory Toy] Theory closed
+[Saturating Sources] Step 1 (Max 5)
+[Saturating Sources] Done
+
+
+== sk_secret_b ==
+maude tool: 'maude'
+ checking version: 3.5.1. OK.
+ checking installation: OK.
+[Theory Toy] Theory loaded
+[Theory Toy] Theory translated
+[Theory Toy] Theory closed
+[Saturating Sources] Step 1 (Max 5)
+[Saturating Sources] Done

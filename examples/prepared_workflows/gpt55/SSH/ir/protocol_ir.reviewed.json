@@ -1,0 +1,941 @@
+{
+  "schema": "autosm_style_protocol_ir_v1",
+  "protocol_name": "SSH",
+  "roles": [
+    "C",
+    "S"
+  ],
+  "principals": [
+    {
+      "name": "C",
+      "role_hint": "C"
+    },
+    {
+      "name": "S",
+      "role_hint": "S"
+    }
+  ],
+  "crypto": {
+    "builtins": [
+      "diffie-hellman",
+      "hashing",
+      "signing",
+      "symmetric-encryption"
+    ],
+    "functions": [
+      "HASH/1",
+      "kdf_initial/4",
+      "kdf_extend/3",
+      "take_prefix/2"
+    ],
+    "equations": [
+      "exp(exp(g,x),y) = exp(exp(g,y),x)",
+      "verify(sign(m,sk),m,pk(sk)) = true"
+    ],
+    "assumptions": [
+      "Use the standard Dolev-Yao adversarial network model.",
+      "Model only the protocol behavior described by the current IR and modeling contract.",
+      "Do not use the reference Sapic+ or Tamarin models during generation; they are evaluation metadata only."
+    ]
+  },
+  "fresh_terms": [
+    {
+      "name": "~x",
+      "owner": "C",
+      "purpose": "client DH exponent generated randomly with 1 < x < q"
+    },
+    {
+      "name": "~y",
+      "owner": "S",
+      "purpose": "server DH exponent generated randomly with 0 < y < q"
+    }
+  ],
+  "long_term_keys": [
+    {
+      "name": "host_ltkS",
+      "owner": "S",
+      "public_term": "K_S_pub = pk(host_ltkS)",
+      "policy": "private server host signing key; public host key is RFC field K_S; reveal only via explicit Reveal(...) if later modeled"
+    }
+  ],
+  "messages": [
+    {
+      "label": "M0C",
+      "step": 1,
+      "from": "C",
+      "to": "S",
+      "term": "<V_C,I_C>",
+      "meaning": "C's identification string V_C and SSH_MSG_KEXINIT message I_C have been exchanged before the selected DH exchange begins; they are opaque transcript inputs included in H.",
+      "protection": "none; pre-exchanged context outside the selected section",
+      "sender_knows": [
+        "V_C",
+        "I_C"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": [
+        "I_C contents not parsed in this IR"
+      ]
+    },
+    {
+      "label": "M1",
+      "step": 1,
+      "from": "C",
+      "to": "S",
+      "term": "e = exp(g,~x)",
+      "meaning": "C sends its DH public value e computed from fresh exponent x.",
+      "protection": "none; public Diffie-Hellman share",
+      "sender_knows": [
+        "~x",
+        "g",
+        "p",
+        "q",
+        "e"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M0S",
+      "step": 2,
+      "from": "S",
+      "to": "C",
+      "term": "<V_S,I_S>",
+      "meaning": "S's identification string V_S and SSH_MSG_KEXINIT message I_S have been exchanged before the selected DH exchange begins; they are opaque transcript inputs included in H.",
+      "protection": "none; pre-exchanged context outside the selected section",
+      "sender_knows": [
+        "V_S",
+        "I_S"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": [
+        "I_S contents not parsed in this IR"
+      ]
+    },
+    {
+      "label": "M2",
+      "step": 2,
+      "from": "S",
+      "to": "C",
+      "term": "<K_S_pub, f, sign(H_S,host_ltkS)>",
+      "meaning": "S sends its public host key K_S, its DH public value f = exp(g,~y), and a host-key signature s over exchange hash H_S = HASH(<V_C,V_S,I_C,I_S,K_S_pub,e,f,K_Srv>) where K_Srv = exp(e,~y).",
+      "protection": "digital signature authenticates H_S under K_S_pub when the client verifies both the host-key binding and the signature; no encryption",
+      "sender_knows": [
+        "host_ltkS",
+        "K_S_pub",
+        "~y",
+        "f",
+        "e",
+        "K_Srv",
+        "H_S",
+        "V_C",
+        "V_S",
+        "I_C",
+        "I_S"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": [
+        "signature algorithm internal second hash, if any"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "C_pre_exchange_context",
+      "role": "C",
+      "kind": "precontext-send-receive",
+      "generates": [],
+      "message_in": [
+        "M0S"
+      ],
+      "message_out": [
+        "M0C"
+      ],
+      "checks": [],
+      "events": [
+        "Context_C(C,S,V_C,V_S,I_C,I_S)"
+      ]
+    },
+    {
+      "action_id": "S_pre_exchange_context",
+      "role": "S",
+      "kind": "precontext-send-receive",
+      "generates": [],
+      "message_in": [
+        "M0C"
+      ],
+      "message_out": [
+        "M0S"
+      ],
+      "checks": [],
+      "events": [
+        "Context_S(S,C,V_C,V_S,I_C,I_S)"
+      ]
+    },
+    {
+      "action_id": "C_send_M1",
+      "role": "C",
+      "kind": "send",
+      "generates": [
+        "~x"
+      ],
+      "message_in": [
+        "M0S"
+      ],
+      "message_out": [
+        "M1"
+      ],
+      "checks": [
+        "C_generate_x_in_range"
+      ],
+      "events": [
+        "ClientEphemeralSent(C,S,e,V_C,V_S,I_C,I_S)"
+      ]
+    },
+    {
+      "action_id": "S_receive_M1_send_M2",
+      "role": "S",
+      "kind": "receive-compute-sign-send",
+      "generates": [
+        "~y"
+      ],
+      "message_in": [
+        "M0C",
+        "M1"
+      ],
+      "message_out": [
+        "M2"
+      ],
+      "checks": [
+        "S_generate_y_in_range",
+        "S_compute_K_and_H"
+      ],
+      "events": [
+        "Running_S(S,C,H_S,K_Srv,K_S_pub,e,f)",
+        "ServerSendsSignedExchange(S,C,H_S,K_Srv,K_S_pub,e,f)"
+      ]
+    },
+    {
+      "action_id": "S_derive_transport_keys",
+      "role": "S",
+      "kind": "derive",
+      "generates": [],
+      "message_in": [
+        "M1"
+      ],
+      "message_out": [],
+      "checks": [
+        "S_session_id_is_first_H",
+        "S_derive_keys_with_same_HASH"
+      ],
+      "events": [
+        "ServerKeysDerived(S,C,K_Srv,H_S,session_id,iv_c2s,iv_s2c,enc_c2s,enc_s2c,mac_c2s,mac_s2c)",
+        "Secret_S(S,C,K_Srv,H_S,session_id,kdf_material)",
+        "ServerFinishedKeyExchange(S,C,H_S,K_Srv,e,f)"
+      ]
+    },
+    {
+      "action_id": "C_receive_M2_verified",
+      "role": "C",
+      "kind": "receive-verify-compute-derive",
+      "generates": [],
+      "message_in": [
+        "M2"
+      ],
+      "message_out": [],
+      "checks": [
+        "C_compute_K_and_H",
+        "C_verify_hostkey_binding",
+        "C_verify_signature_s_on_H",
+        "C_session_id_is_first_H",
+        "C_derive_keys_with_same_HASH"
+      ],
+      "events": [
+        "ClientAcceptVerified(C,S,K_C,H_C,session_id,K_S_recv)",
+        "ClientKeysDerived(C,S,K_C,H_C,session_id,iv_c2s,iv_s2c,enc_c2s,enc_s2c,mac_c2s,mac_s2c)",
+        "Secret_C(C,S,K_C,H_C,session_id,kdf_material,verified_hostkey)",
+        "Commit_C_ServerAuth(C,S,H_C,K_C,session_id,K_S_recv)"
+      ]
+    },
+    {
+      "action_id": "C_receive_M2_unverified_accept",
+      "role": "C",
+      "kind": "receive-verify-compute-derive-insecure-optional",
+      "generates": [],
+      "message_in": [
+        "M2"
+      ],
+      "message_out": [],
+      "checks": [
+        "C_compute_K_and_H",
+        "C_accept_hostkey_without_verification",
+        "C_verify_signature_s_on_H_under_received_key",
+        "C_session_id_is_first_H",
+        "C_derive_keys_with_same_HASH"
+      ],
+      "events": [
+        "ClientAcceptUnverified(C,S,K_C,H_C,session_id,K_S_recv)",
+        "ClientKeysDerived(C,S,K_C,H_C,session_id,iv_c2s,iv_s2c,enc_c2s,enc_s2c,mac_c2s,mac_s2c)",
+        "Secret_C(C,S,K_C,H_C,session_id,kdf_material,unverified_hostkey)"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "role": "C",
+      "condition": "Generate random x satisfying 1 < x < q and compute e = exp(g,x) mod p.",
+      "source_message": "local generation",
+      "check_id": "C_generate_x_in_range"
+    },
+    {
+      "role": "S",
+      "condition": "Generate random y satisfying 0 < y < q and compute f = exp(g,y) mod p.",
+      "source_message": "local generation",
+      "check_id": "S_generate_y_in_range"
+    },
+    {
+      "role": "S",
+      "condition": "After receiving e, compute K_Srv = exp(e,~y) and H_S = HASH(<V_C,V_S,I_C,I_S,K_S_pub,e,f,K_Srv>) with the exact RFC field order.",
+      "source_message": "M1",
+      "check_id": "S_compute_K_and_H"
+    },
+    {
+      "role": "C",
+      "condition": "After receiving K_S_recv, f, and s, compute K_C = exp(f,~x) and H_C = HASH(<V_C,V_S,I_C,I_S,K_S_recv,e,f,K_C>) with the exact RFC field order.",
+      "source_message": "M2",
+      "check_id": "C_compute_K_and_H"
+    },
+    {
+      "role": "C",
+      "condition": "Verify that received K_S_recv really is the host key for S, represented as trusted_host_key(C,S,K_S_recv).",
+      "source_message": "M2",
+      "check_id": "C_verify_hostkey_binding"
+    },
+    {
+      "role": "C",
+      "condition": "Optional RFC-allowed branch: accept the received host key without verifying trusted_host_key(C,S,K_S_recv); this branch is explicitly insecure against active attacks.",
+      "source_message": "M2",
+      "check_id": "C_accept_hostkey_without_verification"
+    },
+    {
+      "role": "C",
+      "condition": "Verify s as a valid signature on H_C under the verified server host key K_S_recv.",
+      "source_message": "M2",
+      "check_id": "C_verify_signature_s_on_H"
+    },
+    {
+      "role": "C",
+      "condition": "Verify s as a valid signature on H_C under the received but untrusted K_S_recv.",
+      "source_message": "M2",
+      "check_id": "C_verify_signature_s_on_H_under_received_key"
+    },
+    {
+      "role": "C",
+      "condition": "For the first key exchange, set session_id = H_C; once computed, the session identifier is not changed by later re-exchanges.",
+      "source_message": "M2",
+      "check_id": "C_session_id_is_first_H"
+    },
+    {
+      "role": "S",
+      "condition": "For the first key exchange, set session_id = H_S; once computed, the session identifier is not changed by later re-exchanges.",
+      "source_message": "M1",
+      "check_id": "S_session_id_is_first_H"
+    },
+    {
+      "role": "C",
+      "condition": "Use the same HASH algorithm to derive IV, encryption, and integrity keys from K_C, H_C, literal letters A-F, and session_id; extend by repeated HASH(<K,H,key_so_far>) if needed.",
+      "source_message": "post-M2 derivation",
+      "check_id": "C_derive_keys_with_same_HASH"
+    },
+    {
+      "role": "S",
+      "condition": "Use the same HASH algorithm to derive IV, encryption, and integrity keys from K_Srv, H_S, literal letters A-F, and session_id; extend by repeated HASH(<K,H,key_so_far>) if needed.",
+      "source_message": "post-M1/M2 derivation",
+      "check_id": "S_derive_keys_with_same_HASH"
+    }
+  ],
+  "events": [
+    {
+      "name": "Context_C",
+      "arguments": [
+        "C",
+        "S",
+        "V_C",
+        "V_S",
+        "I_C",
+        "I_S"
+      ],
+      "role": "C",
+      "when": "C has the pre-exchanged identification and KEXINIT transcript inputs"
+    },
+    {
+      "name": "Context_S",
+      "arguments": [
+        "S",
+        "C",
+        "V_C",
+        "V_S",
+        "I_C",
+        "I_S"
+      ],
+      "role": "S",
+      "when": "S has the pre-exchanged identification and KEXINIT transcript inputs"
+    },
+    {
+      "name": "ClientEphemeralSent",
+      "arguments": [
+        "C",
+        "S",
+        "e",
+        "V_C",
+        "V_S",
+        "I_C",
+        "I_S"
+      ],
+      "role": "C",
+      "when": "C generates x and sends e"
+    },
+    {
+      "name": "Running_S",
+      "arguments": [
+        "S",
+        "C",
+        "H",
+        "K",
+        "K_S_pub",
+        "e",
+        "f"
+      ],
+      "role": "S",
+      "when": "S has received e, generated y, computed K and H, and is about to send the signed exchange"
+    },
+    {
+      "name": "ServerSendsSignedExchange",
+      "arguments": [
+        "S",
+        "C",
+        "H",
+        "K",
+        "K_S_pub",
+        "e",
+        "f"
+      ],
+      "role": "S",
+      "when": "S sends K_S, f, and signature s on H"
+    },
+    {
+      "name": "ServerKeysDerived",
+      "arguments": [
+        "S",
+        "C",
+        "K",
+        "H",
+        "session_id",
+        "iv_c2s",
+        "iv_s2c",
+        "enc_c2s",
+        "enc_s2c",
+        "mac_c2s",
+        "mac_s2c"
+      ],
+      "role": "S",
+      "when": "S derives transport-layer IV, encryption, and integrity keys from K, H, and session_id"
+    },
+    {
+      "name": "ServerFinishedKeyExchange",
+      "arguments": [
+        "S",
+        "C",
+        "H",
+        "K",
+        "e",
+        "f"
+      ],
+      "role": "S",
+      "when": "S has completed the described key exchange computations; this event does not by itself assert client authentication"
+    },
+    {
+      "name": "ClientAcceptVerified",
+      "arguments": [
+        "C",
+        "S",
+        "K",
+        "H",
+        "session_id",
+        "K_S_pub"
+      ],
+      "role": "C",
+      "when": "C verifies the host-key binding and verifies the signature s on H"
+    },
+    {
+      "name": "ClientAcceptUnverified",
+      "arguments": [
+        "C",
+        "S",
+        "K",
+        "H",
+        "session_id",
+        "K_S_pub"
+      ],
+      "role": "C",
+      "when": "C accepts the host key without verification but still verifies s under the received key"
+    },
+    {
+      "name": "ClientKeysDerived",
+      "arguments": [
+        "C",
+        "S",
+        "K",
+        "H",
+        "session_id",
+        "iv_c2s",
+        "iv_s2c",
+        "enc_c2s",
+        "enc_s2c",
+        "mac_c2s",
+        "mac_s2c"
+      ],
+      "role": "C",
+      "when": "C derives transport-layer IV, encryption, and integrity keys from K, H, and session_id"
+    },
+    {
+      "name": "Secret_C",
+      "arguments": [
+        "C",
+        "S",
+        "K",
+        "H",
+        "session_id",
+        "kdf_material",
+        "hostkey_status"
+      ],
+      "role": "C",
+      "when": "C marks client-side shared secret and derived key material after deriving keys"
+    },
+    {
+      "name": "Secret_S",
+      "arguments": [
+        "S",
+        "C",
+        "K",
+        "H",
+        "session_id",
+        "kdf_material"
+      ],
+      "role": "S",
+      "when": "S marks server-side shared secret and derived key material after deriving keys"
+    },
+    {
+      "name": "Commit_C_ServerAuth",
+      "arguments": [
+        "C",
+        "S",
+        "H",
+        "K",
+        "session_id",
+        "K_S_pub"
+      ],
+      "role": "C",
+      "when": "C completes the verified host-key branch and has evidence that S signed H with the trusted host key"
+    }
+  ],
+  "claims": [
+    {
+      "lemma_name": "secretP",
+      "goal_type": "secrecy",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "User-supplied secrecy goal. Candidate interpretation: P-side/client-side secrecy of K, H/session_id, and derived transport key material after client key derivation. The IR preserves both verified and RFC-allowed unverified host-key acceptance branches, so the intended scope of this lemma may require review.",
+      "event_schema": [
+        "Secret_C(C,S,K,H,session_id,kdf_material,hostkey_status)"
+      ],
+      "witness": "No witness supplied for all-traces secrecy claim.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "injPS",
+      "goal_type": "authentication",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "User-supplied injective authentication goal. Candidate interpretation from SSH text: client/P authenticates server/S using verified host-key binding and the signature over H.",
+      "event_schema": [
+        "Commit_C_ServerAuth(C,S,H,K,session_id,K_S_pub)",
+        "ServerSendsSignedExchange(S,C,H,K,K_S_pub,e,f)",
+        "injective agreement on H or session_id"
+      ],
+      "witness": "No witness supplied for all-traces authentication claim.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "injSP",
+      "goal_type": "authentication",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "User-supplied injective authentication goal. Candidate orientation from the lemma name is S-to-P/server authenticating client, but the selected RFC text states explicit server authentication and does not describe client authentication. This claim is preserved as metadata without adding unsupported client-authentication checks.",
+      "event_schema": [
+        "ServerFinishedKeyExchange(S,C,H,K,e,f)",
+        "ClientEphemeralSent(C,S,e,V_C,V_S,I_C,I_S)",
+        "no justified Commit_S_ClientAuth event in the selected text"
+      ],
+      "witness": "No witness supplied; selected sections do not provide a client signature or other client-authentication mechanism.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "secretS",
+      "goal_type": "secrecy",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "User-supplied secrecy goal. Candidate interpretation: server-side secrecy of K, H/session_id, and derived transport key material after server key derivation.",
+      "event_schema": [
+        "Secret_S(S,C,K,H,session_id,kdf_material)"
+      ],
+      "witness": "No witness supplied for all-traces secrecy claim.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "executableS2",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "User-supplied executability goal. Candidate witness is an honest run through pre-exchanged context, C sends e, S sends K_S/f/s, C verifies host key and signature, and both sides derive transport keys.",
+      "event_schema": [
+        "ServerKeysDerived(S,C,K,H,session_id,iv_c2s,iv_s2c,enc_c2s,enc_s2c,mac_c2s,mac_s2c)",
+        "ClientKeysDerived(C,S,K,H,session_id,iv_c2s,iv_s2c,enc_c2s,enc_s2c,mac_c2s,mac_s2c)"
+      ],
+      "witness": "Exists an honest trace with e=exp(g,~x), f=exp(g,~y), K=exp(exp(g,~x),~y)=exp(exp(g,~y),~x), matching H on both sides, valid host-key binding, valid signature, and KDF completion.",
+      "expected_raw": "verified"
+    }
+  ],
+  "compromise": {
+    "reveal_events": [],
+    "policy": "No explicit reveal, corruption, host-key compromise, exponent reveal, or session-key reveal behavior is mentioned in the selected protocol input. Record exact reveal/corruption events, exposed values, and lemma exception timing if later modeling input introduces compromise."
+  },
+  "abstractions": [
+    "RFC binary encodings and concatenation are represented as ordered tuples inside HASH; field order is preserved.",
+    "V_C, V_S, I_C, and I_S are modeled as opaque pre-exchanged transcript values because the input excludes the rest of SSH negotiation.",
+    "K_S_pub is the RFC public host key field K_S; it is separated from shared secret labels K_C and K_Srv to avoid name collision.",
+    "The host-key trust check is represented by a predicate trusted_host_key(C,S,K_S_recv), standing for certificates or a local database.",
+    "The RFC-allowed accept-without-verification behavior is preserved as a separate insecure optional client branch.",
+    "Key derivation output lengths and taking prefixes of hash output are abstracted by kdf_initial, kdf_extend, and take_prefix; the A-F labels and extension dependency on K, H, and accumulated key material are preserved.",
+    "Later re-exchanges are not modeled as full protocol runs; only the constraint that the first H becomes session_id and remains unchanged is recorded.",
+    "No validation of received DH public values e or f beyond the computations described in the selected text is added."
+  ],
+  "modeling_assumptions": [
+    "Use the standard Dolev-Yao adversarial network model.",
+    "Model only the protocol behavior described by the current IR and modeling contract.",
+    "Do not use the reference Sapic+ or Tamarin models during generation; they are evaluation metadata only.",
+    "The selected input is limited to RFC 4253 Section 8 key exchange and Section 7.2 key derivation; application data protection and user authentication are out of scope.",
+    "Public parameters p, g, q and role names C and S are available to both parties and the adversary.",
+    "The goals are user-supplied metadata; expected satisfying results are preserved but do not remove the RFC-stated unverified host-key acceptance branch."
+  ],
+  "resolved_open_questions": [],
+  "semantic_constraints": [
+    {
+      "kind": "text_policy",
+      "policy": "M1 precedes M2: C sends e before S computes K_Srv, H_S, and s."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "S computes f = exp(g,~y), K_Srv = exp(e,~y), H_S = HASH(<V_C,V_S,I_C,I_S,K_S_pub,e,f,K_Srv>), and s = sign(H_S,host_ltkS)."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "C computes K_C = exp(f,~x), H_C = HASH(<V_C,V_S,I_C,I_S,K_S_recv,e,f,K_C>), and verifies s against H_C under K_S_recv."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "If M1 and M2 are both honest and K_S_recv = K_S_pub, then K_C = K_Srv by the DH equation."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The exchange hash H includes V_C, V_S, I_C, I_S, K_S, e, f, and K in exactly that order."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Client host authentication requires both trusted_host_key(C,S,K_S_recv) and successful signature verification on H_C."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The unverified client branch omits trusted_host_key(C,S,K_S_recv) by design and is explicitly marked insecure against active attacks."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The first exchange hash H is the session identifier; once computed it remains unchanged across later re-exchanges, which are otherwise not modeled."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The same HASH algorithm used in key exchange must be used in key derivation."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Initial IV/key formulas are HASH(<K,H,'A',session_id>) through HASH(<K,H,'F',session_id>) for client-to-server IV, server-to-client IV, client-to-server encryption key, server-to-client encryption key, client-to-server integrity key, and server-to-client integrity key respectively."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "If more key bytes are needed, derive K1 = HASH(<K,H,X,session_id>), K2 = HASH(<K,H,K1>), K3 = HASH(<K,H,K1,K2>), and so on, taking the needed prefix."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The selected section provides explicit server authentication, not an explicit client-authentication mechanism."
+    }
+  ],
+  "field_evidence": [
+    {
+      "field_path": "protocol_name",
+      "source_quote": "Title: The Secure Shell (SSH) Transport Layer Protocol",
+      "evidence_kind": "direct",
+      "reason": "Protocol title and input name identify SSH.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.4
+    },
+    {
+      "field_path": "roles",
+      "source_quote": "In this, C is the client; S is the server",
+      "evidence_kind": "direct",
+      "reason": "Roles are explicitly defined.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "crypto.builtins",
+      "source_quote": "The Diffie-Hellman (DH) key exchange provides a shared secret... The key exchange is combined with a signature with the host key... H = hash(...)",
+      "evidence_kind": "direct",
+      "reason": "DH, hashing, and signatures are all explicitly present.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "fresh_terms.0",
+      "source_quote": "C generates a random number x (1 < x < q) and computes e = g^x mod p.",
+      "evidence_kind": "direct",
+      "reason": "Client fresh exponent and range are explicit.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "fresh_terms.1",
+      "source_quote": "S generates a random number y (0 < y < q) and computes f = g^y mod p.",
+      "evidence_kind": "direct",
+      "reason": "Server fresh exponent and range are explicit.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "long_term_keys.0",
+      "source_quote": "K_S is S's public host key... signature s on H with its private host key.",
+      "evidence_kind": "direct",
+      "reason": "Server host public/private signing key relationship is explicit.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.0",
+      "source_quote": "V_S is S's identification string; V_C is C's identification string; K_S is S's public host key; I_C is C's SSH_MSG_KEXINIT message and I_S is S's SSH_MSG_KEXINIT message that have been exchanged before this part begins.",
+      "evidence_kind": "direct",
+      "reason": "Pre-exchanged context fields are named and included in H.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.85,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.2",
+      "source_quote": "C generates a random number x (1 < x < q) and computes e = g^x mod p. C sends e to S.",
+      "evidence_kind": "direct",
+      "reason": "M1 term and sender/receiver are explicitly specified.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.3",
+      "source_quote": "S sends (K_S || f || s) to C.",
+      "evidence_kind": "direct",
+      "reason": "M2 fields and direction are explicitly specified.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.3.meaning",
+      "source_quote": "It computes K = e^y mod p, H = hash(V_C || V_S || I_C || I_S || K_S || e || f || K) ... and signature s on H with its private host key.",
+      "evidence_kind": "direct",
+      "reason": "Server computation dependencies and H field order are explicit.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.4",
+      "source_quote": "C verifies that K_S really is the host key for S (e.g., using certificates or a local database).",
+      "evidence_kind": "direct",
+      "reason": "Host-key binding check is explicitly required in the secure branch.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.5",
+      "source_quote": "C is also allowed to accept the key without verification; however, doing so will render the protocol insecure against active attacks",
+      "evidence_kind": "direct",
+      "reason": "Optional unverified acceptance is proof-critical and conflicts with unconditional authentication/secrecy interpretations.",
+      "priority_llm": 1.0,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.55,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.6",
+      "source_quote": "C then computes K = f^x mod p, H = hash(V_C || V_S || I_C || I_S || K_S || e || f || K), and verifies the signature s on H.",
+      "evidence_kind": "direct",
+      "reason": "Client computation and signature verification are explicit.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "semantic_constraints.7",
+      "source_quote": "The exchange hash H from the first key exchange is additionally used as the session identifier... Once computed, the session identifier is not changed, even if keys are later re-exchanged.",
+      "evidence_kind": "direct",
+      "reason": "session_id semantics are explicitly described.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "semantic_constraints.8",
+      "source_quote": "Each key exchange method specifies a hash function that is used in the key exchange. The same hash algorithm MUST be used in key derivation.",
+      "evidence_kind": "direct",
+      "reason": "Same-HASH constraint is explicit.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "actions.4.derives",
+      "source_quote": "Initial IV client to server: HASH(K || H || \"A\" || session_id) ... Integrity key server to client: HASH(K || H || \"F\" || session_id)",
+      "evidence_kind": "direct",
+      "reason": "A-F key derivation formulas are explicit.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "actions.6",
+      "source_quote": "C is also allowed to accept the key without verification; however, doing so will render the protocol insecure against active attacks",
+      "evidence_kind": "direct",
+      "reason": "A separate unverified client branch is necessary to preserve described behavior.",
+      "priority_llm": 1.0,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.6,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "events.12",
+      "source_quote": "This key exchange method provides explicit server authentication as defined in Section 7.",
+      "evidence_kind": "direct",
+      "reason": "A client-side server-authentication commit is justified only after host-key and signature verification.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "semantic_constraints.11",
+      "source_quote": "This key exchange method provides explicit server authentication",
+      "evidence_kind": "nearby",
+      "reason": "The input mentions server authentication but does not mention client authentication in the selected sections.",
+      "priority_llm": 0.9,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.75,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.0.expected_state",
+      "source_quote": "\"name\": \"secretP\", \"type\": \"secrecy\", \"expected_result\": \"ProvedSatisfying\", \"trace_kind\": \"all-traces\", \"expected_state\": \"ProvedSatisfying\", \"expected_raw\": \"verified\"",
+      "evidence_kind": "direct",
+      "reason": "User-supplied goal metadata is preserved exactly.",
+      "priority_llm": 0.8,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.65,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.1.expected_state",
+      "source_quote": "\"name\": \"injPS\", \"type\": \"authentication\", \"expected_result\": \"ProvedSatisfying\", \"trace_kind\": \"all-traces\", \"expected_state\": \"ProvedSatisfying\", \"expected_raw\": \"verified\"",
+      "evidence_kind": "direct",
+      "reason": "User-supplied authentication goal metadata is preserved exactly.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.2.expected_state",
+      "source_quote": "\"name\": \"injSP\", \"type\": \"authentication\", \"expected_result\": \"ProvedSatisfying\", \"trace_kind\": \"all-traces\", \"expected_state\": \"ProvedSatisfying\", \"expected_raw\": \"verified\"",
+      "evidence_kind": "direct",
+      "reason": "Expected result is supplied, but selected RFC text lacks explicit client authentication, so orientation/scope needs review.",
+      "priority_llm": 1.0,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.45,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.3.expected_state",
+      "source_quote": "\"name\": \"secretS\", \"type\": \"secrecy\", \"expected_result\": \"ProvedSatisfying\", \"trace_kind\": \"all-traces\", \"expected_state\": \"ProvedSatisfying\", \"expected_raw\": \"verified\"",
+      "evidence_kind": "direct",
+      "reason": "User-supplied secrecy goal metadata is preserved exactly.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.4.expected_state",
+      "source_quote": "\"name\": \"executableS2\", \"type\": \"executability\", \"expected_result\": \"ProvedSatisfying\", \"trace_kind\": \"exists-trace\", \"expected_state\": \"ProvedSatisfying\", \"expected_raw\": \"verified\"",
+      "evidence_kind": "direct",
+      "reason": "User-supplied executability goal metadata is preserved exactly.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "compromise",
+      "source_quote": "No explicit reveal, corruption, compromise, or adversary key exposure behavior is described in the supplied Sections 8 and 7.2 excerpt.",
+      "evidence_kind": "none",
+      "reason": "Absence of compromise is inferred from the input; reveal events are intentionally empty.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.9
+    }
+  ],
+  "open_questions": [],
+  "review": {
+    "status": "reviewed",
+    "updated_at": "2026-06-10T21:58:59",
+    "source": "codex_nl_only_human_edit",
+    "policy": "Reviewed against the SSH natural-language input and GPT-5.5 raw IR. Gold/reference IR was used only as a sanity check, not as the edit target.",
+    "decision": "NL-only review keeps the raw SSH transport key-exchange and key-derivation scope from RFC 4253 Sections 8 and 7.2. User-authentication messages from other sections are not treated as missing because the input explicitly excludes other parts."
+  }
+}

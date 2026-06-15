@@ -1,0 +1,179 @@
+[
+  {
+    "id": "classic_tls_handshake",
+    "name": "TLS handshake abstraction",
+    "source_url": "https://github.com/tamarin-prover/tamarin-prover/blob/develop/examples/classic/TLS_Handshake.spthy",
+    "source_path": "examples/classic/TLS_Handshake.spthy",
+    "source_kind": "upstream_tamarin_example",
+    "protocol_family": "tls_handshake",
+    "security_goal_family": ["secrecy", "agreement", "compromise-aware authentication"],
+    "leakage_risk": "medium",
+    "benchmark_overlap_notes": "Kept as TLS-family abstraction guidance for key schedule/transcript discipline; not the same protocol as benchmark KEMTLS.",
+    "difficulty_band": "medium",
+    "features": ["tls_like", "public_key", "symmetric", "signing", "hashing", "key_schedule", "transcript", "agreement"],
+    "complexity_notes": "Medium-sized handshake model combining asymmetric setup, signatures, hashing, symmetric encryption, a transcript/key-derivation style structure, and compromise-aware security claims.",
+    "abstraction_lessons": [
+      "Collapse concrete cipher-suite details into uninterpreted key schedule and transcript functions.",
+      "Keep transcript/check material in state facts so later Finished/authentication rules do not pattern-match huge histories.",
+      "Separate transport-key derivation events from terminal Commit events."
+    ],
+    "avoid_copying": "Do not import record-layer-specific names into unrelated handshakes; reuse the phase/key-schedule abstraction only."
+  },
+  {
+    "id": "wireguard_compact_dh",
+    "name": "WireGuard compact DH handshake",
+    "source_url": "https://github.com/tamarin-prover/tamarin-prover/blob/develop/examples/wireguard/wireguard.spthy",
+    "source_path": "examples/wireguard/wireguard.spthy",
+    "source_kind": "upstream_tamarin_example",
+    "protocol_family": "wireguard_noise_dh",
+    "security_goal_family": ["dh_key_exchange", "agreement", "transport_key_secrecy"],
+    "leakage_risk": "low",
+    "benchmark_overlap_notes": "Different real-world DH protocol; used for transcript/key-schedule abstraction only.",
+    "difficulty_band": "hard",
+    "features": ["diffie_hellman", "hashing", "transcript", "key_schedule", "identity_binding", "compromise", "transport_keys"],
+    "complexity_notes": "A compact real-world DH protocol model with transcript hashes, derived chaining keys, identity binding, and a small number of terminal claims.",
+    "abstraction_lessons": [
+      "Use transcript/chaining-key facts to summarize many prior messages instead of carrying full message tuples everywhere.",
+      "Place authentication events only after identity and transcript checks are represented in state.",
+      "Keep terminal secrecy/agreement lemmas focused on final transport keys and peer identity."
+    ],
+    "avoid_copying": "Do not copy WireGuard-specific Noise pattern names; reuse the transcript-summary and terminal-claim placement."
+  },
+  {
+    "id": "ccs18_5g_aka_fix",
+    "name": "5G AKA fixed binding-channel model",
+    "source_url": "https://github.com/tamarin-prover/tamarin-prover/blob/develop/examples/ccs18-5G/5G-AKA-bindingChannel/5G_AKA_fix.spthy",
+    "source_path": "examples/ccs18-5G/5G-AKA-bindingChannel/5G_AKA_fix.spthy",
+    "source_kind": "upstream_tamarin_example",
+    "protocol_family": "5g_aka",
+    "security_goal_family": ["stateful_authentication", "agreement", "source_reasoning"],
+    "leakage_risk": "low",
+    "benchmark_overlap_notes": "No same-protocol AutoSM benchmark target in the current batch; retained for multi-role/stateful proof engineering principles.",
+    "difficulty_band": "hard",
+    "features": ["standard_protocol", "multi_role", "stateful", "xor", "sequence_number", "sources", "heuristics", "agreement", "resynchronization"],
+    "complexity_notes": "Large standard-derived model with stateful sequence numbers, multiple roles, resynchronization paths, source lemmas, custom heuristics, and scoped agreement claims.",
+    "abstraction_lessons": [
+      "Split long standard text into phase-specific rules and separate agreement events per role pair and key material.",
+      "Use helper invariants for sequence-number/source reasoning before proving agreement.",
+      "Name role-pair and claim-kind inside Commit/Running payloads to avoid global injectivity explosions."
+    ],
+    "avoid_copying": "Do not import 5G-specific SQN or SUPI details unless the target is actually a mobile-AKA protocol; reuse the phase split, helper invariants, and scoped agreement payload style."
+  },
+  {
+    "id": "ccs15_rfid_feldhofer_sources",
+    "name": "RFID Feldhofer compact source-invariant model",
+    "source_url": "https://github.com/tamarin-prover/tamarin-prover/blob/develop/examples/ccs15/rfid-feldhofer.spthy",
+    "source_path": "examples/ccs15/rfid-feldhofer.spthy",
+    "source_kind": "upstream_tamarin_example",
+    "protocol_family": "rfid_challenge_response",
+    "security_goal_family": ["challenge_response", "sources", "agreement"],
+    "leakage_risk": "medium",
+    "benchmark_overlap_notes": "Same broad RFID domain as benchmark LAK06 but different protocol; retained for source-invariant shape only.",
+    "difficulty_band": "medium",
+    "features": ["rfid", "symmetric", "sources", "partial_deconstruction", "challenge_response", "agreement"],
+    "complexity_notes": "Small symmetric challenge-response model that uses a sources lemma to resolve partial deconstructions.",
+    "abstraction_lessons": [
+      "When Tamarin leaves partial deconstructions, add a narrow sources lemma for the exact received constructor shape.",
+      "Use inequality or equality action facts for protocol checks instead of imperative conditionals.",
+      "Keep RFID challenge/response state facts small and role-local."
+    ],
+    "avoid_copying": "Do not copy the Feldhofer protocol; transfer the partial-deconstruction repair shape."
+  },
+  {
+    "id": "csf19_siv_wrapping",
+    "name": "SIV key-wrapping state/counter model",
+    "source_url": "https://github.com/tamarin-prover/tamarin-prover/blob/develop/examples/csf19-wrapping/siv.spthy",
+    "source_path": "examples/csf19-wrapping/siv.spthy",
+    "source_kind": "upstream_tamarin_example",
+    "protocol_family": "key_wrapping_state_counter",
+    "security_goal_family": ["stateful_secrecy", "sources", "counter_invariants"],
+    "leakage_risk": "low",
+    "benchmark_overlap_notes": "Different key-wrapping model; retained for handle/counter/source abstraction.",
+    "difficulty_band": "hard",
+    "features": ["key_wrapping", "stateful", "counter", "sources", "equality", "monotonicity", "ticket", "symmetric"],
+    "complexity_notes": "Key-wrapping model with custom constructors, source-origin lemma, equality/inequality restrictions, counter uniqueness, monotonicity helper lemmas, and induction.",
+    "abstraction_lessons": [
+      "For ticket/key-wrapping benchmarks, model handles, levels, counters, and tickets as separate fields rather than one giant opaque term.",
+      "Use origin/source lemmas for wrapped values and monotonicity restrictions for counters.",
+      "Place equality checks as Eq/NotEq action facts plus restrictions so rules stay declarative."
+    ],
+    "avoid_copying": "Do not import SIV encryption equations unless the target explicitly needs a wrapping mode; reuse handle/counter/source abstraction."
+  },
+  {
+    "id": "esorics23_bluetooth_ble",
+    "name": "Bluetooth LE pairing state-space control",
+    "source_url": "https://github.com/tamarin-prover/tamarin-prover/blob/develop/examples/esorics23-bluetooth/models/ble.spthy",
+    "source_path": "examples/esorics23-bluetooth/models/ble.spthy",
+    "source_kind": "upstream_tamarin_example",
+    "protocol_family": "bluetooth_le_pairing",
+    "security_goal_family": ["standard_protocol", "state_space_control", "agreement"],
+    "leakage_risk": "low",
+    "benchmark_overlap_notes": "Different standard protocol; retained for variant pruning and bounded-session discipline.",
+    "difficulty_band": "hard",
+    "features": ["standard_protocol", "diffie_hellman", "symmetric", "multi_variant", "only_once", "state_space_control", "validity_restrictions", "agreement"],
+    "complexity_notes": "Very large standard model with many pairing variants, DH consistency/validity restrictions, and deliberate one-session restrictions to prevent state explosion.",
+    "abstraction_lessons": [
+      "For hard standard cases, choose one representative method/variant before codegen instead of modeling every branch.",
+      "Add OnlyOnce-style restrictions only when the benchmark asks for bounded representative runs.",
+      "Use Valid/Invalid point restrictions or Eq/NotEq checks for cryptographic validation rather than expanding validation algorithms."
+    ],
+    "avoid_copying": "Do not inject Bluetooth-specific pairing variants into other protocols; transfer the variant-pruning and one-session-bounding discipline."
+  },
+  {
+    "id": "ccs15_tpm_envelope",
+    "name": "TPM envelope with reboot/loop proof support",
+    "source_url": "https://github.com/tamarin-prover/tamarin-prover/blob/develop/examples/ccs15/TPM_Envelope.spthy",
+    "source_path": "examples/ccs15/TPM_Envelope.spthy",
+    "source_kind": "upstream_tamarin_example",
+    "protocol_family": "tpm_attestation_envelope",
+    "security_goal_family": ["stateful_attestation", "sources", "loop_control"],
+    "leakage_risk": "low",
+    "benchmark_overlap_notes": "Different platform protocol; retained for loop isolation and uniqueness-restriction principles.",
+    "difficulty_band": "hard",
+    "features": ["stateful", "signing", "public_key", "hashing", "sources", "restrictions", "looping_state", "proof_search_control"],
+    "complexity_notes": "Stateful attestation/envelope model with restrictions, source typing, and comments about heuristic difficulty caused by looping state.",
+    "abstraction_lessons": [
+      "When a reboot/reuse rule causes loops, isolate it behind state facts and prove typing/source helper lemmas first.",
+      "Use trace restrictions for challenge uniqueness and initialization uniqueness.",
+      "Keep attestation/signature verification as constructor-level checks, not imperative subroutines."
+    ],
+    "avoid_copying": "Do not add TPM-specific PCR state to unrelated protocols; reuse the loop-isolation and uniqueness-restriction patterns."
+  },
+  {
+    "id": "server_mediated_symmetric_ticket_transport",
+    "name": "Server-mediated symmetric ticket/key transport",
+    "source_url": "",
+    "source_path": "curated/server_mediated_symmetric_ticket_transport",
+    "source_kind": "curated_abstraction_pattern",
+    "protocol_family": "server_mediated_symmetric_key_transport",
+    "security_goal_family": ["agreement", "injective_agreement", "session_key_secrecy", "challenge_response", "source_reasoning"],
+    "leakage_risk": "medium",
+    "benchmark_overlap_notes": "Generic trusted-server ticket/key-transport abstraction guidance; intentionally avoids copying any benchmark-specific Needham-Schroeder, Denning-Sacco, or NSSK theory.",
+    "difficulty_band": "medium",
+    "features": [
+      "symmetric",
+      "multi_role",
+      "trusted_server",
+      "server_mediated",
+      "session_key_transport",
+      "ticket",
+      "key_wrapping",
+      "opaque_forwarding",
+      "challenge_response",
+      "key_confirmation",
+      "agreement",
+      "sources",
+      "message_tags",
+      "stateful"
+    ],
+    "complexity_notes": "Three-role symmetric protocols where a trusted server issues or transports a session key, an intermediate party may forward an encrypted ticket opaquely, and terminal agreement is established by challenge-response or key confirmation.",
+    "abstraction_lessons": [
+      "Represent the server's session-key issuance as a compact origin event or state transition, then carry only the needed key, peer identities, and freshness values into terminal claims.",
+      "If an intermediate role receives a ticket encrypted for another party, thread and forward the opaque ciphertext rather than reconstructing it with a key that role should not know.",
+      "Use public message tags for each protocol message shape, but do not add new identity bindings, equality checks, or Lowe-style fixes unless the current protocol text requires them.",
+      "For injective agreement, place role/direction tags inside the canonical Commit/Running payload and tie uniqueness to a fresh challenge, ticket, or server-issued session-key witness.",
+      "Use OUT_/IN_ action facts and narrow [sources, reuse] lemmas as proof support only; do not add honest-source premises to attacker-facing receive rules."
+    ],
+    "avoid_copying": "Do not copy a concrete five-message flow or benchmark lemma formula. Transfer only the ticket-forwarding, server-issue witness, tagged-message, and scoped-injectivity discipline."
+  }
+]

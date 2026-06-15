@@ -1,0 +1,81 @@
+{
+  "feature_keywords": {
+    "tls": ["tls", "finished", "transcript", "handshake"],
+    "kem": ["kem", "encaps", "decaps"],
+    "diffie_hellman": ["diffie", "diffie-hellman", "diffie hellman", " dh ", "exponent"],
+    "hashing": ["hash", "transcript", "h("],
+    "key_schedule": ["key schedule", "hkdf", "kdf", "derived", "traffic secret", "transport secret"],
+    "transcript": ["transcript", "finished"],
+    "mac": [" mac", "hmac", "finished"],
+    "signing": [" signature", " signing", "certificate"],
+    "public_key": ["public key", "certificate", "pk("],
+    "symmetric": ["symmetric", "senc", "sdec", "ticket"],
+    "trusted_server": [
+      "trusted server",
+      "key distribution server",
+      "key distribution centre",
+      "key distribution center",
+      "kdc"
+    ],
+    "ticket": ["ticket"],
+    "stateful": ["stateful", "persistent state", "mutable state", "counter", "sequence number", "resynchronization"],
+    "sources": ["auto_typing", "source lemma", "[sources]", "partial deconstruction"],
+    "agreement": ["agreement", "authentication", "commit", "running"],
+    "secrecy": [" secret", "secrecy", "pfs", "forward secrecy"],
+    "compromise": ["compromise", "reveal", "leak", "pfs", "forward secrecy"],
+    "rfid": ["rfid"]
+  },
+  "gate": {
+    "always_enable_difficulties": ["medium", "hard"],
+    "min_complex_feature_count": 2,
+    "easy_single_feature_disable": [["diffie_hellman"]]
+  },
+  "easy_complex_features": [
+    "tls",
+    "kem",
+    "diffie_hellman",
+    "transcript",
+    "mac",
+    "trusted_server",
+    "ticket",
+    "stateful",
+    "compromise",
+    "rfid"
+  ],
+  "complex_features": [
+    "tls",
+    "kem",
+    "diffie_hellman",
+    "key_schedule",
+    "transcript",
+    "mac",
+    "signing",
+    "trusted_server",
+    "ticket",
+    "stateful",
+    "sources",
+    "compromise"
+  ],
+  "broad_match_features": [
+    "agreement",
+    "authentication",
+    "secrecy",
+    "property",
+    "executability",
+    "expected_counterexample"
+  ],
+  "family_boosts": [
+    {
+      "name": "server_mediated_ticket_family",
+      "query_any": ["ticket", "trusted_server"],
+      "example_all": ["server_mediated"],
+      "score": 4
+    },
+    {
+      "name": "rfid_family",
+      "query_all": ["rfid"],
+      "example_all": ["rfid"],
+      "score": 4
+    }
+  ]
+}

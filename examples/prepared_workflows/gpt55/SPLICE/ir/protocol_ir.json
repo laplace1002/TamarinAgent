@@ -1,0 +1,1019 @@
+{
+  "schema": "autosm_style_protocol_ir_v1",
+  "protocol_name": "SPLICE",
+  "roles": [
+    "C",
+    "AS",
+    "S"
+  ],
+  "principals": [
+    {
+      "name": "C",
+      "role_hint": "C"
+    },
+    {
+      "name": "AS",
+      "role_hint": "AS"
+    },
+    {
+      "name": "S",
+      "role_hint": "S"
+    }
+  ],
+  "crypto": {
+    "builtins": [
+      "asymmetric-encryption",
+      "signing"
+    ],
+    "functions": [
+      "privenc/2",
+      "pubdec/2",
+      "plus1/1",
+      "valid_lifetime/2"
+    ],
+    "equations": [
+      "pubdec(privenc(m, sk), pk(sk)) = m"
+    ],
+    "assumptions": [
+      "Use the standard Dolev-Yao adversarial network model.",
+      "Model only the protocol behavior described by the current IR and modeling contract.",
+      "Do not use the reference Sapic+ or Tamarin models during generation; they are evaluation metadata only."
+    ]
+  },
+  "fresh_terms": [
+    {
+      "name": "~id",
+      "owner": "C",
+      "purpose": "random message identifier selected by C; used in the AS key request, inside the authenticator encrypted for S, and in the client's id+1 response check"
+    },
+    {
+      "name": "~tsC",
+      "owner": "C",
+      "purpose": "timestamp/current-time token included by C in the authenticator; exact clock semantics are not specified"
+    },
+    {
+      "name": "~sidS",
+      "owner": "S",
+      "purpose": "request identifier used if S obtains C's public key from AS by the same protocol; inferred from the described optional public-key lookup"
+    }
+  ],
+  "long_term_keys": [
+    {
+      "name": "ltkC",
+      "owner": "C",
+      "public_term": "pk(ltkC)",
+      "policy": "private setup/state for ltkC; public key pk(ltkC) may be obtained from AS or cache; reveal only via explicit Reveal(...) if modeled"
+    },
+    {
+      "name": "ltkS",
+      "owner": "S",
+      "public_term": "pk(ltkS)",
+      "policy": "private setup/state for ltkS; public key pk(ltkS) is stored by AS and sent to C; reveal only via explicit Reveal(...) if modeled"
+    },
+    {
+      "name": "ltkAS",
+      "owner": "AS",
+      "public_term": "pk(ltkAS)",
+      "policy": "private setup/state for ltkAS; pk(ltkAS) is assumed trusted by parties that verify/recover AS replies; reveal only via explicit Reveal(...) if modeled"
+    }
+  ],
+  "messages": [
+    {
+      "label": "M2a_C_AS_ServerKeyRequest",
+      "step": 1,
+      "from": "C",
+      "to": "AS",
+      "term": "<C, S, ~id>",
+      "meaning": "C asks AS for the public key of server S, carrying the randomly selected message identifier id in cleartext.",
+      "protection": "none/plaintext",
+      "sender_knows": [
+        "C",
+        "S",
+        "~id"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2b_AS_C_ServerKeyReply",
+      "step": 2,
+      "from": "AS",
+      "to": "C",
+      "term": "<AS, privenc(<AS, C, ~id, pk(ltkS)>, ltkAS)>",
+      "meaning": "AS returns S's public key PKs to C. The protected block contains AS, C, id, and PKs; it does not contain the server identity S.",
+      "protection": "private-key-encryption/signature-style integrity by AS with public recovery using pk(ltkAS); no confidentiality",
+      "sender_knows": [
+        "AS",
+        "C_from_M2a",
+        "S_from_M2a",
+        "id_from_M2a",
+        "pk(ltkS) from AS database",
+        "ltkAS"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2c_C_S_Authenticator",
+      "step": 3,
+      "from": "C",
+      "to": "S",
+      "term": "<C, S, privenc(<C, ~tsC, lifeC, aenc(~id, pk(ltkS))>, ltkC)>",
+      "meaning": "C sends the authenticator to S. The outer protected block states C, timestamp, lifetime, and an inner encryption of id under S's public key. The outer protected block does not include S.",
+      "protection": "outer private-key-encryption/signature-style integrity by C with public recovery using pk(ltkC); inner public-key encryption of id to S",
+      "sender_knows": [
+        "C",
+        "S",
+        "ltkC",
+        "~id",
+        "~tsC",
+        "lifeC",
+        "pk(ltkS) accepted from M2b"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": [
+        "outer privenc block until S has pk(ltkC) from cache or AS lookup",
+        "inner aenc(~id, pk(ltkS)) is opaque to parties without ltkS"
+      ]
+    },
+    {
+      "label": "M2d_S_AS_ClientKeyRequest",
+      "step": 4,
+      "from": "S",
+      "to": "AS",
+      "term": "<S, C, ~sidS>",
+      "meaning": "If S does not already have C's public key PKc, S obtains it from AS using the same public-key lookup protocol as the client.",
+      "protection": "none/plaintext",
+      "sender_knows": [
+        "S",
+        "C_from_M2c",
+        "~sidS"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2e_AS_S_ClientKeyReply",
+      "step": 5,
+      "from": "AS",
+      "to": "S",
+      "term": "<AS, privenc(<AS, S, ~sidS, pk(ltkC)>, ltkAS)>",
+      "meaning": "AS returns C's public key PKc to S using the same reply format as M2b, with S as the requester and C as the requested principal.",
+      "protection": "private-key-encryption/signature-style integrity by AS with public recovery using pk(ltkAS); no confidentiality",
+      "sender_knows": [
+        "AS",
+        "S_from_M2d",
+        "C_from_M2d",
+        "sid_from_M2d",
+        "pk(ltkC) from AS database",
+        "ltkAS"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2f_S_C_ReturnIdPlusOne",
+      "step": 6,
+      "from": "S",
+      "to": "C",
+      "term": "<S, C, aenc(<S, plus1(id_dec)>, pk(ltkC))>",
+      "meaning": "After accepting the authenticator, S decrypts the inner id using ltkS, computes id+1, and returns S and id+1 encrypted under C's public key. In the honest flow id_dec equals ~id.",
+      "protection": "public-key encryption to C; no server signature; intended server authentication relies on S learning id_dec from the authenticator",
+      "sender_knows": [
+        "S",
+        "C_from_M2c",
+        "pk(ltkC) from cache or M2e",
+        "ltkS",
+        "id_dec recovered from aenc(~id, pk(ltkS))",
+        "plus1(id_dec)"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": [
+        "ciphertext aenc(<S, plus1(id_dec)>, pk(ltkC)) is opaque to parties without ltkC"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "C_send_M2a_request",
+      "role": "C",
+      "kind": "send",
+      "generates": [
+        "~id"
+      ],
+      "message_in": [],
+      "message_out": [
+        "M2a_C_AS_ServerKeyRequest"
+      ],
+      "checks": [],
+      "events": [
+        "Secret(C,S,~id)",
+        "C_RequestServerKey(C,S,~id)"
+      ]
+    },
+    {
+      "action_id": "AS_reply_M2b_server_key",
+      "role": "AS",
+      "kind": "receive-send",
+      "generates": [],
+      "message_in": [
+        "M2a_C_AS_ServerKeyRequest"
+      ],
+      "message_out": [
+        "M2b_AS_C_ServerKeyReply"
+      ],
+      "checks": [
+        "AS_lookup_pkS_for_S"
+      ],
+      "events": [
+        "AS_IssuesServerKey(AS,C,S,~id,pk(ltkS))"
+      ]
+    },
+    {
+      "action_id": "C_recv_M2b_send_M2c_authenticator",
+      "role": "C",
+      "kind": "receive-send",
+      "generates": [
+        "~tsC"
+      ],
+      "message_in": [
+        "M2b_AS_C_ServerKeyReply"
+      ],
+      "message_out": [
+        "M2c_C_S_Authenticator"
+      ],
+      "checks": [
+        "C_check_M2b_AS_recovery_and_id",
+        "C_accepts_PKs_for_requested_S_without_protected_S_field"
+      ],
+      "events": [
+        "C_AcceptsServerKey(C,S,~id,pk(ltkS))",
+        "Running_A(C,S,~id)",
+        "C_SendAuthenticator(C,S,~id,~tsC,lifeC)"
+      ]
+    },
+    {
+      "action_id": "S_receive_M2c_optional_M2d_key_request",
+      "role": "S",
+      "kind": "receive-optional-send",
+      "generates": [
+        "~sidS"
+      ],
+      "message_in": [
+        "M2c_C_S_Authenticator"
+      ],
+      "message_out": [
+        "M2d_S_AS_ClientKeyRequest"
+      ],
+      "checks": [
+        "S_determine_pkC_missing_or_cached"
+      ],
+      "events": [
+        "S_RequestsClientKey(S,C,~sidS)"
+      ]
+    },
+    {
+      "action_id": "AS_reply_M2e_client_key",
+      "role": "AS",
+      "kind": "receive-send",
+      "generates": [],
+      "message_in": [
+        "M2d_S_AS_ClientKeyRequest"
+      ],
+      "message_out": [
+        "M2e_AS_S_ClientKeyReply"
+      ],
+      "checks": [
+        "AS_lookup_pkC_for_C"
+      ],
+      "events": [
+        "AS_IssuesClientKey(AS,S,C,~sidS,pk(ltkC))"
+      ]
+    },
+    {
+      "action_id": "S_verify_M2c_send_M2f",
+      "role": "S",
+      "kind": "receive-send",
+      "generates": [],
+      "message_in": [
+        "M2c_C_S_Authenticator",
+        "M2e_AS_S_ClientKeyReply or cached pk(ltkC)"
+      ],
+      "message_out": [
+        "M2f_S_C_ReturnIdPlusOne"
+      ],
+      "checks": [
+        "S_check_M2e_AS_recovery_and_id_if_lookup_used",
+        "S_recover_M2c_outer_with_pkC",
+        "S_compare_outer_C_with_inner_C",
+        "S_check_timestamp_lifetime_if_modeled",
+        "S_decrypt_inner_id_with_ltkS"
+      ],
+      "events": [
+        "Commit_B(S,C,id_dec)",
+        "Running_B(S,C,id_dec)",
+        "S_AcceptsClient(S,C,id_dec,ts_dec,life_dec)"
+      ]
+    },
+    {
+      "action_id": "C_recv_M2f_complete",
+      "role": "C",
+      "kind": "receive",
+      "generates": [],
+      "message_in": [
+        "M2f_S_C_ReturnIdPlusOne"
+      ],
+      "message_out": [],
+      "checks": [
+        "C_decrypt_M2f_with_ltkC",
+        "C_check_returned_value_is_plus1_id"
+      ],
+      "events": [
+        "Commit_A(C,S,~id)",
+        "C_AcceptsServer(C,S,~id)"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "role": "AS",
+      "condition": "Look up pk(ltkS) in AS database for the server name S received in M2a.",
+      "source_message": "M2a_C_AS_ServerKeyRequest",
+      "check_id": "AS_lookup_pkS_for_S"
+    },
+    {
+      "role": "C",
+      "condition": "Recover pubdec(privenc(<AS,C,~id,PKs>,ltkAS), pk(ltkAS)) and check AS, C, and ~id match the outstanding request.",
+      "source_message": "M2b_AS_C_ServerKeyReply",
+      "check_id": "C_check_M2b_AS_recovery_and_id"
+    },
+    {
+      "role": "C",
+      "condition": "Associate the returned PKs with the requested server S from local request state; note that S is not inside the protected M2b block.",
+      "source_message": "M2b_AS_C_ServerKeyReply",
+      "check_id": "C_accepts_PKs_for_requested_S_without_protected_S_field"
+    },
+    {
+      "role": "S",
+      "condition": "If S lacks C's public key PKc, start the same AS public-key lookup protocol; otherwise use cached PKc.",
+      "source_message": "M2c_C_S_Authenticator",
+      "check_id": "S_determine_pkC_missing_or_cached"
+    },
+    {
+      "role": "AS",
+      "condition": "Look up pk(ltkC) in AS database for the client name C requested by S.",
+      "source_message": "M2d_S_AS_ClientKeyRequest",
+      "check_id": "AS_lookup_pkC_for_C"
+    },
+    {
+      "role": "S",
+      "condition": "If M2e is used, recover pubdec(privenc(<AS,S,~sidS,PKc>,ltkAS), pk(ltkAS)) and check AS, S, and ~sidS match the outstanding lookup request.",
+      "source_message": "M2e_AS_S_ClientKeyReply",
+      "check_id": "S_check_M2e_AS_recovery_and_id_if_lookup_used"
+    },
+    {
+      "role": "S",
+      "condition": "Recover the authenticator outer block using pk(ltkC): pubdec(privenc(<C_inner,ts_dec,life_dec,cid>,ltkC), pk(ltkC)) = <C_inner,ts_dec,life_dec,cid>.",
+      "source_message": "M2c_C_S_Authenticator",
+      "check_id": "S_recover_M2c_outer_with_pkC"
+    },
+    {
+      "role": "S",
+      "condition": "Compare C_inner recovered from the protected authenticator with the cleartext sender name C at the top of M2c; accept only if equal.",
+      "source_message": "M2c_C_S_Authenticator",
+      "check_id": "S_compare_outer_C_with_inner_C"
+    },
+    {
+      "role": "S",
+      "condition": "Use timestamp ts_dec and lifetime life_dec to detect replay attacks, represented abstractly as valid_lifetime(ts_dec, life_dec) if the modeling contract includes time.",
+      "source_message": "M2c_C_S_Authenticator",
+      "check_id": "S_check_timestamp_lifetime_if_modeled"
+    },
+    {
+      "role": "S",
+      "condition": "Decrypt cid = aenc(id_dec, pk(ltkS)) using ltkS to recover id_dec before computing plus1(id_dec).",
+      "source_message": "M2c_C_S_Authenticator",
+      "check_id": "S_decrypt_inner_id_with_ltkS"
+    },
+    {
+      "role": "C",
+      "condition": "Decrypt aenc(<S_reply,idplus>, pk(ltkC)) using ltkC to recover S_reply and idplus.",
+      "source_message": "M2f_S_C_ReturnIdPlusOne",
+      "check_id": "C_decrypt_M2f_with_ltkC"
+    },
+    {
+      "role": "C",
+      "condition": "Check idplus equals plus1(~id). The source explicitly states this value check; explicit comparison of S_reply to expected S is not stated.",
+      "source_message": "M2f_S_C_ReturnIdPlusOne",
+      "check_id": "C_check_returned_value_is_plus1_id"
+    }
+  ],
+  "events": [
+    {
+      "name": "Secret",
+      "arguments": [
+        "C",
+        "S",
+        "~id"
+      ],
+      "role": "C",
+      "when": "C generates the random message identifier ~id before sending M2a"
+    },
+    {
+      "name": "C_RequestServerKey",
+      "arguments": [
+        "C",
+        "S",
+        "~id"
+      ],
+      "role": "C",
+      "when": "C sends M2a to AS"
+    },
+    {
+      "name": "AS_IssuesServerKey",
+      "arguments": [
+        "AS",
+        "C",
+        "S",
+        "~id",
+        "pk(ltkS)"
+      ],
+      "role": "AS",
+      "when": "AS replies to C with M2b after database lookup"
+    },
+    {
+      "name": "C_AcceptsServerKey",
+      "arguments": [
+        "C",
+        "S",
+        "~id",
+        "pk(ltkS)"
+      ],
+      "role": "C",
+      "when": "C recovers and accepts M2b for its outstanding request"
+    },
+    {
+      "name": "Running_A",
+      "arguments": [
+        "C",
+        "S",
+        "~id"
+      ],
+      "role": "C",
+      "when": "C sends the authenticator M2c intended for S"
+    },
+    {
+      "name": "C_SendAuthenticator",
+      "arguments": [
+        "C",
+        "S",
+        "~id",
+        "~tsC",
+        "lifeC"
+      ],
+      "role": "C",
+      "when": "C sends M2c"
+    },
+    {
+      "name": "S_RequestsClientKey",
+      "arguments": [
+        "S",
+        "C",
+        "~sidS"
+      ],
+      "role": "S",
+      "when": "S lacks PKc and sends M2d"
+    },
+    {
+      "name": "AS_IssuesClientKey",
+      "arguments": [
+        "AS",
+        "S",
+        "C",
+        "~sidS",
+        "pk(ltkC)"
+      ],
+      "role": "AS",
+      "when": "AS replies to S with M2e after database lookup"
+    },
+    {
+      "name": "Commit_B",
+      "arguments": [
+        "S",
+        "C",
+        "id_dec"
+      ],
+      "role": "S",
+      "when": "S accepts the authenticator after recovering the outer block, comparing client names, optionally checking timestamp/life, and decrypting id_dec"
+    },
+    {
+      "name": "Running_B",
+      "arguments": [
+        "S",
+        "C",
+        "id_dec"
+      ],
+      "role": "S",
+      "when": "S sends M2f containing plus1(id_dec) encrypted to C"
+    },
+    {
+      "name": "S_AcceptsClient",
+      "arguments": [
+        "S",
+        "C",
+        "id_dec",
+        "ts_dec",
+        "life_dec"
+      ],
+      "role": "S",
+      "when": "S concludes that the message sender is C"
+    },
+    {
+      "name": "Commit_A",
+      "arguments": [
+        "C",
+        "S",
+        "~id"
+      ],
+      "role": "C",
+      "when": "C decrypts M2f and checks that the returned value is plus1(~id)"
+    },
+    {
+      "name": "C_AcceptsServer",
+      "arguments": [
+        "C",
+        "S",
+        "~id"
+      ],
+      "role": "C",
+      "when": "C trusts that the response was returned by the server after the id+1 check"
+    }
+  ],
+  "claims": [
+    {
+      "lemma_name": "executability",
+      "goal_type": "property",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "There exists an honest execution in which C obtains S's public key from AS, sends the authenticator, S obtains or uses C's public key, S returns id+1, and C completes.",
+      "event_schema": [
+        "C_RequestServerKey(C,S,~id)",
+        "C_SendAuthenticator(C,S,~id,~tsC,lifeC)",
+        "S_AcceptsClient(S,C,id_dec,ts_dec,life_dec)",
+        "C_AcceptsServer(C,S,~id)"
+      ],
+      "witness": "Honest trace M2a, M2b, M2c, optional M2d/M2e if PKc not cached, then M2f with id_dec = ~id.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "Secrecy",
+      "goal_type": "secrecy",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "Secrecy of the client-selected random identifier ~id/session value associated with C and S; exact benchmark secret term was not described, so this IR maps it to id.",
+      "event_schema": [
+        "Secret(C,S,~id)"
+      ],
+      "witness": "Unknown supplied counterexample; attack surface preserved because ~id appears in clear in M2a and AS/private-key-encrypted fields are public-recoverable.",
+      "expected_raw": "falsified - found trace"
+    },
+    {
+      "lemma_name": "injectiveagreement_B",
+      "goal_type": "authentication",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "Injective agreement for role B interpreted as server S: each Commit_B(S,C,id) should correspond to a unique earlier Running_A(C,S,id).",
+      "event_schema": [
+        "Commit_B(S,C,id) implies unique Running_A(C,S,id)"
+      ],
+      "witness": "Unknown supplied counterexample; preserve absence of S inside the protected authenticator and AS reply fields.",
+      "expected_raw": "falsified - found trace"
+    },
+    {
+      "lemma_name": "agreement_B",
+      "goal_type": "authentication",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "Non-injective agreement for role B interpreted as server S: each Commit_B(S,C,id) should correspond to an earlier Running_A(C,S,id).",
+      "event_schema": [
+        "Commit_B(S,C,id) implies Running_A(C,S,id)"
+      ],
+      "witness": "Unknown supplied counterexample; preserve server-side checks exactly as described.",
+      "expected_raw": "falsified - found trace"
+    },
+    {
+      "lemma_name": "injectiveagreement_A",
+      "goal_type": "authentication",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "Injective agreement for role A interpreted as client C: each Commit_A(C,S,id) should correspond to a unique earlier Running_B(S,C,id).",
+      "event_schema": [
+        "Commit_A(C,S,id) implies unique Running_B(S,C,id)"
+      ],
+      "witness": "Unknown supplied counterexample; preserve that M2f is only public-key encrypted to C and is not signed by S.",
+      "expected_raw": "falsified - found trace"
+    },
+    {
+      "lemma_name": "agreement_A",
+      "goal_type": "authentication",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "Non-injective agreement for role A interpreted as client C: each Commit_A(C,S,id) should correspond to an earlier Running_B(S,C,id).",
+      "event_schema": [
+        "Commit_A(C,S,id) implies Running_B(S,C,id)"
+      ],
+      "witness": "Unknown supplied counterexample; preserve C's explicit check of id+1 without adding an unsupported server signature.",
+      "expected_raw": "falsified - found trace"
+    },
+    {
+      "lemma_name": "AUTO_typing",
+      "goal_type": "source",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "Automatically generated source/typing-style sanity goal for received values and protocol constructors.",
+      "event_schema": [
+        "AUTO_typing source constraints over M2a-M2f terms"
+      ],
+      "witness": "No concrete witness supplied; expected to hold for all traces according to user-supplied metadata.",
+      "expected_raw": "verified"
+    }
+  ],
+  "compromise": {
+    "reveal_events": [],
+    "policy": "No compromise, reveal, or corruption behavior is described in the protocol input or user goals. Long-term private keys ltkC, ltkS, and ltkAS remain private setup/state unless explicit Reveal(...) rules are added by a later modeling contract; claims above have no stated reveal exceptions."
+  },
+  "abstractions": [
+    "PKc, PKs, and PKas are represented as pk(ltkC), pk(ltkS), and pk(ltkAS).",
+    "AS database lookup is abstracted as trusted setup facts mapping C to pk(ltkC) and S to pk(ltkS).",
+    "The optional S-to-AS client-key retrieval is modeled as M2d/M2e, inferred from 'using the same protocol as the client'; if S has cached PKc then M2d/M2e may be skipped.",
+    "Timestamp and lifetime are represented symbolically by ~tsC and lifeC; replay prevention is an abstract check valid_lifetime(ts,life) unless a later contract defines concrete time.",
+    "id+1 is represented by plus1(id) without arithmetic equations.",
+    "Recoverable private-key encryption with SK is modeled separately from confidentiality-providing public-key encryption with PK."
+  ],
+  "modeling_assumptions": [
+    "Use the standard Dolev-Yao adversarial network model.",
+    "Model only the protocol behavior described by the current IR and modeling contract.",
+    "Do not use the reference Sapic+ or Tamarin models during generation; they are evaluation metadata only.",
+    "C and S know or can trust pk(ltkAS) sufficiently to recover and validate AS replies.",
+    "The AS database is authoritative for principal-to-public-key bindings but the exact database enrollment protocol is out of scope.",
+    "The message identifier id in M2a, M2b, M2c, and M2f is the same value in the intended honest run.",
+    "The source says M2b is encrypted to prevent modification; because the notation uses SKas and later text says public keys are used for decryption of SK-protected data, this IR models SK-protection as integrity/authenticity rather than confidentiality."
+  ],
+  "resolved_open_questions": [
+    "Parsed {m}SKx as recoverable signature/private-key encryption, not as confidentiality, because the protocol explicitly describes public-key recovery/decryption and anti-modification protection.",
+    "Mapped role A in user-supplied authentication lemma names to client C and role B to server S; this mapping is recorded as an assumption because the goal metadata did not define A/B.",
+    "Modeled the server's optional retrieval of PKc using the same C-AS lookup pattern because the description explicitly says S uses the same protocol as the client."
+  ],
+  "semantic_constraints": [
+    {
+      "kind": "text_policy",
+      "policy": "M2a sends ~id in cleartext. Any secrecy claim over ~id must account for this explicit disclosure."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "M2b's protected block is <AS,C,id,PKs>; it does not cryptographically include the requested server name S."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "C's association of returned PKs with S relies on local request state and AS behavior, not on an S field inside M2b."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "M2c's outer protected authenticator block is <C,timestamp,life,{id}PKs>; it does not cryptographically include S, although S appears in the cleartext message header."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "S's stated client-authentication check is specifically to recover C from the protected block and compare it with the cleartext sender name at the top of M2c."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The server must decrypt the inner aenc(id,pk(ltkS)) with ltkS to produce id+1, although the description lists this implicitly through the later M2f response."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "M2f is encrypted to C under PKc but is not signed or private-key-encrypted by S; C's trust is based on the returned plus1(id) value."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The source explicitly states C checks that the returned value is id+1; it does not explicitly state that C compares the S field inside the decrypted M2f payload with expected S."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Timestamp/lifetime replay detection is semantically present but underspecified; do not silently replace it with nonce-based freshness or omit it without recording the abstraction."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "No reveal or compromise exceptions are present for the supplied authentication or secrecy goals."
+    }
+  ],
+  "field_evidence": [
+    {
+      "field_path": "protocol_name",
+      "source_quote": "Protocol: SPLICE/AS",
+      "evidence_kind": "direct",
+      "reason": "Protocol name appears in the source header; IR uses the supplied input name SPLICE.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.4
+    },
+    {
+      "field_path": "fresh_terms.0",
+      "source_quote": "The message identifier (id) is selected randomly.",
+      "evidence_kind": "direct",
+      "reason": "Direct statement that id is random and generated by the client-side protocol flow.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.99,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "crypto.functions",
+      "source_quote": "AS --> C: AS, {AS, C, id, PKs}SKas ... The message (2b) is encrypted in order to prevent message modifications by intruders. ... the server decrypts the message using the client's public key",
+      "evidence_kind": "nearby",
+      "reason": "SK-protected blocks are parsed as recoverable signature/private-key encryption because the text says public keys recover/decrypt such blocks and the purpose is anti-modification.",
+      "priority_llm": 0.9,
+      "evidence_confidence_score": 0.84,
+      "consistency_confidence_score": 0.82,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "crypto.assumptions.0",
+      "source_quote": "C --> S: C, S, {C, timestamp, life, {id}PKs}SKc",
+      "evidence_kind": "direct",
+      "reason": "Inner {id}PKs is notation for public-key encryption to S.",
+      "priority_llm": 0.6,
+      "evidence_confidence_score": 0.93,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "long_term_keys",
+      "source_quote": "PKs ... SKas ... PKc ... SKc",
+      "evidence_kind": "direct",
+      "reason": "The protocol explicitly names public/private key material for AS, C, and S.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.93,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.0.term",
+      "source_quote": "C --> AS: C, S, id",
+      "evidence_kind": "direct",
+      "reason": "Message M2a is copied directly into tuple form.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.1.term",
+      "source_quote": "AS --> C: AS, {AS, C, id, PKs}SKas",
+      "evidence_kind": "direct",
+      "reason": "Message M2b fields and order are preserved; SKas protection is represented by privenc.",
+      "priority_llm": 0.8,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.87,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.2.term",
+      "source_quote": "C --> S: C, S, {C, timestamp, life, {id}PKs}SKc",
+      "evidence_kind": "direct",
+      "reason": "Message M2c fields and nesting are preserved, including the absence of S inside the SKc-protected block.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.3",
+      "source_quote": "if the server does not have the client's public key PKc, the server gets the key from the authentication server through using the same protocol as the client",
+      "evidence_kind": "nearby",
+      "reason": "S-to-AS key request is not shown as a concrete arrow but is explicitly described as the same protocol.",
+      "priority_llm": 0.85,
+      "evidence_confidence_score": 0.72,
+      "consistency_confidence_score": 0.68,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "messages.4",
+      "source_quote": "through using the same protocol as the client",
+      "evidence_kind": "nearby",
+      "reason": "AS-to-S reply format is inferred by applying the shown client AS lookup format to S's request for PKc.",
+      "priority_llm": 0.85,
+      "evidence_confidence_score": 0.68,
+      "consistency_confidence_score": 0.64,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "messages.5.term",
+      "source_quote": "S --> C: S, C, {S, id+1}PKc",
+      "evidence_kind": "direct",
+      "reason": "Message M2f is copied directly; id+1 is represented as plus1(id_dec).",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.99,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.7",
+      "source_quote": "picks the sender's name C in the encrypted block, and (iv) compares it with the sender's name written in the top of the message.",
+      "evidence_kind": "direct",
+      "reason": "Server-side name comparison is explicitly stated.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.99,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.8",
+      "source_quote": "The message includes a time stamp and a field for life time of the message to detect replay attacks.",
+      "evidence_kind": "direct",
+      "reason": "Replay-detection purpose is explicit, but exact clock validity semantics are omitted.",
+      "priority_llm": 0.8,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.62,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "checks.10",
+      "source_quote": "The client also decrypts the message, and get the value id + 1. If the value is right (the value is surely id + 1), the client trusts that the message was returned by the server.",
+      "evidence_kind": "direct",
+      "reason": "Client completion check is explicitly an id+1 value check.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.99,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "events.Commit_B",
+      "source_quote": "If both names are same, then the server can trust that the message sender is C.",
+      "evidence_kind": "direct",
+      "reason": "Server trust point justifies placing the server-side commit after the described checks.",
+      "priority_llm": 0.45,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "events.Commit_A",
+      "source_quote": "If the value is right ... the client trusts that the message was returned by the server.",
+      "evidence_kind": "direct",
+      "reason": "Client trust point justifies placing the client-side commit after decryption and id+1 check.",
+      "priority_llm": 0.45,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.88,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.0.expected_state",
+      "source_quote": "\"name\": \"executability\", \"expected_state\": \"ProvedSatisfying\", \"trace_kind\": \"exists-trace\"",
+      "evidence_kind": "direct",
+      "reason": "Expected result and trace kind supplied in user goals.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "claims.1.expected_state",
+      "source_quote": "\"name\": \"Secrecy\", \"expected_state\": \"CounterexampleFound\", \"trace_kind\": \"all-traces\"",
+      "evidence_kind": "direct",
+      "reason": "Expected secrecy counterexample supplied in user goals.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.1.event_schema",
+      "source_quote": "\"name\": \"Secrecy\", \"type\": \"secrecy\", \"description\": \"\"",
+      "evidence_kind": "assumption",
+      "reason": "Goal metadata does not identify the secret term; IR maps secrecy to the random id because it is the only explicit random protocol value.",
+      "priority_llm": 0.95,
+      "evidence_confidence_score": 0.55,
+      "consistency_confidence_score": 0.72,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.2.expected_state",
+      "source_quote": "\"name\": \"injectiveagreement_B\", \"expected_state\": \"CounterexampleFound\", \"trace_kind\": \"all-traces\"",
+      "evidence_kind": "direct",
+      "reason": "Expected authentication counterexample supplied in user goals.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.3.expected_state",
+      "source_quote": "\"name\": \"agreement_B\", \"expected_state\": \"CounterexampleFound\", \"trace_kind\": \"all-traces\"",
+      "evidence_kind": "direct",
+      "reason": "Expected authentication counterexample supplied in user goals.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.4.expected_state",
+      "source_quote": "\"name\": \"injectiveagreement_A\", \"expected_state\": \"CounterexampleFound\", \"trace_kind\": \"all-traces\"",
+      "evidence_kind": "direct",
+      "reason": "Expected authentication counterexample supplied in user goals.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.5.expected_state",
+      "source_quote": "\"name\": \"agreement_A\", \"expected_state\": \"CounterexampleFound\", \"trace_kind\": \"all-traces\"",
+      "evidence_kind": "direct",
+      "reason": "Expected authentication counterexample supplied in user goals.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.6.expected_state",
+      "source_quote": "\"name\": \"AUTO_typing\", \"expected_state\": \"ProvedSatisfying\", \"trace_kind\": \"all-traces\"",
+      "evidence_kind": "direct",
+      "reason": "Expected source/typing result supplied in user goals.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "claims.2.event_schema",
+      "source_quote": "\"name\": \"injectiveagreement_B\", \"type\": \"authentication\", \"description\": \"\"",
+      "evidence_kind": "assumption",
+      "reason": "Goal metadata gives lemma name but not event vocabulary; B is mapped to server/responder S.",
+      "priority_llm": 0.9,
+      "evidence_confidence_score": 0.62,
+      "consistency_confidence_score": 0.73,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.4.event_schema",
+      "source_quote": "\"name\": \"injectiveagreement_A\", \"type\": \"authentication\", \"description\": \"\"",
+      "evidence_kind": "assumption",
+      "reason": "Goal metadata gives lemma name but not event vocabulary; A is mapped to client/initiator C.",
+      "priority_llm": 0.9,
+      "evidence_confidence_score": 0.62,
+      "consistency_confidence_score": 0.73,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "compromise",
+      "source_quote": "No reveal, compromise, or corruption events are mentioned in the protocol description or supplied goals.",
+      "evidence_kind": "none",
+      "reason": "Absence of compromise behavior is recorded rather than adding reveal exceptions.",
+      "priority_llm": 0.6,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "semantic_constraints.1",
+      "source_quote": "AS --> C: AS, {AS, C, id, PKs}SKas",
+      "evidence_kind": "direct",
+      "reason": "The protected AS reply fields visibly omit S; this is proof-relevant and preserved.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "semantic_constraints.3",
+      "source_quote": "C --> S: C, S, {C, timestamp, life, {id}PKs}SKc",
+      "evidence_kind": "direct",
+      "reason": "The protected authenticator fields visibly omit S; this is proof-relevant and preserved.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "modeling_assumptions.0",
+      "source_quote": "Use the standard Dolev-Yao adversarial network model.",
+      "evidence_kind": "direct",
+      "reason": "Copied from user-supplied assumptions.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    }
+  ],
+  "open_questions": [],
+  "review": {
+    "status": "reviewed",
+    "updated_at": "2026-06-10T21:58:59",
+    "source": "codex_nl_only_human_edit",
+    "policy": "Reviewed against the SPLICE natural-language input and GPT-5.5 raw IR. Gold/reference IR was used only as a sanity check, not as the edit target.",
+    "decision": "NL-only review keeps the raw SPLICE/AS six-message public-key lookup/authenticator flow, including the server-side client-key lookup described as using the same protocol. No compromise/reveal surface is added because it is not present in the input text."
+  }
+}

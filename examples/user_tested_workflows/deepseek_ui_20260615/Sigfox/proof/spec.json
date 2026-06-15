@@ -1,0 +1,68 @@
+{
+  "case": "Sigfox",
+  "mode": "reviewed_proof_targets",
+  "source": "reviewed_lemma_specification",
+  "expectations": [
+    {
+      "name": "executable",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "the protocol can be executed to completion",
+      "required_events": [
+        "Send(pk(ltkA), msg)",
+        "Recv(pk(ltkB), msg)"
+      ]
+    },
+    {
+      "name": "secret_A",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "na remains secret from A's perspective",
+      "required_events": [
+        "Secret_A(~na)",
+        "Role('A')",
+        "K(~na) attack condition",
+        "Reveal exception for\n  compromised long-term keys"
+      ]
+    },
+    {
+      "name": "secret_B",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "na remains secret from B's perspective",
+      "required_events": [
+        "Secret_B(~na)",
+        "Role('B')",
+        "K(~na) attack condition",
+        "Reveal exception for\n  compromised long-term keys"
+      ]
+    },
+    {
+      "name": "secrecy_PFS_A",
+      "trace_kind": "all-traces",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "na remains secret even after A's long-term key is compromised (forward secrecy)",
+      "required_events": [
+        "Secret_A(~na)",
+        "Role('A')",
+        "K(~na) attack condition",
+        "after-the-fact\n  Reveal(pk(ltkB)) is allowed and should not be excluded"
+      ]
+    }
+  ],
+  "notes": [
+    "Reconstructed from reviewed modeling contract."
+  ]
+}

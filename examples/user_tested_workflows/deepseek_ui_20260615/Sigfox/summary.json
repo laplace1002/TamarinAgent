@@ -1,0 +1,109 @@
+{
+  "case": "Sigfox",
+  "source_run": "/Users/ella/code/TAMARIN-Agent-master/AutoSM-style/ui_experiment_pipeline/runs/ui_formal_deepseek_user_20260615/active",
+  "run_dir": "/Users/ella/code/TAMARIN-Agent-master/AutoSM-style/ui_experiment_pipeline/runs/ui_formal_deepseek_user_20260615/active",
+  "final_model": "/Users/ella/code/TAMARIN-Agent-master/AutoSM-style/ui_experiment_pipeline/runs/ui_formal_deepseek_user_20260615/active/final/model.spthy",
+  "goal_mode": "reviewed_proof_targets",
+  "proof_spec_source": "reviewed_lemma_specification",
+  "protocol_ir_ok": true,
+  "protocol_ir_errors": [],
+  "protocol_ir_warnings": [
+    "Encrypted/message-authenticated terms lack obvious public tags: ['M1']."
+  ],
+  "generation_rounds_used": 1,
+  "max_generation_rounds": 1,
+  "max_repair_rounds": 2,
+  "proof_expectations": [
+    {
+      "name": "executable",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "the protocol can be executed to completion"
+    },
+    {
+      "name": "secret_A",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "na remains secret from A's perspective"
+    },
+    {
+      "name": "secret_B",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "na remains secret from B's perspective"
+    },
+    {
+      "name": "secrecy_PFS_A",
+      "trace_kind": "all-traces",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "na remains secret even after A's long-term key is compromised (forward secrecy)"
+    }
+  ],
+  "lint_issues": [],
+  "verification_ok": true,
+  "verification_status": "clean",
+  "verification_returncode_ok": true,
+  "verification_returncode": 0,
+  "verification_has_warnings": false,
+  "verification_warnings": [],
+  "lemma_coverage_ok": true,
+  "expected_lemmas": [
+    "executable",
+    "secret_A",
+    "secret_B",
+    "secrecy_PFS_A"
+  ],
+  "present_lemmas": [
+    "executable",
+    "secret_A",
+    "secret_B",
+    "secrecy_PFS_A"
+  ],
+  "missing_lemmas": [],
+  "extra_lemmas": [],
+  "proof_lint_ok": true,
+  "proof_lint_issues": [],
+  "proof_ok": true,
+  "proof_status": "expected-matched",
+  "proof_returncode": 0,
+  "proof_lemma_results": {
+    "executable": "verified (7 steps)",
+    "secret_A": "verified (5 steps)",
+    "secret_B": "verified (18 steps)",
+    "secrecy_PFS_A": "falsified - found trace (5 steps)"
+  },
+  "proof_missing_results": [],
+  "proof_lemma_expected_states": {
+    "executable": "ProvedSatisfying",
+    "secret_A": "ProvedSatisfying",
+    "secret_B": "ProvedSatisfying",
+    "secrecy_PFS_A": "CounterexampleFound"
+  },
+  "proof_lemma_actual_states": {
+    "executable": "ProvedSatisfying",
+    "secret_A": "ProvedSatisfying",
+    "secret_B": "ProvedSatisfying",
+    "secrecy_PFS_A": "CounterexampleFound"
+  },
+  "proof_lemma_matches": {
+    "executable": true,
+    "secret_A": true,
+    "secret_B": true,
+    "secrecy_PFS_A": true
+  },
+  "proof_mismatched_results": [],
+  "ok": true,
+  "status": "expected-matched"
+}

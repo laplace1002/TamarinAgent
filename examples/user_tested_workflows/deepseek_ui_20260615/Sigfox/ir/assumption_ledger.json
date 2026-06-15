@@ -1,0 +1,49 @@
+{
+  "case": "Sigfox",
+  "difficulty": "easy",
+  "risk_score": 5,
+  "risk_level": "medium",
+  "risk_triggers": [
+    "difficulty=easy",
+    "ir_warning_count=1",
+    "proof_sensitive_goal_types",
+    "expected_counterexample_target"
+  ],
+  "preservation_boundary": {
+    "needed": false,
+    "score": 4,
+    "triggers": [
+      "difficulty=easy",
+      "explicit_compromise_model"
+    ]
+  },
+  "ir_warnings": [
+    "Encrypted/message-authenticated terms lack obvious public tags: ['M1']."
+  ],
+  "target_lemmas": [
+    {
+      "name": "executable",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying"
+    },
+    {
+      "name": "secret_A",
+      "goal_type": "secrecy",
+      "expected_state": "ProvedSatisfying"
+    },
+    {
+      "name": "secret_B",
+      "goal_type": "secrecy",
+      "expected_state": "ProvedSatisfying"
+    },
+    {
+      "name": "secrecy_PFS_A",
+      "goal_type": "secrecy",
+      "expected_state": "CounterexampleFound"
+    }
+  ],
+  "proof_expectations": [],
+  "unresolved_questions": [],
+  "all_semantic_review_questions": [],
+  "default_policy_if_unanswered": "Preserve proof-critical provenance, checks, event placement, and expected attack surface."
+}

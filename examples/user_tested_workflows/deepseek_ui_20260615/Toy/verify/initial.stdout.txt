@@ -1,0 +1,186 @@
+theory Toy
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: fst/1, h/1, kdf/2, pair/2, snd/1
+equations: fst(<x.1, x.2>) = x.1, snd(<x.1, x.2>) = x.2
+
+heuristic: p
+
+lemma successful_run:
+  exists-trace "∃ #i #j. (RoleDone( 'A' ) @ #i) ∧ (RoleDone( 'B' ) @ #j)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ #i #j. (RoleDone( 'A' ) @ #i) ∧ (RoleDone( 'B' ) @ #j)"
+*/
+by sorry
+
+lemma sk_secret_a:
+  all-traces
+  "∀ a b sk #i. (Secret( a, sk, b ) @ #i) ⇒ (¬(∃ #j. K( sk ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b sk #i. (Secret( a, sk, b ) @ #i) ∧ ∃ #j. (K( sk ) @ #j)"
+*/
+by sorry
+
+lemma sk_secret_b:
+  all-traces
+  "∀ a b sk #i. (Secret( a, sk, b ) @ #i) ⇒ (¬(∃ #j. K( sk ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b sk #i. (Secret( a, sk, b ) @ #i) ∧ ∃ #j. (K( sk ) @ #j)"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="|", issapicrule,
+                     role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) p_0_[color=#ffffff, process="|", issapicrule,
+                     role='Process']:
+   [ State_( ) ] --> [ State_1( ), State_2( ) ]
+
+rule (modulo E) A_0_1[color=#ffffff, process="A()", issapicrule,
+                      role='Process']:
+   [ State_1( ) ] --> [ State_11( ), State_12( ) ]
+
+rule (modulo E) newna_0_11[color=#804046, process="new ~na.1;",
+                           issapicrule, role='A']:
+   [ State_11( ), Fr( ~na.1 ) ] --> [ State_111( ~na.1 ) ]
+
+rule (modulo E) outna_0_111[color=#804046, process="out(~na.1);",
+                            issapicrule, role='A']:
+   [ State_111( ~na.1 ) ] --> [ State_1111( ~na.1 ), Out( ~na.1 ) ]
+
+rule (modulo E) innb_0_1111[color=#804046, process="in(nb.1);",
+                            issapicrule, role='A']:
+   [ State_1111( ~na.1 ), In( nb.1 ) ] --> [ State_11111( ~na.1, nb.1 ) ]
+
+rule (modulo E) eventInstallSKAkdfnanbB_0_11111[color=#804046,
+                                                process="event Install_SK( 'A', kdf(~na.1, nb.1), 'B' );",
+                                                issapicrule, role='A']:
+   [ State_11111( ~na.1, nb.1 ) ]
+  --[ Install_SK( 'A', kdf(~na.1, nb.1), 'B' ) ]->
+   [ State_111111( ~na.1, nb.1 ) ]
+
+rule (modulo E) eventSecretAkdfnanbB_0_111111[color=#804046,
+                                              process="event Secret( 'A', kdf(~na.1, nb.1), 'B' );",
+                                              issapicrule, role='A']:
+   [ State_111111( ~na.1, nb.1 ) ]
+  --[ Secret( 'A', kdf(~na.1, nb.1), 'B' ) ]->
+   [ State_1111111( ~na.1, nb.1 ) ]
+
+rule (modulo E) outACK_0_1111111[color=#804046, process="out('ACK');",
+                                 issapicrule, role='A']:
+   [ State_1111111( ~na.1, nb.1 ) ]
+  -->
+   [ State_11111111( ~na.1, nb.1 ), Out( 'ACK' ) ]
+
+rule (modulo E) eventRoleDoneA_0_11111111[color=#804046,
+                                          process="event RoleDone( 'A' );", issapicrule, role='A']:
+   [ State_11111111( ~na.1, nb.1 ) ]
+  --[ RoleDone( 'A' ) ]->
+   [ State_111111111( ~na.1, nb.1 ) ]
+
+rule (modulo E) p_0_111111111[color=#804046, process="0", issapicrule,
+                              role='A']:
+   [ State_111111111( ~na.1, nb.1 ) ] --> [ ]
+
+rule (modulo E) p_0_12[color=#ffffff, process="0", issapicrule,
+                       role='Process']:
+   [ State_12( ) ] --> [ ]
+
+rule (modulo E) B_0_2[color=#ffffff, process="B()", issapicrule,
+                      role='Process']:
+   [ State_2( ) ] --> [ State_21( ), State_22( ) ]
+
+rule (modulo E) inna_0_21[color=#628040, process="in(na.2);",
+                          issapicrule, role='B']:
+   [ State_21( ), In( na.2 ) ] --> [ State_211( na.2 ) ]
+
+rule (modulo E) newnb_0_211[color=#628040, process="new ~nb.2;",
+                            issapicrule, role='B']:
+   [ State_211( na.2 ), Fr( ~nb.2 ) ] --> [ State_2111( ~nb.2, na.2 ) ]
+
+rule (modulo E) outnb_0_2111[color=#628040, process="out(~nb.2);",
+                             issapicrule, role='B']:
+   [ State_2111( ~nb.2, na.2 ) ]
+  -->
+   [ State_21111( ~nb.2, na.2 ), Out( ~nb.2 ) ]
+
+rule (modulo E) inack_0_21111[color=#628040, process="in(ack.1);",
+                              issapicrule, role='B']:
+   [ State_21111( ~nb.2, na.2 ), In( ack.1 ) ]
+  -->
+   [ State_211111( ack.1, ~nb.2, na.2 ) ]
+
+rule (modulo E) ifackACK_0_211111[color=#628040,
+                                  process="if ack.1='ACK'", issapicrule, role='B']:
+   [ State_211111( ack.1, ~nb.2, na.2 ) ]
+  --[ Pred_Eq( ack.1, 'ACK' ) ]->
+   [ State_2111111( ack.1, ~nb.2, na.2 ) ]
+
+rule (modulo E) ifackACK_1_211111[color=#628040,
+                                  process="if ack.1='ACK'", issapicrule, role='B']:
+   [ State_211111( ack.1, ~nb.2, na.2 ) ]
+  --[ Pred_Not_Eq( ack.1, 'ACK' ) ]->
+   [ State_2111112( ack.1, ~nb.2, na.2 ) ]
+
+rule (modulo E) eventInstallSKBkdfnanbA_0_2111111[color=#628040,
+                                                  process="event Install_SK( 'B', kdf(na.2, ~nb.2), 'A' );",
+                                                  issapicrule, role='B']:
+   [ State_2111111( ack.1, ~nb.2, na.2 ) ]
+  --[ Install_SK( 'B', kdf(na.2, ~nb.2), 'A' ) ]->
+   [ State_21111111( ack.1, ~nb.2, na.2 ) ]
+
+rule (modulo E) eventSecretBkdfnanbA_0_21111111[color=#628040,
+                                                process="event Secret( 'B', kdf(na.2, ~nb.2), 'A' );",
+                                                issapicrule, role='B']:
+   [ State_21111111( ack.1, ~nb.2, na.2 ) ]
+  --[ Secret( 'B', kdf(na.2, ~nb.2), 'A' ) ]->
+   [ State_211111111( ack.1, ~nb.2, na.2 ) ]
+
+rule (modulo E) eventRoleDoneB_0_211111111[color=#628040,
+                                           process="event RoleDone( 'B' );", issapicrule, role='B']:
+   [ State_211111111( ack.1, ~nb.2, na.2 ) ]
+  --[ RoleDone( 'B' ) ]->
+   [ State_2111111111( ack.1, ~nb.2, na.2 ) ]
+
+rule (modulo E) p_0_2111111111[color=#628040, process="0", issapicrule,
+                               role='B']:
+   [ State_2111111111( ack.1, ~nb.2, na.2 ) ] --> [ ]
+
+rule (modulo E) p_0_2111112[color=#628040, process="0", issapicrule,
+                            role='B']:
+   [ State_2111112( ack.1, ~nb.2, na.2 ) ] --> [ ]
+
+rule (modulo E) p_0_22[color=#ffffff, process="0", issapicrule,
+                       role='Process']:
+   [ State_22( ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/* All wellformedness checks were successful. */
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

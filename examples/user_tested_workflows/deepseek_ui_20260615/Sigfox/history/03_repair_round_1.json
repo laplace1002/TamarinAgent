@@ -1,0 +1,17 @@
+{
+  "repair_scope": "local_patch",
+  "patches": [
+    {
+      "type": "replace_lines",
+      "start_line": 16,
+      "end_line": 29,
+      "new": "let B(skB, pkA) =\n  let pkB = pk(skB) in\n  in(<sig, enc>);\n  if verify(sig, enc, pkA) = true then (\n    let plain = adec(enc, skB) in\n    let pk_recv = fst(plain) in\n    let na = snd(plain) in\n    if pk_recv = pkA then (\n      let m = <sig, enc> in\n      event Role('B');\n      event Recv(pkB, m);\n      event Secret_B(na, pkB);\n      event End()\n    )\n  )"
+    }
+  ],
+  "repair_notes": [
+    "Rewrote B role to use successful-branch receive template `in(<sig, enc>)` instead of fragile `in(m); let <sig, enc> = m in`.",
+    "Replaced tuple-destruct of decrypted plaintext with projection functions `fst`/`snd` to avoid unreachable parse‑failure states.",
+    "Reconstructed whole message `m` for the `Recv` event to preserve the reviewed event schema.",
+    "This resolves the wellformedness warnings about unreachable state facts and duplicate variable bindings."
+  ]
+}

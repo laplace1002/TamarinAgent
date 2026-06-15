@@ -1,0 +1,47 @@
+{
+  "case": "Toy",
+  "mode": "reviewed_proof_targets",
+  "source": "reviewed_lemma_specification",
+  "expectations": [
+    {
+      "name": "successful_run",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "There exists a trace where both Alex and Blake complete the protocol.",
+      "required_events": [
+        "RoleDone('A')",
+        "RoleDone('B')"
+      ]
+    },
+    {
+      "name": "sk_secret_a",
+      "trace_kind": "all-traces",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "Session key SK computed by A remains secret from adversary.",
+      "required_events": [
+        "Secret(A, kdf(~na, ~nb), B)"
+      ]
+    },
+    {
+      "name": "sk_secret_b",
+      "trace_kind": "all-traces",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "Session key SK computed by B remains secret from adversary.",
+      "required_events": [
+        "Secret(B, kdf(~na, ~nb), A)"
+      ]
+    }
+  ],
+  "notes": [
+    "Reconstructed from reviewed modeling contract."
+  ]
+}

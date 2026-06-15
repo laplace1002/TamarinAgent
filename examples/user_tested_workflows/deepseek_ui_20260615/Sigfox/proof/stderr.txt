@@ -1,0 +1,42 @@
+== executable ==
+maude tool: 'maude'
+ checking version: 3.5.1. OK.
+ checking installation: OK.
+[Theory Sigfox_A_B] Theory loaded
+[Theory Sigfox_A_B] Theory translated
+[Theory Sigfox_A_B] Theory closed
+[Saturating Sources] Step 1 (Max 5)
+[Saturating Sources] Done
+
+
+== secret_A ==
+maude tool: 'maude'
+ checking version: 3.5.1. OK.
+ checking installation: OK.
+[Theory Sigfox_A_B] Theory loaded
+[Theory Sigfox_A_B] Theory translated
+[Theory Sigfox_A_B] Theory closed
+[Saturating Sources] Step 1 (Max 5)
+[Saturating Sources] Done
+
+
+== secret_B ==
+maude tool: 'maude'
+ checking version: 3.5.1. OK.
+ checking installation: OK.
+[Theory Sigfox_A_B] Theory loaded
+[Theory Sigfox_A_B] Theory translated
+[Theory Sigfox_A_B] Theory closed
+[Saturating Sources] Step 1 (Max 5)
+[Saturating Sources] Done
+
+
+== secrecy_PFS_A ==
+maude tool: 'maude'
+ checking version: 3.5.1. OK.
+ checking installation: OK.
+[Theory Sigfox_A_B] Theory loaded
+[Theory Sigfox_A_B] Theory translated
+[Theory Sigfox_A_B] Theory closed
+[Saturating Sources] Step 1 (Max 5)
+[Saturating Sources] Done
