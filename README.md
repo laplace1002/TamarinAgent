@@ -6,6 +6,22 @@ This repository contains a local human-in-the-loop UI for LLM-aided security pro
 
 The system introduces a protocol intermediate representation (IR) as a semantic checkpoint between natural-language protocol descriptions and Sapic+/Tamarin generation, enabling reviewers to audit LLM-generated protocol models for semantic accuracy before formal verification.
 
+## UI Preview
+
+The screenshots below show the Sigfox prepared workflow loaded in the review UI.
+
+### Workflow Import
+
+![Sigfox workflow import view](pics/UI1.png)
+
+### Field Review
+
+![Sigfox workflow review UI](pics/UI2.png)
+
+### Tamarin Results
+
+![Sigfox Tamarin proof results](pics/UI3.png)
+
 ## Repository Layout
 
 - `run_contract_review_ui.py`: local HTTP server and workflow API.
@@ -127,7 +143,7 @@ python3 run_contract_review_ui.py \
   --port 8765
 ```
 
-Then open the UI, use `Select prepared workflow...`, and choose `Toy` or `Sigfox`.
+Then open the UI, use `Select prepared workflow...`, and choose `easy / Toy` or `easy / Sigfox`.
 
 ## Existing Workflow Library
 
