@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "status": "clean",
+  "lint_issues": [],
+  "returncode_ok": true,
+  "returncode": 0,
+  "has_warnings": false,
+  "warnings": [],
+  "command": [
+    "tamarin-prover",
+    "/Users/ella/code/TAMARIN-Agent-master/AutoSM-style/ui_experiment_pipeline/runs/ui_formal_deepseek_user_20260615/active/models/initial.spthy",
+    "-m=msr",
+    "--derivcheck-timeout=0"
+  ],
+  "output_path": "/Users/ella/code/TAMARIN-Agent-master/AutoSM-style/ui_experiment_pipeline/runs/ui_formal_deepseek_user_20260615/active/models/initial.spthy",
+  "elapsed_sec": 0.082
+}

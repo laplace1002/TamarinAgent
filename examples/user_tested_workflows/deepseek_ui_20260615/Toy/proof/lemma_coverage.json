@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "expected": [
+    "successful_run",
+    "sk_secret_a",
+    "sk_secret_b"
+  ],
+  "present": [
+    "successful_run",
+    "sk_secret_a",
+    "sk_secret_b"
+  ],
+  "missing": [],
+  "extra": []
+}

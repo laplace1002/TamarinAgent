@@ -1,0 +1,21 @@
+{
+  "source": "Tamarin manual syntax description, built_in grammar. Override with TAMARIN_BUILTINS_FILE if the installed Tamarin version differs.",
+  "builtins": [
+    "diffie-hellman",
+    "hashing",
+    "symmetric-encryption",
+    "asymmetric-encryption",
+    "signing",
+    "bilinear-pairing",
+    "xor",
+    "multiset",
+    "natural-numbers",
+    "revealing-signing",
+    "locations-report",
+    "reliable-channel",
+    "dest-pairing",
+    "dest-signing",
+    "dest-symmetric-encryption",
+    "dest-asymmetric-encryption"
+  ]
+}

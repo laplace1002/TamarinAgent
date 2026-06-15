@@ -1,0 +1,10 @@
+{
+  "needed": false,
+  "score": 4,
+  "triggers": [
+    "difficulty=easy",
+    "explicit_compromise_model"
+  ],
+  "reason": "Protocol appears simple enough for direct Sapic+ generation from ProtocolIR and proof goals.",
+  "constraints": {}
+}

@@ -1,0 +1,699 @@
+{
+  "schema": "autosm_style_protocol_ir_v1",
+  "protocol_name": "Toy",
+  "roles": [
+    "A",
+    "B"
+  ],
+  "principals": [
+    {
+      "name": "A",
+      "role_hint": "A"
+    },
+    {
+      "name": "B",
+      "role_hint": "B"
+    }
+  ],
+  "crypto": {
+    "builtins": [
+      "hashing"
+    ],
+    "functions": [
+      "kdf/2"
+    ],
+    "equations": [],
+    "assumptions": [
+      "Use the standard Dolev-Yao adversarial network model.",
+      "Model only the protocol behavior described by the current IR and modeling contract.",
+      "Do not use the reference Sapic+ or Tamarin models during generation; they are evaluation metadata only."
+    ]
+  },
+  "fresh_terms": [
+    {
+      "name": "~aNonce",
+      "owner": "A",
+      "purpose": "ANonce generated freshly by Alex/A at the start of a run"
+    },
+    {
+      "name": "~bNonce",
+      "owner": "B",
+      "purpose": "BNonce generated freshly by Blake/B after receiving Alex's nonce"
+    }
+  ],
+  "long_term_keys": [],
+  "messages": [
+    {
+      "label": "M1",
+      "step": 1,
+      "from": "A",
+      "to": "B",
+      "term": "~aNonce",
+      "meaning": "Alex/A sends ANonce in clear to Blake/B.",
+      "protection": "none/plaintext",
+      "sender_knows": [
+        "~aNonce"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2",
+      "step": 2,
+      "from": "B",
+      "to": "A",
+      "term": "~bNonce",
+      "meaning": "Blake/B sends BNonce in clear to Alex/A after receiving an ANonce value.",
+      "protection": "none/plaintext",
+      "sender_knows": [
+        "~bNonce",
+        "ANonce_from_M1"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M3",
+      "step": 3,
+      "from": "A",
+      "to": "B",
+      "term": "'ACK'",
+      "meaning": "After installing SK = kdf(ANonce,BNonce), Alex/A sends the fixed string ACK in clear to Blake/B.",
+      "protection": "none/plaintext",
+      "sender_knows": [
+        "'ACK'",
+        "~aNonce",
+        "BNonce_from_M2",
+        "kdf(~aNonce,BNonce_from_M2)"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "A_send_M1",
+      "role": "A",
+      "kind": "generate-send",
+      "generates": [
+        "~aNonce"
+      ],
+      "message_in": [],
+      "message_out": [
+        "M1"
+      ],
+      "checks": [],
+      "events": [
+        "OUT_M1(~aNonce)"
+      ]
+    },
+    {
+      "action_id": "B_recv_M1_send_M2",
+      "role": "B",
+      "kind": "receive-generate-send",
+      "generates": [
+        "~bNonce"
+      ],
+      "message_in": [
+        "M1"
+      ],
+      "message_out": [
+        "M2"
+      ],
+      "checks": [
+        "Bind received network term as ANonce_from_M1; no cryptographic verification or authentication check is described."
+      ],
+      "events": [
+        "IN_M1(ANonce_from_M1)",
+        "OUT_M2(~bNonce)"
+      ]
+    },
+    {
+      "action_id": "A_recv_M2_install_send_M3",
+      "role": "A",
+      "kind": "receive-derive-install-send-done",
+      "generates": [],
+      "message_in": [
+        "M2"
+      ],
+      "message_out": [
+        "M3"
+      ],
+      "checks": [
+        "Bind received network term as BNonce_from_M2; no cryptographic verification or authentication check is described."
+      ],
+      "events": [
+        "IN_M2(BNonce_from_M2)",
+        "A_Install(A,B,kdf(~aNonce,BNonce_from_M2),~aNonce,BNonce_from_M2)",
+        "A_Secret(A,B,kdf(~aNonce,BNonce_from_M2))",
+        "OUT_M3('ACK')",
+        "A_Done(A,B,kdf(~aNonce,BNonce_from_M2))"
+      ]
+    },
+    {
+      "action_id": "B_recv_M3_install_done",
+      "role": "B",
+      "kind": "receive-check-derive-install-done",
+      "generates": [],
+      "message_in": [
+        "M3"
+      ],
+      "message_out": [],
+      "checks": [
+        "Check received network term equals the fixed string 'ACK'; ACK carries no nonce, identity, MAC, signature, or session-key binding."
+      ],
+      "events": [
+        "IN_M3('ACK')",
+        "B_Install(A,B,kdf(ANonce_from_M1,~bNonce),ANonce_from_M1,~bNonce)",
+        "B_Secret(A,B,kdf(ANonce_from_M1,~bNonce))",
+        "B_Done(A,B,kdf(ANonce_from_M1,~bNonce))"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "role": "B",
+      "condition": "Bind the received M1 payload as ANonce_from_M1; no tag, encryption, signature, freshness test, or source authentication is present.",
+      "source_message": "M1"
+    },
+    {
+      "role": "A",
+      "condition": "Bind the received M2 payload as BNonce_from_M2; no tag, encryption, signature, freshness test, or source authentication is present.",
+      "source_message": "M2"
+    },
+    {
+      "role": "B",
+      "condition": "Check that the received M3 payload is exactly the literal string 'ACK'.",
+      "source_message": "M3"
+    }
+  ],
+  "events": [
+    {
+      "name": "OUT_M1",
+      "arguments": [
+        "aNonce"
+      ],
+      "role": "A",
+      "when": "A sends ANonce"
+    },
+    {
+      "name": "IN_M1",
+      "arguments": [
+        "aNonce"
+      ],
+      "role": "B",
+      "when": "B receives a network value in the ANonce position"
+    },
+    {
+      "name": "OUT_M2",
+      "arguments": [
+        "bNonce"
+      ],
+      "role": "B",
+      "when": "B sends BNonce"
+    },
+    {
+      "name": "IN_M2",
+      "arguments": [
+        "bNonce"
+      ],
+      "role": "A",
+      "when": "A receives a network value in the BNonce position"
+    },
+    {
+      "name": "A_Install",
+      "arguments": [
+        "A",
+        "B",
+        "sk",
+        "aNonce",
+        "bNonce"
+      ],
+      "role": "A",
+      "when": "A derives and installs sk = kdf(aNonce,bNonce) after receiving BNonce"
+    },
+    {
+      "name": "A_Secret",
+      "arguments": [
+        "A",
+        "B",
+        "sk"
+      ],
+      "role": "A",
+      "when": "A has installed the session key whose secrecy is claimed by sk_secret_a"
+    },
+    {
+      "name": "OUT_M3",
+      "arguments": [
+        "ack"
+      ],
+      "role": "A",
+      "when": "A sends the fixed ACK after installing the session key"
+    },
+    {
+      "name": "A_Done",
+      "arguments": [
+        "A",
+        "B",
+        "sk"
+      ],
+      "role": "A",
+      "when": "A switches to DONE after sending ACK"
+    },
+    {
+      "name": "IN_M3",
+      "arguments": [
+        "ack"
+      ],
+      "role": "B",
+      "when": "B receives and accepts the fixed ACK literal"
+    },
+    {
+      "name": "B_Install",
+      "arguments": [
+        "A",
+        "B",
+        "sk",
+        "aNonce",
+        "bNonce"
+      ],
+      "role": "B",
+      "when": "B derives and installs sk = kdf(aNonce,bNonce) after receiving ACK"
+    },
+    {
+      "name": "B_Secret",
+      "arguments": [
+        "A",
+        "B",
+        "sk"
+      ],
+      "role": "B",
+      "when": "B has installed the session key whose secrecy is claimed by sk_secret_b"
+    },
+    {
+      "name": "B_Done",
+      "arguments": [
+        "A",
+        "B",
+        "sk"
+      ],
+      "role": "B",
+      "when": "B switches to DONE after installing the session key"
+    }
+  ],
+  "claims": [
+    {
+      "lemma_name": "successful_run",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "There exists an honest execution in which A and B both complete the described protocol and reach DONE after installing the same kdf-derived session key.",
+      "event_schema": [
+        "A_Done(A,B,sk)",
+        "B_Done(A,B,sk)"
+      ],
+      "witness": "Honest delivery trace: A sends ~aNonce; B receives ~aNonce and sends ~bNonce; A receives ~bNonce, installs kdf(~aNonce,~bNonce), sends 'ACK', and reaches DONE; B receives 'ACK', installs kdf(~aNonce,~bNonce), and reaches DONE.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "sk_secret_a",
+      "goal_type": "secrecy",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "The session key installed by A at A_Secret should remain secret from the adversary; the supplied expected result says this all-traces secrecy property is falsified.",
+      "event_schema": [
+        "A_Secret(A,B,sk) where sk = kdf(~aNonce,BNonce_from_M2)"
+      ],
+      "witness": "In an honest run, M1 exposes ~aNonce and M2 exposes ~bNonce on the Dolev-Yao network. Since kdf/2 is public, the adversary can compute kdf(~aNonce,~bNonce), matching A's installed key when A receives the honest BNonce.",
+      "expected_raw": "falsified - found trace"
+    },
+    {
+      "lemma_name": "sk_secret_b",
+      "goal_type": "secrecy",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "The session key installed by B at B_Secret should remain secret from the adversary; the supplied expected result says this all-traces secrecy property is falsified.",
+      "event_schema": [
+        "B_Secret(A,B,sk) where sk = kdf(ANonce_from_M1,~bNonce)"
+      ],
+      "witness": "In an honest run, M1 exposes ~aNonce and M2 exposes ~bNonce on the Dolev-Yao network. Since kdf/2 is public, the adversary can compute kdf(~aNonce,~bNonce), matching B's installed key when B received the honest ANonce.",
+      "expected_raw": "falsified - found trace"
+    }
+  ],
+  "compromise": {
+    "reveal_events": [],
+    "policy": "No explicit Reveal, corruption, or long-term key compromise behavior is mentioned. The only adversarial exposure described is the standard Dolev-Yao network, under which plaintext M1, M2, and M3 are observable and replayable."
+  },
+  "abstractions": [
+    "Alex and Blake are represented by roles/principals A and B, preserving the source notation A -> B and B -> A.",
+    "The session-key installation and DONE states are represented by A_Install/B_Install and A_Done/B_Done events.",
+    "The text says the established key can later be used to encrypt messages, but no post-establishment encrypted application traffic is specified; no such traffic is modeled.",
+    "Network send and receive are represented symbolically by messages and OUT/IN events under a Dolev-Yao adversarial network.",
+    "The secrecy proof interface uses A_Secret and B_Secret events at the points where the corresponding role installs SK; the source goals provide lemma names but no explicit action-fact vocabulary."
+  ],
+  "modeling_assumptions": [
+    "Use the standard Dolev-Yao adversarial network model.",
+    "Model only the protocol behavior described by the current IR and modeling contract.",
+    "Do not use the reference Sapic+ or Tamarin models during generation; they are evaluation metadata only.",
+    "ANonce and BNonce are fresh nonces generated by A and B respectively.",
+    "Messages M1, M2, and M3 are unencrypted plaintext because the description gives only bare nonces and the literal ACK with no cryptographic wrapper.",
+    "B's state after M1 stores the received network value as ANonce_from_M1 and its generated ~bNonce until ACK is received.",
+    "A's state after M1 stores its generated ~aNonce until a BNonce-position network value is received.",
+    "No long-term keys are modeled because none are described.",
+    "The fixed ACK is not bound to either nonce, identity, or session key."
+  ],
+  "resolved_open_questions": [
+    {
+      "question": "Do A and B denote Alex and Blake?",
+      "resolution": "Yes. The description names Alex and Blake and immediately gives message notation A -> B and B -> A, so A is treated as Alex and B as Blake.",
+      "evidence": "Alex computes a nonce and sends it to Blake. (A -> B: ANonce)"
+    }
+  ],
+  "semantic_constraints": [
+    {
+      "kind": "text_policy",
+      "policy": "Do not add encryption, signatures, MACs, tags, certificates, identities inside messages, or nonce echoes not present in the source protocol."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "M1 must precede B's generation and sending of M2 in an honest responder run."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "A derives and installs SK_A = kdf(~aNonce,BNonce_from_M2) only after receiving a value in the M2/BNonce position."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "A sends the literal 'ACK' only after installing SK_A."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "B derives and installs SK_B = kdf(ANonce_from_M1,~bNonce) only after receiving and accepting a value equal to the literal 'ACK'."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "For an untampered honest trace, B receives ANonce_from_M1 = ~aNonce and A receives BNonce_from_M2 = ~bNonce, so SK_A = SK_B = kdf(~aNonce,~bNonce)."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "For adversarial traces, received nonce-position values may be attacker-chosen or replayed; the protocol description contains no checks guaranteeing agreement between SK_A and SK_B."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The literal ACK can be injected or replayed by the adversary because it is public and unauthenticated."
+    }
+  ],
+  "field_evidence": [
+    {
+      "field_path": "protocol_name",
+      "source_quote": "\"name\": \"Toy\"",
+      "evidence_kind": "direct",
+      "reason": "Protocol name is provided directly in the input object.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "principals",
+      "source_quote": "There are two parties, Alex and Blake",
+      "evidence_kind": "direct",
+      "reason": "The two parties are explicitly named; A/B aliases are also used in message notation.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.6
+    },
+    {
+      "field_path": "crypto.functions.0",
+      "source_quote": "SK = kdf(ANonce, BNonce)",
+      "evidence_kind": "direct",
+      "reason": "The key derivation function and argument order are stated explicitly.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "fresh_terms.0",
+      "source_quote": "Alex computes a nonce and sends it to Blake. (A -> B: ANonce)",
+      "evidence_kind": "direct",
+      "reason": "A/Alex nonce generation is explicitly described.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "fresh_terms.1",
+      "source_quote": "Blake computes their own nonce and sends it to Alex. (B -> A: BNonce)",
+      "evidence_kind": "direct",
+      "reason": "B/Blake nonce generation is explicitly described.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "long_term_keys",
+      "source_quote": "There are two parties, Alex and Blake, who want to establish a session key",
+      "evidence_kind": "nearby",
+      "reason": "The source describes only a derived session key and does not mention long-term keys or public-key setup.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.0.term",
+      "source_quote": "A -> B: ANonce",
+      "evidence_kind": "direct",
+      "reason": "The first message payload is explicitly the nonce ANonce.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.0.protection",
+      "source_quote": "Alex computes a nonce and sends it to Blake. (A -> B: ANonce)",
+      "evidence_kind": "direct",
+      "reason": "No encryption or authentication wrapper is shown; the message is represented as plaintext.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.1.term",
+      "source_quote": "B -> A: BNonce",
+      "evidence_kind": "direct",
+      "reason": "The second message payload is explicitly BNonce.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.1.protection",
+      "source_quote": "Blake computes their own nonce and sends it to Alex. (B -> A: BNonce)",
+      "evidence_kind": "direct",
+      "reason": "No encryption or authentication wrapper is shown; the message is represented as plaintext.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.2.term",
+      "source_quote": "A -> B: \"ACK\"",
+      "evidence_kind": "direct",
+      "reason": "The third message payload is explicitly the fixed string ACK.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "messages.2.protection",
+      "source_quote": "Alex sends a message with the string \"ACK\" to Blake (A -> B: \"ACK\")",
+      "evidence_kind": "direct",
+      "reason": "No cryptographic binding or protection is described for ACK.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "actions.2.events",
+      "source_quote": "Alex installs a session key SK, which is derived from ANonce and BNonce by applying a key derivation function",
+      "evidence_kind": "direct",
+      "reason": "A's install event is placed after receiving BNonce and deriving the key.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "actions.2.events",
+      "source_quote": "Once the session key is installed, Alex sends a message with the string \"ACK\" to Blake ... and switches to a 'DONE' state",
+      "evidence_kind": "direct",
+      "reason": "A's ACK send and DONE event are placed after A installs SK.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.2.condition",
+      "source_quote": "When Blake receives the \"ACK\" message",
+      "evidence_kind": "direct",
+      "reason": "B proceeds after receiving ACK; this is represented as an equality check against the ACK literal and no stronger verification.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "actions.3.events",
+      "source_quote": "Blake also computes the session key SK = kdf(ANonce, BNonce), installs it and switches to a 'DONE' state.",
+      "evidence_kind": "direct",
+      "reason": "B's install and DONE events are placed after receiving ACK.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.0.lemma_name",
+      "source_quote": "\"name\": \"successful_run\"",
+      "evidence_kind": "direct",
+      "reason": "Lemma name is preserved exactly from supplied goals.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.0.expected_state",
+      "source_quote": "\"expected_state\": \"ProvedSatisfying\"",
+      "evidence_kind": "direct",
+      "reason": "Expected state is supplied explicitly for successful_run.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.0.trace_kind",
+      "source_quote": "\"trace_kind\": \"exists-trace\"",
+      "evidence_kind": "direct",
+      "reason": "Trace kind is supplied explicitly for successful_run.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.1.lemma_name",
+      "source_quote": "\"name\": \"sk_secret_a\"",
+      "evidence_kind": "direct",
+      "reason": "Lemma name is preserved exactly from supplied goals.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.1.expected_state",
+      "source_quote": "\"expected_state\": \"CounterexampleFound\"",
+      "evidence_kind": "direct",
+      "reason": "Expected state is supplied explicitly for sk_secret_a.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.1.trace_kind",
+      "source_quote": "\"trace_kind\": \"all-traces\"",
+      "evidence_kind": "direct",
+      "reason": "Trace kind is supplied explicitly for sk_secret_a.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.1.witness",
+      "source_quote": "A -> B: ANonce; B -> A: BNonce; SK = kdf(ANonce, BNonce)",
+      "evidence_kind": "nearby",
+      "reason": "The counterexample surface follows from plaintext nonce transmission and public construction of kdf from the two nonces.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.93,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.2.lemma_name",
+      "source_quote": "\"name\": \"sk_secret_b\"",
+      "evidence_kind": "direct",
+      "reason": "Lemma name is preserved exactly from supplied goals.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.2.expected_state",
+      "source_quote": "\"expected_state\": \"CounterexampleFound\"",
+      "evidence_kind": "direct",
+      "reason": "Expected state is supplied explicitly for sk_secret_b.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.2.trace_kind",
+      "source_quote": "\"trace_kind\": \"all-traces\"",
+      "evidence_kind": "direct",
+      "reason": "Trace kind is supplied explicitly for sk_secret_b.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.2.witness",
+      "source_quote": "A -> B: ANonce; B -> A: BNonce; SK = kdf(ANonce, BNonce)",
+      "evidence_kind": "nearby",
+      "reason": "The counterexample surface follows from plaintext nonce transmission and public construction of kdf from the two nonces.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.93,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "compromise.reveal_events",
+      "source_quote": "Use the standard Dolev-Yao adversarial network model.",
+      "evidence_kind": "nearby",
+      "reason": "The assumptions mention network adversary behavior but no explicit compromise or reveal events.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "semantic_constraints.0",
+      "source_quote": "A -> B: ANonce; B -> A: BNonce; A -> B: \"ACK\"",
+      "evidence_kind": "direct",
+      "reason": "The protocol's bare message syntax supports the constraint not to add unmentioned cryptographic protection or fields.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 1.0
+    }
+  ],
+  "open_questions": []
+}

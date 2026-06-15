@@ -1,0 +1,15 @@
+{
+  "sapic_plus": "theory Toy\nbegin\n\nfunctions: kdf/2\nbuiltins: hashing\n\nlet A() =\n  new ~na;\n  out(~na);\n  in(nb);\n  let sk = kdf(~na, nb) in\n  event Install_SK('A', sk, 'B');\n  event Secret('A', sk, 'B');\n  out('ACK');\n  event RoleDone('A')\n\nlet B() =\n  in(na);\n  new ~nb;\n  out(~nb);\n  in(ack);\n  if ack = 'ACK' then (\n    let sk = kdf(na, ~nb) in\n    event Install_SK('B', sk, 'A');\n    event Secret('B', sk, 'A');\n    event RoleDone('B')\n  )\n\nprocess:\n  (A() | B())\n\nlemma successful_run:\n  exists-trace\n  \"Ex #i #j. RoleDone('A') @ i & RoleDone('B') @ j\"\n\nlemma sk_secret_a:\n  \"All a b sk #i. Secret(a, sk, b) @ i ==> not (Ex #j. K(sk) @ j)\"\n\nlemma sk_secret_b:\n  \"All a b sk #i. Secret(a, sk, b) @ i ==> not (Ex #j. K(sk) @ j)\"\nend",
+  "modeling_notes": [
+    "Messages are sent in plaintext, matching the reviewed protocol where no encryption is applied.",
+    "No long-term keys are present; consequently, the adversary can learn the session key by intercepting both nonces ~na and ~nb.",
+    "Role B checks for the expected 'ACK' string before installing the session key and completing, as specified.",
+    "Secrecy lemmas are expected to produce counterexamples because kdf(~na,~nb) is derivable by the adversary from the public nonces.",
+    "The exists-trace lemma relies on a single parallel composition of A and B to witness both RoleDone events."
+  ],
+  "expected_limitations": [
+    "The executability lemma is satisfied with a single session trace; replication is unnecessary for this target.",
+    "The secrecy lemmas are expected to be falsified, confirming that the protocol offers no secrecy under the Dolev-Yao adversary.",
+    "The field review flag for compromise.reveal_events is irrelevant because there are no long-term keys to reveal."
+  ]
+}

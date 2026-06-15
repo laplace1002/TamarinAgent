@@ -1,0 +1,37 @@
+{
+  "name": "Toy",
+  "description": "/* Source: Teaching material of Tamarin-prover\n * Title: Tamarin Toy Protocol\n * Link: https://github.com/benjaminkiesl/tamarin_toy_protocol\n * Author: Benjamin Kiesl\n */\n\nThere are two parties, Alex and Blake, who want to establish a session key (which they can then use to encrypt messages and communicate with each other secretly). To do so, they proceed as follows:\n\nAlex computes a nonce and sends it to Blake. (A -> B: ANonce)\nWhen Blake receives Alex's nonce, Blake computes their own nonce and sends it to Alex. (B -> A: BNonce)\nWhen Alex receives Blake's nonce, Alex does two things:\nAlex installs a session key SK, which is derived from ANonce and BNonce by applying a key derivation function (i.e., SK = kdf(ANonce, BNonce)).\nOnce the session key is installed, Alex sends a message with the string \"ACK\" to Blake (A -> B: \"ACK\") and switches to a 'DONE' state to indicate that the protocol has been executed successfully on Alex's side.\nWhen Blake receives the \"ACK\" message, Blake also computes the session key SK = kdf(ANonce, BNonce), installs it and switches to a 'DONE' state.",
+  "goals": [
+    {
+      "name": "successful_run",
+      "type": "executability",
+      "description": "",
+      "trace_kind": "exists-trace",
+      "expected_result": "ProvedSatisfying",
+      "expected_state": "ProvedSatisfying"
+    },
+    {
+      "name": "sk_secret_a",
+      "type": "secrecy",
+      "description": "",
+      "trace_kind": "all-traces",
+      "expected_result": "CounterexampleFound",
+      "expected_state": "CounterexampleFound"
+    },
+    {
+      "name": "sk_secret_b",
+      "type": "secrecy",
+      "description": "",
+      "trace_kind": "all-traces",
+      "expected_result": "CounterexampleFound",
+      "expected_state": "CounterexampleFound"
+    }
+  ],
+  "assumptions": [],
+  "expected_results": {},
+  "notes": "Created from review UI NL input.",
+  "difficulty": "easy",
+  "source_files": {},
+  "reference_sapic": null,
+  "reference_tamarin": null
+}

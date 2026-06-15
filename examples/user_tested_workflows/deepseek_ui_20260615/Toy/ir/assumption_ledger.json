@@ -1,0 +1,40 @@
+{
+  "case": "Toy",
+  "difficulty": "easy",
+  "risk_score": 2,
+  "risk_level": "low",
+  "risk_triggers": [
+    "proof_sensitive_goal_types",
+    "expected_counterexample_target"
+  ],
+  "preservation_boundary": {
+    "needed": false,
+    "score": 4,
+    "triggers": [
+      "message_count=3",
+      "explicit_compromise_model"
+    ]
+  },
+  "ir_warnings": [],
+  "target_lemmas": [
+    {
+      "name": "successful_run",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying"
+    },
+    {
+      "name": "sk_secret_a",
+      "goal_type": "secrecy",
+      "expected_state": "CounterexampleFound"
+    },
+    {
+      "name": "sk_secret_b",
+      "goal_type": "secrecy",
+      "expected_state": "CounterexampleFound"
+    }
+  ],
+  "proof_expectations": [],
+  "unresolved_questions": [],
+  "all_semantic_review_questions": [],
+  "default_policy_if_unanswered": "Preserve proof-critical provenance, checks, event placement, and expected attack surface."
+}

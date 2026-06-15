@@ -1,0 +1,58 @@
+theory Sigfox_A_B
+begin
+
+builtins: asymmetric-encryption, signing
+
+let A(skA, pkB) =
+  new na;
+  let pkA = pk(skA) in
+  let enc = aenc(<pkA, na>, pkB) in
+  let sig = sign(enc, skA) in
+  let m = <sig, enc> in
+  event Role('A');
+  event Send(pkA, m);
+  event Secret_A(na, pkB);
+  out(m)
+let B(skB, pkA) =
+  let pkB = pk(skB) in
+  in(<sig, enc>);
+  if verify(sig, enc, pkA) = true then (
+    let plain = adec(enc, skB) in
+    let pk_recv = fst(plain) in
+    let na = snd(plain) in
+    if pk_recv = pkA then (
+      let m = <sig, enc> in
+      event Role('B');
+      event Recv(pkB, m);
+      event Secret_B(na, pkB);
+      event End()
+    )
+  )
+  )
+
+let RevealLTK(sk) =
+  in(any);
+  event Reveal(pk(sk));
+  out(sk)
+
+process:
+  new skA;
+  new skB;
+  let pkA = pk(skA) in
+  let pkB = pk(skB) in
+  ( !A(skA, pkB) | !B(skB, pkA) | !RevealLTK(skA) | !RevealLTK(skB) )
+
+lemma executable:
+  exists-trace
+  "Ex pkA pkB m #i #j. Send(pkA, m) @ i & Recv(pkB, m) @ j"
+
+lemma secret_A:
+  "All na pkB #i. Secret_A(na, pkB) @ i ==> (not Ex #j. K(na) @ j) | (Ex #k. Reveal(pkB) @ k)"
+
+lemma secret_B:
+  "All na pkB #i. Secret_B(na, pkB) @ i ==> (not Ex #j. K(na) @ j) | (Ex #k. Reveal(pkB) @ k)"
+
+lemma secrecy_PFS_A:
+  "All na pkB #i. Secret_A(na, pkB) @ i ==> not Ex #j. K(na) @ j"
+
+end

@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "errors": [],
+  "warnings": [
+    "Encrypted/message-authenticated terms lack obvious public tags: ['M1']."
+  ],
+  "checks": [
+    {
+      "name": "roles_present",
+      "result": "pass",
+      "detail": "roles are available"
+    },
+    {
+      "name": "messages_present",
+      "result": "pass",
+      "detail": "1 message declaration(s)"
+    },
+    {
+      "name": "message_labels_unique",
+      "result": "pass",
+      "detail": "message labels are unique"
+    },
+    {
+      "name": "target_claims_present",
+      "result": "pass",
+      "detail": "all proof_spec targets have claim records"
+    },
+    {
+      "name": "message_tags_present",
+      "result": "warn",
+      "detail": "untagged encrypted messages: ['M1']"
+    }
+  ],
+  "repair_target": "ProtocolIR"
+}

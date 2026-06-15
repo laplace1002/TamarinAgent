@@ -1,0 +1,364 @@
+theory Sigfox_A_B
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: adec/2, aenc/2, fst/1, pair/2, pk/1, sign/2, snd/1, true/0,
+           verify/3
+equations:
+    adec(aenc(x.1, pk(x.2)), x.2) = x.1,
+    fst(<x.1, x.2>) = x.1,
+    snd(<x.1, x.2>) = x.2,
+    verify(sign(x.1, x.2), x.1, pk(x.2)) = true
+
+heuristic: p
+
+lemma executable:
+  exists-trace
+  "∃ pkA pkB m #i #j. (Send( pkA, m ) @ #i) ∧ (Recv( pkB, m ) @ #j)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ pkA pkB m #i #j. (Send( pkA, m ) @ #i) ∧ (Recv( pkB, m ) @ #j)"
+*/
+by sorry
+
+lemma secret_A:
+  all-traces
+  "∀ na pkB #i.
+    (Secret_A( na, pkB ) @ #i) ⇒
+    ((¬(∃ #j. K( na ) @ #j)) ∨ (∃ #k. Reveal( pkB ) @ #k))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ na pkB #i.
+  (Secret_A( na, pkB ) @ #i)
+ ∧
+  (∃ #j. (K( na ) @ #j)) ∧ (∀ #k. (Reveal( pkB ) @ #k) ⇒ ⊥)"
+*/
+by sorry
+
+lemma secret_B:
+  all-traces
+  "∀ na pkB #i.
+    (Secret_B( na, pkB ) @ #i) ⇒
+    ((¬(∃ #j. K( na ) @ #j)) ∨ (∃ #k. Reveal( pkB ) @ #k))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ na pkB #i.
+  (Secret_B( na, pkB ) @ #i)
+ ∧
+  (∃ #j. (K( na ) @ #j)) ∧ (∀ #k. (Reveal( pkB ) @ #k) ⇒ ⊥)"
+*/
+by sorry
+
+lemma secrecy_PFS_A:
+  all-traces
+  "∀ na pkB #i. (Secret_A( na, pkB ) @ #i) ⇒ (¬(∃ #j. K( na ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ na pkB #i. (Secret_A( na, pkB ) @ #i) ∧ ∃ #j. (K( na ) @ #j)"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="new skA.1;", issapicrule,
+                     role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) newskA_0_[color=#ffffff, process="new skA.1;",
+                          issapicrule, role='Process']:
+   [ State_( ), Fr( skA.1 ) ] --> [ State_1( skA.1 ) ]
+
+rule (modulo E) newskB_0_1[color=#ffffff, process="new skB.1;",
+                           issapicrule, role='Process']:
+   [ State_1( skA.1 ), Fr( skB.1 ) ] --> [ State_11( skA.1, skB.1 ) ]
+
+rule (modulo E) p_0_11[color=#ffffff, process="!", issapicrule,
+                       role='Process']:
+   [ State_11( skA.1, skB.1 ) ] --> [ !Semistate_111( skA.1, skB.1 ) ]
+
+rule (modulo E) p_1_11[color=#ffffff, process="!", issapicrule,
+                       role='Process']:
+   [ !Semistate_111( skA.1, skB.1 ) ] --> [ State_111( skA.1, skB.1 ) ]
+
+rule (modulo E) p_0_111[color=#ffffff, process="|", issapicrule,
+                        role='Process']:
+   [ State_111( skA.1, skB.1 ) ]
+  -->
+   [ State_1111( skA.1, skB.1 ), State_1112( skA.1, skB.1 ) ]
+
+rule (modulo E) AskApkskApkskB_0_1111[color=#ffffff,
+                                      process="A(skA.1, pk(skA.1), pk(skB.1))", issapicrule, role='Process']:
+   [ State_1111( skA.1, skB.1 ) ]
+  -->
+   [ State_11111( skA.1, skB.1 ), State_11112( skA.1, skB.1 ) ]
+
+rule (modulo E) newna_0_11111[color=#804046, process="new na.1;",
+                              issapicrule, role='A']:
+   [ State_11111( skA.1, skB.1 ), Fr( na.1 ) ]
+  -->
+   [ State_111111( na.1, skA.1, skB.1 ) ]
+
+rule (modulo E) eventRoleA_0_111111[color=#804046,
+                                    process="event Role( 'A' );", issapicrule, role='A']:
+   [ State_111111( na.1, skA.1, skB.1 ) ]
+  --[ Role( 'A' ) ]->
+   [ State_1111111( na.1, skA.1, skB.1 ) ]
+
+rule (modulo E) eventSendpkskAsignaencpkskAnapkskBskAaencpkskAnapkskB_0_1111111[color=#804046,
+                                                                                process="event Send( pk(skA.1),
+      <sign(aenc(<pk(skA.1), na.1>, pk(skB.1)), skA.1), 
+       aenc(<pk(skA.1), na.1>, pk(skB.1))>
+);",
+                                                                                issapicrule, role='A']:
+   [ State_1111111( na.1, skA.1, skB.1 ) ]
+  --[
+  Send( pk(skA.1),
+        <sign(aenc(<pk(skA.1), na.1>, pk(skB.1)), skA.1), 
+         aenc(<pk(skA.1), na.1>, pk(skB.1))>
+  )
+  ]->
+   [ State_11111111( na.1, skA.1, skB.1 ) ]
+
+rule (modulo E) eventSecretAnapkskB_0_11111111[color=#804046,
+                                               process="event Secret_A( na.1, pk(skB.1) );", issapicrule,
+                                               role='A']:
+   [ State_11111111( na.1, skA.1, skB.1 ) ]
+  --[ Secret_A( na.1, pk(skB.1) ) ]->
+   [ State_111111111( na.1, skA.1, skB.1 ) ]
+
+rule (modulo E) outsignaencpkskAnapkskBskAaencpkskAnapkskB_0_111111111[color=#804046,
+                                                                       process="out(<sign(aenc(<pk(skA.1), na.1>, pk(skB.1)), skA.1), 
+ aenc(<pk(skA.1), na.1>, pk(skB.1))>);",
+                                                                       issapicrule, role='A']:
+   [ State_111111111( na.1, skA.1, skB.1 ) ]
+  -->
+   [
+   State_1111111111( na.1, skA.1, skB.1 ),
+   Out( <sign(aenc(<pk(skA.1), na.1>, pk(skB.1)), skA.1), 
+         aenc(<pk(skA.1), na.1>, pk(skB.1))>
+   )
+   ]
+
+rule (modulo E) p_0_1111111111[color=#804046, process="0", issapicrule,
+                               role='A']:
+   [ State_1111111111( na.1, skA.1, skB.1 ) ] --> [ ]
+
+rule (modulo E) p_0_11112[color=#ffffff, process="0", issapicrule,
+                          role='Process']:
+   [ State_11112( skA.1, skB.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1112[color=#ffffff, process="!", issapicrule,
+                         role='Process']:
+   [ State_1112( skA.1, skB.1 ) ] --> [ !Semistate_11121( skA.1, skB.1 ) ]
+
+rule (modulo E) p_1_1112[color=#ffffff, process="!", issapicrule,
+                         role='Process']:
+   [ !Semistate_11121( skA.1, skB.1 ) ] --> [ State_11121( skA.1, skB.1 ) ]
+
+rule (modulo E) p_0_11121[color=#ffffff, process="|", issapicrule,
+                          role='Process']:
+   [ State_11121( skA.1, skB.1 ) ]
+  -->
+   [ State_111211( skA.1, skB.1 ), State_111212( skA.1, skB.1 ) ]
+
+rule (modulo E) BskBpkskBpkskA_0_111211[color=#ffffff,
+                                        process="B(skB.1, pk(skB.1), pk(skA.1))", issapicrule,
+                                        role='Process']:
+   [ State_111211( skA.1, skB.1 ) ]
+  -->
+   [ State_1112111( skA.1, skB.1 ), State_1112112( skA.1, skB.1 ) ]
+
+rule (modulo E) inm_0_1112111[color=#628040, process="in(m.2);",
+                              issapicrule, role='B']:
+   [ State_1112111( skA.1, skB.1 ), In( m.2 ) ]
+  -->
+   [ State_11121111( skA.1, skB.1, m.2 ) ]
+
+rule (modulo E) ifverifyfstmsndmpkskAtrue_0_11121111[color=#628040,
+                                                     process="if verify(fst(m.2), snd(m.2), pk(skA.1))=true",
+                                                     issapicrule, role='B']:
+   [ State_11121111( skA.1, skB.1, m.2 ) ]
+  --[ Pred_Eq( verify(fst(m.2), snd(m.2), pk(skA.1)), true ) ]->
+   [ State_111211111( skA.1, skB.1, m.2 ) ]
+
+rule (modulo E) ifverifyfstmsndmpkskAtrue_1_11121111[color=#628040,
+                                                     process="if verify(fst(m.2), snd(m.2), pk(skA.1))=true",
+                                                     issapicrule, role='B']:
+   [ State_11121111( skA.1, skB.1, m.2 ) ]
+  --[ Pred_Not_Eq( verify(fst(m.2), snd(m.2), pk(skA.1)), true ) ]->
+   [ State_111211112( skA.1, skB.1, m.2 ) ]
+
+rule (modulo E) iffstadecsndmskBpkskA_0_111211111[color=#628040,
+                                                  process="if fst(adec(snd(m.2), skB.1))=pk(skA.1)",
+                                                  issapicrule, role='B']:
+   [ State_111211111( skA.1, skB.1, m.2 ) ]
+  --[ Pred_Eq( fst(adec(snd(m.2), skB.1)), pk(skA.1) ) ]->
+   [ State_1112111111( skA.1, skB.1, m.2 ) ]
+
+rule (modulo E) iffstadecsndmskBpkskA_1_111211111[color=#628040,
+                                                  process="if fst(adec(snd(m.2), skB.1))=pk(skA.1)",
+                                                  issapicrule, role='B']:
+   [ State_111211111( skA.1, skB.1, m.2 ) ]
+  --[ Pred_Not_Eq( fst(adec(snd(m.2), skB.1)), pk(skA.1) ) ]->
+   [ State_1112111112( skA.1, skB.1, m.2 ) ]
+
+rule (modulo E) eventRoleB_0_1112111111[color=#628040,
+                                        process="event Role( 'B' );", issapicrule, role='B']:
+   [ State_1112111111( skA.1, skB.1, m.2 ) ]
+  --[ Role( 'B' ) ]->
+   [ State_11121111111( skA.1, skB.1, m.2 ) ]
+
+rule (modulo E) eventRecvpkskBm_0_11121111111[color=#628040,
+                                              process="event Recv( pk(skB.1), m.2 );", issapicrule, role='B']:
+   [ State_11121111111( skA.1, skB.1, m.2 ) ]
+  --[ Recv( pk(skB.1), m.2 ) ]->
+   [ State_111211111111( skA.1, skB.1, m.2 ) ]
+
+rule (modulo E) eventSecretBsndadecsndmskBpkskB_0_111211111111[color=#628040,
+                                                               process="event Secret_B( snd(adec(snd(m.2), skB.1)), pk(skB.1) );",
+                                                               issapicrule, role='B']:
+   [ State_111211111111( skA.1, skB.1, m.2 ) ]
+  --[ Secret_B( snd(adec(snd(m.2), skB.1)), pk(skB.1) ) ]->
+   [ State_1112111111111( skA.1, skB.1, m.2 ) ]
+
+rule (modulo E) eventEnd_0_1112111111111[color=#628040,
+                                         process="event End( );", issapicrule, role='B']:
+   [ State_1112111111111( skA.1, skB.1, m.2 ) ]
+  --[ End( ) ]->
+   [ State_11121111111111( skA.1, skB.1, m.2 ) ]
+
+rule (modulo E) p_0_11121111111111[color=#628040, process="0",
+                                   issapicrule, role='B']:
+   [ State_11121111111111( skA.1, skB.1, m.2 ) ] --> [ ]
+
+rule (modulo E) p_0_1112111112[color=#628040, process="0", issapicrule,
+                               role='B']:
+   [ State_1112111112( skA.1, skB.1, m.2 ) ] --> [ ]
+
+rule (modulo E) p_0_111211112[color=#628040, process="0", issapicrule,
+                              role='B']:
+   [ State_111211112( skA.1, skB.1, m.2 ) ] --> [ ]
+
+rule (modulo E) p_0_1112112[color=#ffffff, process="0", issapicrule,
+                            role='Process']:
+   [ State_1112112( skA.1, skB.1 ) ] --> [ ]
+
+rule (modulo E) p_0_111212[color=#ffffff, process="!", issapicrule,
+                           role='Process']:
+   [ State_111212( skA.1, skB.1 ) ]
+  -->
+   [ !Semistate_1112121( skA.1, skB.1 ) ]
+
+rule (modulo E) p_1_111212[color=#ffffff, process="!", issapicrule,
+                           role='Process']:
+   [ !Semistate_1112121( skA.1, skB.1 ) ]
+  -->
+   [ State_1112121( skA.1, skB.1 ) ]
+
+rule (modulo E) p_0_1112121[color=#ffffff, process="|", issapicrule,
+                            role='Process']:
+   [ State_1112121( skA.1, skB.1 ) ]
+  -->
+   [ State_11121211( skA.1, skB.1 ), State_11121212( skA.1, skB.1 ) ]
+
+rule (modulo E) RevealLTKskA_0_11121211[color=#ffffff,
+                                        process="RevealLTK(skA.1)", issapicrule, role='Process']:
+   [ State_11121211( skA.1, skB.1 ) ]
+  -->
+   [ State_111212111( skA.1, skB.1 ), State_111212112( skA.1, skB.1 ) ]
+
+rule (modulo E) inany_0_111212111[color=#805040, process="in(any.1);",
+                                  issapicrule, role='RevealLTK']:
+   [ State_111212111( skA.1, skB.1 ), In( any.1 ) ]
+  -->
+   [ State_1112121111( any.1, skA.1, skB.1 ) ]
+
+rule (modulo E) eventRevealpkskA_0_1112121111[color=#805040,
+                                              process="event Reveal( pk(skA.1) );", issapicrule,
+                                              role='RevealLTK']:
+   [ State_1112121111( any.1, skA.1, skB.1 ) ]
+  --[ Reveal( pk(skA.1) ) ]->
+   [ State_11121211111( any.1, skA.1, skB.1 ) ]
+
+rule (modulo E) outskA_0_11121211111[color=#805040,
+                                     process="out(skA.1);", issapicrule, role='RevealLTK']:
+   [ State_11121211111( any.1, skA.1, skB.1 ) ]
+  -->
+   [ State_111212111111( any.1, skA.1, skB.1 ), Out( skA.1 ) ]
+
+rule (modulo E) p_0_111212111111[color=#805040, process="0", issapicrule,
+                                 role='RevealLTK']:
+   [ State_111212111111( any.1, skA.1, skB.1 ) ] --> [ ]
+
+rule (modulo E) p_0_111212112[color=#ffffff, process="0", issapicrule,
+                              role='Process']:
+   [ State_111212112( skA.1, skB.1 ) ] --> [ ]
+
+rule (modulo E) p_0_11121212[color=#ffffff, process="!", issapicrule,
+                             role='Process']:
+   [ State_11121212( skA.1, skB.1 ) ]
+  -->
+   [ !Semistate_111212121( skA.1, skB.1 ) ]
+
+rule (modulo E) p_1_11121212[color=#ffffff, process="!", issapicrule,
+                             role='Process']:
+   [ !Semistate_111212121( skA.1, skB.1 ) ]
+  -->
+   [ State_111212121( skA.1, skB.1 ) ]
+
+rule (modulo E) RevealLTKskB_0_111212121[color=#ffffff,
+                                         process="RevealLTK(skB.1)", issapicrule, role='Process']:
+   [ State_111212121( skA.1, skB.1 ) ]
+  -->
+   [ State_1112121211( skA.1, skB.1 ), State_1112121212( skA.1, skB.1 ) ]
+
+rule (modulo E) inany_0_1112121211[color=#805040, process="in(any.2);",
+                                   issapicrule, role='RevealLTK']:
+   [ State_1112121211( skA.1, skB.1 ), In( any.2 ) ]
+  -->
+   [ State_11121212111( skA.1, skB.1, any.2 ) ]
+
+rule (modulo E) eventRevealpkskB_0_11121212111[color=#805040,
+                                               process="event Reveal( pk(skB.1) );", issapicrule,
+                                               role='RevealLTK']:
+   [ State_11121212111( skA.1, skB.1, any.2 ) ]
+  --[ Reveal( pk(skB.1) ) ]->
+   [ State_111212121111( skA.1, skB.1, any.2 ) ]
+
+rule (modulo E) outskB_0_111212121111[color=#805040,
+                                      process="out(skB.1);", issapicrule, role='RevealLTK']:
+   [ State_111212121111( skA.1, skB.1, any.2 ) ]
+  -->
+   [ State_1112121211111( skA.1, skB.1, any.2 ), Out( skB.1 ) ]
+
+rule (modulo E) p_0_1112121211111[color=#805040, process="0",
+                                  issapicrule, role='RevealLTK']:
+   [ State_1112121211111( skA.1, skB.1, any.2 ) ] --> [ ]
+
+rule (modulo E) p_0_1112121212[color=#ffffff, process="0", issapicrule,
+                               role='Process']:
+   [ State_1112121212( skA.1, skB.1 ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/* All wellformedness checks were successful. */
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

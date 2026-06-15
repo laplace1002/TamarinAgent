@@ -1,0 +1,46 @@
+{
+  "schema": "autosm_style_user_tested_workflows_manifest_v1",
+  "created_from": "AutoSM-style/ui_experiment_pipeline/runs/ui_formal_deepseek_user_20260615",
+  "description": "Two workflows actually run through the local UI during manual testing. Includes input/review artifacts, prompts, LLM call metadata, generated Tamarin models, compile/repair outputs, and proof logs. API credentials are not included.",
+  "case_count": 2,
+  "cases": [
+    {
+      "name": "Toy",
+      "directory": "Toy",
+      "difficulty": "easy",
+      "note": "user-tested Toy workflow snapshot from the public UI smoke run",
+      "artifact_groups": [
+        "input/",
+        "ir/",
+        "modeling_contract*.json/md",
+        "prompts/",
+        "history/",
+        "models/",
+        "verify/",
+        "proof/",
+        "final/",
+        "lint/"
+      ]
+    },
+    {
+      "name": "Sigfox",
+      "directory": "Sigfox",
+      "difficulty": "easy",
+      "note": "user-tested Sigfox workflow snapshot from the public UI smoke run; difficulty metadata normalized to easy to match the benchmark split",
+      "artifact_groups": [
+        "input/",
+        "ir/",
+        "modeling_contract*.json/md",
+        "prompts/",
+        "history/",
+        "models/",
+        "verify/",
+        "proof/",
+        "final/",
+        "lint/",
+        "workflow/"
+      ]
+    }
+  ],
+  "import_command_example": "python3 run_contract_review_ui.py --run-dir runs/tmp_review --workflow-library-dir examples/user_tested_workflows/deepseek_ui_20260615 --provider deepseek"
+}

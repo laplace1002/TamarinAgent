@@ -1,0 +1,1107 @@
+{
+  "schema": "autosm_style_protocol_ir_v1",
+  "protocol_name": "KEMTLS",
+  "roles": [
+    "C",
+    "S"
+  ],
+  "principals": [
+    {
+      "name": "C",
+      "role_hint": "C"
+    },
+    {
+      "name": "S",
+      "role_hint": "S"
+    }
+  ],
+  "crypto": {
+    "builtins": [
+      "hashing",
+      "symmetric-encryption",
+      "message-authentication-codes"
+    ],
+    "functions": [
+      "kem_pk/1",
+      "kem_ct/2",
+      "kem_ss/2",
+      "decap/2",
+      "hkdf/3",
+      "transcript_hash/1",
+      "aead_enc/3",
+      "aead_dec/3",
+      "mac/2",
+      "mac_verify/3",
+      "app_key/1",
+      "cert/2",
+      "select_alg/2",
+      "kdf/2"
+    ],
+    "equations": [
+      "decap(kem_ct(kem_pk(sk), r), sk) = kem_ss(kem_pk(sk), r)",
+      "aead_dec(aead_enc(m, k, aad), k, aad) = m",
+      "mac_verify(mac(k, m), k, m) = true"
+    ],
+    "assumptions": [
+      "Use the standard Dolev-Yao adversarial network model.",
+      "Model only the protocol behavior described by the current IR and modeling contract.",
+      "Do not use the reference Sapic+ or Tamarin models during generation; they are evaluation metadata only."
+    ]
+  },
+  "fresh_terms": [
+    {
+      "name": "~rc",
+      "owner": "C",
+      "purpose": "client nonce transmitted for freshness in ClientHello"
+    },
+    {
+      "name": "~skeC",
+      "owner": "C",
+      "purpose": "client ephemeral KEM decapsulation secret for pkeC"
+    },
+    {
+      "name": "~rs",
+      "owner": "S",
+      "purpose": "server nonce transmitted for freshness in ServerHello"
+    },
+    {
+      "name": "~r_sse",
+      "owner": "S",
+      "purpose": "server KEM encapsulation randomness against client ephemeral pkeC, yielding cte and sse"
+    },
+    {
+      "name": "~r_ssS",
+      "owner": "C",
+      "purpose": "client KEM encapsulation randomness against server long-term pks, yielding cts and ssS"
+    },
+    {
+      "name": "~appC",
+      "owner": "C",
+      "purpose": "client application data sent under keys derived from CATS"
+    },
+    {
+      "name": "~appS",
+      "owner": "S",
+      "purpose": "server application data sent under keys derived from SATS"
+    },
+    {
+      "name": "~rc_retry",
+      "owner": "C",
+      "purpose": "client nonce in the replacement ClientHello after HelloRetryRequest"
+    },
+    {
+      "name": "~skeC_retry",
+      "owner": "C",
+      "purpose": "client retry ephemeral KEM decapsulation secret for pkeC_retry after HelloRetryRequest"
+    }
+  ],
+  "long_term_keys": [
+    {
+      "name": "skS",
+      "owner": "S",
+      "public_term": "pks = kem_pk(skS)",
+      "policy": "server long-term KEM decapsulation key kept private in setup/state; reveal only via explicit RevealServerLongTermKEMKey(S, skS) if a PFS/compromise model is supplied"
+    },
+    {
+      "name": "certS",
+      "owner": "S",
+      "public_term": "certS = cert(S, pks)",
+      "policy": "public certificate binding S to the long-term KEM public key pks; validation is abstracted before the client uses pks"
+    }
+  ],
+  "messages": [
+    {
+      "label": "M1_ClientHello",
+      "step": 1,
+      "from": "C",
+      "to": "S",
+      "term": "<'ClientHello', C, ~rc, pkeC, auth_algs_C, kex_algs_C, aead_algs_C>",
+      "meaning": "Client sends one or more supported ephemeral KEM public keys, represented by selected candidate pkeC = kem_pk(~skeC), together with supported public-key authentication, key-exchange, and AEAD method lists and client nonce rc.",
+      "protection": "cleartext handshake message carrying public ephemeral KEM key and public negotiation data",
+      "sender_knows": [
+        "~rc",
+        "~skeC",
+        "pkeC = kem_pk(~skeC)",
+        "auth_algs_C",
+        "kex_algs_C",
+        "aead_algs_C"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M1_HelloRetryRequest_optional",
+      "step": 1,
+      "from": "S",
+      "to": "C",
+      "term": "<'HelloRetryRequest', S, selected_kex_alg>",
+      "meaning": "Optional retry branch: if none of the client ephemeral KEM public keys match the server-selected key-exchange method, the server sends a HelloRetryRequest prompting a new ClientHello.",
+      "protection": "cleartext control message before establishment of sse",
+      "sender_knows": [
+        "selected_kex_alg"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M1b_ClientHello_after_retry_optional",
+      "step": 1,
+      "from": "C",
+      "to": "S",
+      "term": "<'ClientHello', C, ~rc_retry, pkeC_retry, auth_algs_C, <selected_kex_alg>, aead_algs_C>",
+      "meaning": "Optional replacement ClientHello after HelloRetryRequest, carrying an ephemeral KEM public key for the selected key-exchange method. The final accepted ClientHello, whether M1 or M1b, is the one used in transcript-dependent derivations.",
+      "protection": "cleartext handshake message",
+      "sender_knows": [
+        "~rc_retry",
+        "~skeC_retry",
+        "pkeC_retry = kem_pk(~skeC_retry)",
+        "selected_kex_alg"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2_ServerHello",
+      "step": 2,
+      "from": "S",
+      "to": "C",
+      "term": "<'ServerHello', S, ~rs, selected_auth_alg, selected_kex_alg, selected_aead_alg, cte>",
+      "meaning": "Server selects algorithms from the client proposal and sends server nonce rs plus KEM encapsulation cte = kem_ct(pkeC_final, ~r_sse) against the final client ephemeral KEM public key. The phase-1 shared secret is sse = kem_ss(pkeC_final, ~r_sse).",
+      "protection": "cleartext ServerHello containing KEM ciphertext for the ephemeral KEM exchange",
+      "sender_knows": [
+        "~rs",
+        "~r_sse",
+        "pkeC_final",
+        "cte = kem_ct(pkeC_final, ~r_sse)",
+        "sse = kem_ss(pkeC_final, ~r_sse)",
+        "selected_auth_alg",
+        "selected_kex_alg",
+        "selected_aead_alg"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M3_ServerCertificate",
+      "step": 3,
+      "from": "S",
+      "to": "C",
+      "term": "aead_enc(<'Certificate', S, certS, pks>, SHTS, th_CH_SH)",
+      "meaning": "In the same server-to-client flight as ServerHello, the server sends a certificate containing its long-term KEM public key pks = kem_pk(skS). Modeled as a subsequent handshake flow encrypted under SHTS derived from phase-1 sse and transcript th_CH_SH.",
+      "protection": "AEAD under SHTS, where SHTS = hkdf('SHTS', sse, th_CH_SH); certificate validation/binding is abstracted",
+      "sender_knows": [
+        "skS",
+        "pks = kem_pk(skS)",
+        "certS = cert(S, pks)",
+        "sse",
+        "SHTS"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": [
+        "certS internals unless certificate validation is modeled separately"
+      ]
+    },
+    {
+      "label": "M4_ClientKemCiphertext",
+      "step": 4,
+      "from": "C",
+      "to": "S",
+      "term": "aead_enc(<'ClientKemCiphertext', cts>, CHTS, th_CH_SH_Cert)",
+      "meaning": "Client encapsulates against the server long-term KEM public key pks from the certificate and sends the resulting KEM ciphertext cts = kem_ct(pks, ~r_ssS). This yields implicitly authenticated shared secret ssS = kem_ss(pks, ~r_ssS).",
+      "protection": "KEM ciphertext to server long-term pks, carried in a handshake flow protected under CHTS = hkdf('CHTS', sse, th_CH_SH)",
+      "sender_knows": [
+        "~r_ssS",
+        "pks",
+        "cts = kem_ct(pks, ~r_ssS)",
+        "ssS = kem_ss(pks, ~r_ssS)",
+        "CHTS"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M5_ClientFinished",
+      "step": 5,
+      "from": "C",
+      "to": "S",
+      "term": "aead_enc(<'ClientFinished', mac(fkc, transcript_hash(th_before_CF))>, CAHTS, th_before_CF)",
+      "meaning": "Client sends confirmation using MAC key fkc to authenticate the handshake transcript before ClientFinished.",
+      "protection": "AEAD under CAHTS plus Finished MAC under fkc, both derived after combining dHS with ssS",
+      "sender_knows": [
+        "ssS",
+        "AHS",
+        "CAHTS",
+        "fkc",
+        "th_before_CF"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M6_ClientApplicationData",
+      "step": 6,
+      "from": "C",
+      "to": "S",
+      "term": "aead_enc(<'ClientApplicationData', ~appC>, app_key(CATS), th_after_CF)",
+      "meaning": "In the same client flight as ClientFinished, the client may start sending application data encrypted under keys derived from CATS; this is described as implicitly authenticated.",
+      "protection": "AEAD under application encryption key derived from CATS",
+      "sender_knows": [
+        "~appC",
+        "CATS",
+        "app_key(CATS)"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M7_ServerFinished",
+      "step": 7,
+      "from": "S",
+      "to": "C",
+      "term": "aead_enc(<'ServerFinished', mac(fks, transcript_hash(th_before_SF))>, SAHTS, th_before_SF)",
+      "meaning": "Server responds with confirmation using MAC key fks to authenticate the handshake transcript before ServerFinished.",
+      "protection": "AEAD under SAHTS plus Finished MAC under fks, both derived after combining dHS with ssS",
+      "sender_knows": [
+        "ssS",
+        "AHS",
+        "SAHTS",
+        "fks",
+        "th_before_SF"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M8_ServerApplicationData",
+      "step": 8,
+      "from": "S",
+      "to": "C",
+      "term": "aead_enc(<'ServerApplicationData', ~appS>, app_key(SATS), th_after_SF)",
+      "meaning": "In the same server flight as ServerFinished, the server sends application data encrypted under keys derived from SATS.",
+      "protection": "AEAD under application encryption key derived from SATS",
+      "sender_knows": [
+        "~appS",
+        "SATS",
+        "app_key(SATS)"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "C_send_ClientHello",
+      "role": "C",
+      "kind": "send",
+      "generates": [
+        "~rc",
+        "~skeC"
+      ],
+      "message_in": [],
+      "message_out": [
+        "M1_ClientHello"
+      ],
+      "checks": [],
+      "events": [
+        "OUT_ClientHello(C, pkeC, ~rc)"
+      ]
+    },
+    {
+      "action_id": "S_send_HelloRetryRequest_optional",
+      "role": "S",
+      "kind": "branch_send",
+      "generates": [],
+      "message_in": [
+        "M1_ClientHello"
+      ],
+      "message_out": [
+        "M1_HelloRetryRequest_optional"
+      ],
+      "checks": [
+        "no client pke in ClientHello matches selected_kex_alg"
+      ],
+      "events": [
+        "OUT_HelloRetryRequest(S, C, selected_kex_alg)"
+      ]
+    },
+    {
+      "action_id": "C_send_ClientHello_after_retry_optional",
+      "role": "C",
+      "kind": "send",
+      "generates": [
+        "~rc_retry",
+        "~skeC_retry"
+      ],
+      "message_in": [
+        "M1_HelloRetryRequest_optional"
+      ],
+      "message_out": [
+        "M1b_ClientHello_after_retry_optional"
+      ],
+      "checks": [
+        "selected_kex_alg is acceptable to C"
+      ],
+      "events": [
+        "OUT_ClientHelloRetry(C, pkeC_retry, selected_kex_alg)"
+      ]
+    },
+    {
+      "action_id": "S_send_ServerHello",
+      "role": "S",
+      "kind": "receive_send",
+      "generates": [
+        "~rs",
+        "~r_sse"
+      ],
+      "message_in": [
+        "M1_ClientHello or M1b_ClientHello_after_retry_optional"
+      ],
+      "message_out": [
+        "M2_ServerHello"
+      ],
+      "checks": [
+        "selected_auth_alg in auth_algs_C",
+        "selected_kex_alg in kex_algs_C and matches pkeC_final",
+        "selected_aead_alg in aead_algs_C"
+      ],
+      "events": [
+        "ServerHelloSent(S, C, th_CH_SH, sse)"
+      ]
+    },
+    {
+      "action_id": "S_send_ServerCertificate",
+      "role": "S",
+      "kind": "send",
+      "generates": [],
+      "message_in": [],
+      "message_out": [
+        "M3_ServerCertificate"
+      ],
+      "checks": [
+        "S has setup long-term KEM key skS and certificate certS binding S to pks, and derives/uses SHTS from sse and the ClientHello/ServerHello transcript before encrypting the ServerCertificate flow"
+      ],
+      "events": [
+        "ServerCertificateSent(S, C, pks, certS)"
+      ]
+    },
+    {
+      "action_id": "C_receive_ServerHello_and_Certificate",
+      "role": "C",
+      "kind": "receive_check_derive",
+      "generates": [],
+      "message_in": [
+        "M2_ServerHello",
+        "M3_ServerCertificate"
+      ],
+      "message_out": [],
+      "checks": [
+        "selected_auth_alg in auth_algs_C",
+        "selected_kex_alg in kex_algs_C",
+        "selected_aead_alg in aead_algs_C",
+        "decap(cte, ~skeC_final) yields sse",
+        "derive CHTS, SHTS, dHS from sse and th_CH_SH",
+        "decrypt M3_ServerCertificate under SHTS",
+        "certificate certS binds server identity S to pks"
+      ],
+      "events": [
+        "ServerCertificateAccepted(C, S, pks, certS)",
+        "Phase1KeysDerived(C, S, sse, CHTS, SHTS, dHS)"
+      ]
+    },
+    {
+      "action_id": "C_send_ClientKemCiphertext",
+      "role": "C",
+      "kind": "send",
+      "generates": [
+        "~r_ssS"
+      ],
+      "message_in": [
+        "M2_ServerHello",
+        "M3_ServerCertificate"
+      ],
+      "message_out": [
+        "M4_ClientKemCiphertext"
+      ],
+      "checks": [
+        "pks was obtained from accepted server certificate"
+      ],
+      "events": [
+        "ClientKemCiphertextSent(C, S, cts, ssS)"
+      ]
+    },
+    {
+      "action_id": "C_send_ClientFinished_and_application_data",
+      "role": "C",
+      "kind": "send",
+      "generates": [
+        "~appC"
+      ],
+      "message_in": [],
+      "message_out": [
+        "M5_ClientFinished",
+        "M6_ClientApplicationData"
+      ],
+      "checks": [
+        "derive AHS = hkdf('AHS', dHS, ssS)",
+        "derive CAHTS, SAHTS, dAHS from AHS",
+        "derive MS from dAHS",
+        "derive fkc, fks, CATS, SATS from MS"
+      ],
+      "events": [
+        "ClientFinishedSent(C, S, th_before_CF)",
+        "Secret(C, S, CATS)",
+        "ClientApplicationDataSent(C, S, ~appC, CATS)"
+      ]
+    },
+    {
+      "action_id": "S_receive_ClientKemCiphertext_and_ClientFinished",
+      "role": "S",
+      "kind": "receive_check_derive",
+      "generates": [],
+      "message_in": [
+        "M4_ClientKemCiphertext",
+        "M5_ClientFinished",
+        "M6_ClientApplicationData"
+      ],
+      "message_out": [],
+      "checks": [
+        "derive CHTS, SHTS, dHS from sse and th_CH_SH",
+        "decrypt M4_ClientKemCiphertext under CHTS",
+        "decap(cts, skS) yields ssS",
+        "derive AHS, CAHTS, SAHTS, dAHS, MS, fkc, fks, CATS, SATS",
+        "decrypt M5_ClientFinished under CAHTS",
+        "verify mac(fkc, transcript_hash(th_before_CF))",
+        "decrypt M6_ClientApplicationData under app_key(CATS) if application data is processed"
+      ],
+      "events": [
+        "ClientFinishedVerified(S, C, th_before_CF)",
+        "ClientApplicationDataAccepted(S, C, CATS)",
+        "Running(S, C, session, th_before_SF)"
+      ]
+    },
+    {
+      "action_id": "S_send_ServerFinished_and_application_data",
+      "role": "S",
+      "kind": "send",
+      "generates": [
+        "~appS"
+      ],
+      "message_in": [
+        "M4_ClientKemCiphertext",
+        "M5_ClientFinished"
+      ],
+      "message_out": [
+        "M7_ServerFinished",
+        "M8_ServerApplicationData"
+      ],
+      "checks": [
+        "ClientFinished was verified before server confirmation is sent"
+      ],
+      "events": [
+        "ServerFinishedSent(S, C, th_before_SF)",
+        "Secret(S, C, SATS)",
+        "ServerApplicationDataSent(S, C, ~appS, SATS)"
+      ]
+    },
+    {
+      "action_id": "C_receive_ServerFinished",
+      "role": "C",
+      "kind": "receive_check_accept",
+      "generates": [],
+      "message_in": [
+        "M7_ServerFinished",
+        "M8_ServerApplicationData"
+      ],
+      "message_out": [],
+      "checks": [
+        "decrypt M7_ServerFinished under SAHTS",
+        "verify mac(fks, transcript_hash(th_before_SF))",
+        "decrypt M8_ServerApplicationData under app_key(SATS) if application data is processed"
+      ],
+      "events": [
+        "ServerFinishedVerified(C, S, th_before_SF)",
+        "Commit(C, S, session, th_before_SF)",
+        "ServerExplicitlyAuthenticated(C, S, session)",
+        "ServerApplicationDataAccepted(C, S, SATS)"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "role": "S",
+      "condition": "Select public-key authentication, key-exchange, and AEAD algorithms from the client's proposal; if no provided pke matches the selected key-exchange method, send HelloRetryRequest rather than ServerHello.",
+      "source_message": "M1_ClientHello"
+    },
+    {
+      "role": "C",
+      "condition": "Check selected_auth_alg, selected_kex_alg, and selected_aead_alg are among the methods C proposed.",
+      "source_message": "M2_ServerHello"
+    },
+    {
+      "role": "C",
+      "condition": "Decapsulate cte using the client ephemeral KEM secret corresponding to pkeC_final to obtain sse.",
+      "source_message": "M2_ServerHello"
+    },
+    {
+      "role": "C",
+      "condition": "Derive CHTS, SHTS, and dHS from sse and the ClientHello/ServerHello transcript.",
+      "source_message": "M2_ServerHello"
+    },
+    {
+      "role": "C",
+      "condition": "Decrypt the server certificate flow using SHTS and validate or abstractly accept certS as binding S to pks.",
+      "source_message": "M3_ServerCertificate"
+    },
+    {
+      "role": "S",
+      "condition": "Decrypt ClientKemCiphertext under CHTS and decapsulate cts with skS to obtain ssS.",
+      "source_message": "M4_ClientKemCiphertext"
+    },
+    {
+      "role": "S",
+      "condition": "Verify ClientFinished MAC with fkc over the handshake transcript before accepting client confirmation and before server confirmation.",
+      "source_message": "M5_ClientFinished"
+    },
+    {
+      "role": "C",
+      "condition": "Verify ServerFinished MAC with fks over the handshake transcript; only after this check is the server explicitly authenticated.",
+      "source_message": "M7_ServerFinished"
+    }
+  ],
+  "events": [
+    {
+      "name": "OUT_ClientHello",
+      "arguments": [
+        "C",
+        "pkeC",
+        "rc"
+      ],
+      "role": "C",
+      "when": "C sends ClientHello"
+    },
+    {
+      "name": "ServerCertificateAccepted",
+      "arguments": [
+        "C",
+        "S",
+        "pks",
+        "certS"
+      ],
+      "role": "C",
+      "when": "C decrypts the certificate flow and accepts the certificate binding"
+    },
+    {
+      "name": "ClientFinishedVerified",
+      "arguments": [
+        "S",
+        "C",
+        "transcript"
+      ],
+      "role": "S",
+      "when": "S verifies ClientFinished using fkc"
+    },
+    {
+      "name": "Running",
+      "arguments": [
+        "S",
+        "C",
+        "session",
+        "transcript"
+      ],
+      "role": "S",
+      "when": "S has derived authenticated handshake/application secrets and is ready to send ServerFinished"
+    },
+    {
+      "name": "ServerFinishedVerified",
+      "arguments": [
+        "C",
+        "S",
+        "transcript"
+      ],
+      "role": "C",
+      "when": "C verifies ServerFinished using fks"
+    },
+    {
+      "name": "Commit",
+      "arguments": [
+        "C",
+        "S",
+        "session",
+        "transcript"
+      ],
+      "role": "C",
+      "when": "C completes explicit server authentication after verifying ServerFinished"
+    },
+    {
+      "name": "ServerExplicitlyAuthenticated",
+      "arguments": [
+        "C",
+        "S",
+        "session"
+      ],
+      "role": "C",
+      "when": "Once the client receives and verifies ServerFinished"
+    },
+    {
+      "name": "Secret",
+      "arguments": [
+        "C",
+        "S",
+        "CATS"
+      ],
+      "role": "C",
+      "when": "C derives client application transport secret CATS from MS"
+    },
+    {
+      "name": "Secret",
+      "arguments": [
+        "S",
+        "C",
+        "SATS"
+      ],
+      "role": "S",
+      "when": "S derives server application transport secret SATS from MS"
+    },
+    {
+      "name": "ClientApplicationDataSent",
+      "arguments": [
+        "C",
+        "S",
+        "appC",
+        "CATS"
+      ],
+      "role": "C",
+      "when": "C sends application data in the same flight as ClientFinished"
+    },
+    {
+      "name": "ServerApplicationDataSent",
+      "arguments": [
+        "S",
+        "C",
+        "appS",
+        "SATS"
+      ],
+      "role": "S",
+      "when": "S sends application data in the same flight as ServerFinished"
+    }
+  ],
+  "claims": [
+    {
+      "lemma_name": "exec",
+      "goal_type": "property",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "Executable honest KEMTLS trace exists for at least one normal handshake path.",
+      "event_schema": [
+        "Commit(C,S,session,transcript)",
+        "ServerFinishedVerified(C,S,transcript)"
+      ],
+      "witness": "Honest C and S complete ClientHello, ServerHello, certificate, ClientKemCiphertext, ClientFinished, ServerFinished, and derive matching traffic/application secrets.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "execbis",
+      "goal_type": "property",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "Second supplied executability/property goal; exact distinction from exec is not specified in the natural-language input.",
+      "event_schema": [
+        "ClientFinishedVerified(S,C,transcript)",
+        "ServerFinishedSent(S,C,transcript)"
+      ],
+      "witness": "A server-side honest trace reaches verification of ClientFinished and sends ServerFinished; if the benchmark intended another path such as retry, that distinction is not specified.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "false_secserv",
+      "goal_type": "secrecy",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "Supplied secrecy goal expected to be falsified. The likely proof interface is a server-side secret such as SATS or server application data, but the exact event vocabulary is not supplied.",
+      "event_schema": [
+        "Secret(S,C,SATS)",
+        "ServerApplicationDataSent(S,C,appS,SATS)"
+      ],
+      "witness": "Expected counterexample is preserved as metadata. The protocol description does not include client authentication, so server-side secrecy claims involving an unauthenticated client peer require careful interpretation.",
+      "expected_raw": "falsified - found trace"
+    },
+    {
+      "lemma_name": "auth",
+      "goal_type": "authentication",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "Client authenticates the server explicitly after receiving and verifying ServerFinished.",
+      "event_schema": [
+        "Commit(C,S,session,transcript)",
+        "Running(S,C,session,transcript)",
+        "ServerFinishedVerified(C,S,transcript)"
+      ],
+      "witness": "For every client Commit after ServerFinished verification, there should be a corresponding server run using skS/pks and the same transcript, modulo the eventual modeling contract for certificate validation and compromise.",
+      "expected_raw": "verified"
+    },
+    {
+      "lemma_name": "PFS_client",
+      "goal_type": "property",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "Supplied forward-secrecy-style client property. The exact reveal event, exposed value, and timing exception are not specified by the protocol description.",
+      "event_schema": [
+        "Secret(C,S,CATS)",
+        "RevealServerLongTermKEMKey(S,skS)"
+      ],
+      "witness": "Likely intended to preserve secrecy of client-side application transport material after permitted post-session server long-term key reveal; exact compromise semantics remain open.",
+      "expected_raw": "verified"
+    }
+  ],
+  "compromise": {
+    "reveal_events": [
+      "RevealServerLongTermKEMKey"
+    ],
+    "policy": "No explicit reveal, corruption, or compromise behavior is described in the protocol text. The supplied PFS_client goal suggests a forward-secrecy proof interface, but exact reveal timing, exceptions, and exposed values must be fixed by a modeling contract before verification."
+  },
+  "abstractions": [
+    "The ClientHello may contain one or more ephemeral KEM public keys; the IR models the final selected one as pkeC_final while preserving an optional HelloRetryRequest branch.",
+    "The HelloRetryRequest loop is recorded as an optional branch; detailed transcript-rewrite rules for retry are not expanded.",
+    "TLS 1.3 HKDF key schedule is represented by labeled hkdf terms rather than the full HKDF-Extract/HKDF-Expand tree.",
+    "Transcript inputs are represented by symbolic transcript labels such as th_CH_SH, th_before_CF, and th_before_SF.",
+    "AEAD algorithms and supported algorithm lists are symbolic values; concrete algorithm negotiation is abstracted to membership checks.",
+    "Certificate chain validation and external PKI are abstracted as certS = cert(S,pks) and a client-side certificate-binding check.",
+    "TCP connection establishment is not modeled.",
+    "Only server authentication is described; no client certificate or long-term client authentication is added."
+  ],
+  "modeling_assumptions": [
+    "Use the standard Dolev-Yao adversarial network model.",
+    "Model only the protocol behavior described by the current IR and modeling contract.",
+    "Do not use the reference Sapic+ or Tamarin models during generation; they are evaluation metadata only.",
+    "Server public key pks is a long-term KEM public key certified for S; the mechanism by which C validates certS is abstracted unless later specified.",
+    "Handshake messages after ServerHello are modeled as encrypted under traffic secrets because the text states CHTS and SHTS are used to encrypt subsequent handshake flows.",
+    "No client authentication mechanism is introduced beyond possession of derived handshake secrets from encapsulating to pks.",
+    "No PSK, early data, resumption, client certificates, certificate revocation, downgrade protection beyond stated algorithm checks, or concrete TLS record-layer details are modeled."
+  ],
+  "resolved_open_questions": [
+    {
+      "question": "Should the protocol include client authentication?",
+      "resolution": "No client authentication mechanism is described in the excerpt, so none is added. Server events carrying C are treated as unauthenticated peer labels unless further modeling evidence is supplied."
+    },
+    {
+      "question": "Should full TLS 1.3 key schedule internals be expanded?",
+      "resolution": "No. The excerpt names stage keys and states they are derived via HKDF; this IR uses labeled hkdf terms preserving dependencies and order."
+    }
+  ],
+  "semantic_constraints": [
+    {
+      "kind": "text_policy",
+      "policy": "pkeC = kem_pk(~skeC) for the initial ClientHello; if the retry branch is used, pkeC_final = pkeC_retry = kem_pk(~skeC_retry), otherwise pkeC_final = pkeC."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "cte = kem_ct(pkeC_final, ~r_sse) and sse = kem_ss(pkeC_final, ~r_sse); C obtains sse by decap(cte, ~skeC_final)."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Client nonce rc and server nonce rs are included in the freshness-bearing handshake transcript."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "th_CH_SH is the transcript over the final ClientHello and ServerHello, including retry context if modeled."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "CHTS = hkdf('CHTS', sse, th_CH_SH), SHTS = hkdf('SHTS', sse, th_CH_SH), and dHS = hkdf('dHS', sse, th_CH_SH)."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The server certificate message is in the same server-to-client flight as ServerHello but is a subsequent handshake flow protected by SHTS in this candidate IR."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "certS must bind S to pks before C uses pks for server authentication; the certificate-validation mechanism is abstracted and proof-critical."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "cts = kem_ct(pks, ~r_ssS) and ssS = kem_ss(pks, ~r_ssS); S obtains ssS by decap(cts, skS)."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "AHS = hkdf('AHS', dHS, ssS); CAHTS = hkdf('CAHTS', AHS, th_after_CKC); SAHTS = hkdf('SAHTS', AHS, th_after_CKC); dAHS = hkdf('dAHS', AHS, th_after_CKC)."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "MS = hkdf('MS', dAHS, transcript_hash(th_after_CKC)); fkc = hkdf('fkc', MS, transcript_hash(th_before_CF)); fks = hkdf('fks', MS, transcript_hash(th_before_SF)); CATS = hkdf('CATS', MS, transcript_hash(th_app)); SATS = hkdf('SATS', MS, transcript_hash(th_app))."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "ClientFinished authenticates the handshake transcript using fkc and is sent before the client receives ServerFinished."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Client application data may be sent in the same flight as ClientFinished under keys derived from CATS, before explicit server authentication completes at C."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "ServerFinished authenticates the handshake transcript using fks."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Server application data may be sent in the same flight as ServerFinished under keys derived from SATS."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "C treats S as explicitly authenticated only after decrypting and verifying ServerFinished."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Because no client authentication is described, any server-side peer identity C in server events is not cryptographically authenticated unless a later modeling contract adds such evidence."
+    }
+  ],
+  "field_evidence": [
+    {
+      "field_path": "claims.0.lemma_name",
+      "source_quote": "\"name\": \"exec\"",
+      "evidence_kind": "direct",
+      "reason": "Supplied user goal name preserved exactly.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "claims.0.expected_state",
+      "source_quote": "\"expected_state\": \"ProvedSatisfying\"",
+      "evidence_kind": "direct",
+      "reason": "Supplied expected state for exec preserved exactly.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.1.lemma_name",
+      "source_quote": "\"name\": \"execbis\"",
+      "evidence_kind": "direct",
+      "reason": "Supplied user goal name preserved exactly; intent not described.",
+      "priority_llm": 0.6,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.7,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "claims.1.expected_state",
+      "source_quote": "\"expected_state\": \"ProvedSatisfying\"",
+      "evidence_kind": "direct",
+      "reason": "Supplied expected state for execbis preserved exactly.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.2.lemma_name",
+      "source_quote": "\"name\": \"false_secserv\"",
+      "evidence_kind": "direct",
+      "reason": "Supplied secrecy goal name preserved exactly.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.2.expected_state",
+      "source_quote": "\"expected_state\": \"CounterexampleFound\", \"expected_raw\": \"falsified - found trace\"",
+      "evidence_kind": "direct",
+      "reason": "Supplied expected falsification result preserved without changing the protocol to force it.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.3.lemma_name",
+      "source_quote": "\"name\": \"auth\"",
+      "evidence_kind": "direct",
+      "reason": "Supplied authentication goal name preserved exactly.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.3.expected_state",
+      "source_quote": "\"expected_state\": \"ProvedSatisfying\"",
+      "evidence_kind": "direct",
+      "reason": "Supplied expected state for auth preserved exactly.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.4.lemma_name",
+      "source_quote": "\"name\": \"PFS_client\"",
+      "evidence_kind": "direct",
+      "reason": "Supplied property goal name preserved exactly; PFS semantics inferred only at a high level.",
+      "priority_llm": 0.8,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 0.6,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.4.expected_state",
+      "source_quote": "\"expected_state\": \"ProvedSatisfying\"",
+      "evidence_kind": "direct",
+      "reason": "Supplied expected state for PFS_client preserved exactly.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.0.term",
+      "source_quote": "the client sending one or more ephemeral KEM public keys pke in its 'ClientHello' message, as well as the list of public key authentication, key exchange, and authenticated encryption methods it supports",
+      "evidence_kind": "direct",
+      "reason": "ClientHello fields come directly from the text; single selected pkeC is an abstraction of one or more keys.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.1.term",
+      "source_quote": "if (none of) the pke the client sent was for the key-exchange method the server selected, a special HelloRetryRequest message is sent, prompting a new 'ClientHello' message",
+      "evidence_kind": "direct",
+      "reason": "Optional retry behavior is explicitly mentioned and preserved.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.85,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "messages.3.term",
+      "source_quote": "The server responds in the 'ServerHello' message with an encapsulation cte against pke and the algorithms it selected from the client's proposal; ... Nonces rc and rs are also transmitted for freshness.",
+      "evidence_kind": "direct",
+      "reason": "ServerHello encapsulation, selected algorithms, and server nonce are directly supported.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.4.term",
+      "source_quote": "In the same server-to-client flight as 'ServerHello', the server also sends a certificate containing its long-term KEM public key pks.",
+      "evidence_kind": "direct",
+      "reason": "Certificate containing server long-term KEM public key is explicit.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.85,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.4.protection",
+      "source_quote": "CHTS and SHTS which are used to encrypt subsequent flows in the handshake",
+      "evidence_kind": "nearby",
+      "reason": "The certificate is in the same flight but after ServerHello; modeling it under SHTS follows the stated use of SHTS for subsequent handshake flows, but exact record-layer placement is not fully spelled out.",
+      "priority_llm": 0.7,
+      "evidence_confidence_score": 0.75,
+      "consistency_confidence_score": 0.75,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "long_term_keys.0",
+      "source_quote": "the server also sends a certificate containing its long-term KEM public key pks",
+      "evidence_kind": "direct",
+      "reason": "Server long-term KEM public key implies matching private decapsulation key skS owned by S.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.4.condition",
+      "source_quote": "certificate containing its long-term KEM public key pks",
+      "evidence_kind": "nearby",
+      "reason": "A certificate normally requires validation/binding, but the excerpt does not specify CA or validation details; this is abstracted and should be reviewed.",
+      "priority_llm": 0.9,
+      "evidence_confidence_score": 0.65,
+      "consistency_confidence_score": 0.65,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.5.term",
+      "source_quote": "The client encapsulates against pks and sends the resulting ciphertext in its 'ClientKemCiphertext' message. This yields an implicitly authenticated shared secret ssS.",
+      "evidence_kind": "direct",
+      "reason": "ClientKemCiphertext KEM relation and ssS derivation are explicit.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.6.term",
+      "source_quote": "The client now sends a confirmation message 'ClientFinished' to the server which uses a message authentication code with key fkc to authenticate the handshake transcript.",
+      "evidence_kind": "direct",
+      "reason": "ClientFinished MAC under fkc over transcript is explicit.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.7.term",
+      "source_quote": "the client is also able to start sending application data encrypted under keys derived from CATS; this is implicitly authenticated.",
+      "evidence_kind": "direct",
+      "reason": "Client application data under CATS-derived keys in same flight is explicit.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.8.term",
+      "source_quote": "The server responds with its confirmation in the 'ServerFinished' message, authenticating the handshake transcript using MAC key fks.",
+      "evidence_kind": "direct",
+      "reason": "ServerFinished MAC under fks over transcript is explicit.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.9.term",
+      "source_quote": "In the same flight, the server sends application data encrypted under keys derived from SATS.",
+      "evidence_kind": "direct",
+      "reason": "Server application data under SATS-derived keys in same flight is explicit.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "events.ServerExplicitlyAuthenticated",
+      "source_quote": "Once the client receives and verifies ServerFinished, the server is explicitly authenticated.",
+      "evidence_kind": "direct",
+      "reason": "Client-side explicit-authentication event placement is directly specified.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "compromise.reveal_events",
+      "source_quote": "\"name\": \"PFS_client\"",
+      "evidence_kind": "assumption",
+      "reason": "Forward-secrecy goal name suggests reveal behavior, but no explicit reveal event, exposed value, or timing is supplied.",
+      "priority_llm": 0.95,
+      "evidence_confidence_score": 0.45,
+      "consistency_confidence_score": 0.55,
+      "semantic_impact_score": 1.0
+    }
+  ],
+  "open_questions": [],
+  "review": {
+    "status": "reviewed",
+    "updated_at": "2026-06-10T21:40:43",
+    "source": "codex_nl_only_human_edit",
+    "policy": "Reviewed against the KEMTLS natural-language input and GPT-5.5 raw IR. Gold/reference IR was used only as a sanity check, not as the edit target.",
+    "decision": "Retained the raw KEMTLS flow with HelloRetryRequest, application-data flights, AEAD/HKDF/MAC terms, and PFS-style reveal interface. Repaired only unsupported crypto builtins, missing retry value provenance, missing certificate setup provenance, and the SHTS dependency for ServerCertificate."
+  }
+}

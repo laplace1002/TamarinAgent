@@ -1,0 +1,4446 @@
+Generate a complete Sapic+ theory from the reviewed protocol artifacts.
+	
+
+	Sapic+ generation source contract:
+- Generate from the reviewed protocol artifacts. Do not reinterpret natural-language text, user goals, assumptions, or planning notes after they have been reviewed into protocol_ir/proof_context.
+- Treat protocol_ir as the parsed protocol semantics and proof_context as derived proof-goal metadata.
+- Treat reviewed_proof_targets as the authoritative target list when present.
+- Do not bypass protocol_ir by inventing a different message flow unless ir_validation explicitly identifies a repair need.
+- Use protocol_ir messages, actions, checks, fresh_terms, long_term_keys, and semantic_constraints to decide which role may generate, derive, decrypt, or only forward a term opaquely.
+- Treat protocol_ir.semantic_constraints and proof_context.semantic_constraints as binding constraints from resolved open questions. If they conflict with a stale normalized field such as `public_term`, preserve the resolved answer and explain the conflict in modeling_notes.
+- Treat field_reviews as human-review metadata. `user_confirmed` fields are authoritative, `system_assumption` fields must remain explicit assumptions, and unresolved `must_review`/`needs_review` fields are audit risks, not permission to silently strengthen, weaken, or reinterpret protocol semantics.
+	Sapic+ generation proof-target contract:
+- Preserve every reviewed target lemma name, trace kind, goal type, and reviewed expected outcome exactly.
+- Do not add support lemmas unless proof_context explicitly marks them as reviewed target lemmas.
+- Do not add non-target source/helper lemmas or auxiliary source events. `requires_sources_lemma=false` disables only non-target helpers; it must not suppress reviewed target lemmas whose goal_type is source or typing.
+- For reviewed_expected_outcome=ProvedSatisfying, model enough checks, events, restrictions, and role state for the lemma to prove without becoming vacuous.
+- For reviewed_expected_outcome=CounterexampleFound, preserve the reviewed attack surface. Do not over-strengthen the model, add unrealistic restrictions, hide public messages, remove adversary input, or rewrite the lemma just to make it verified.
+- For every reviewed exists-trace target expected ProvedSatisfying, mentally execute the honest message path before finalizing: each tag, nonce, identity, ticket, and key check must succeed with the values produced by the sender.
+- Every target lemma must be backed by explicit events emitted in the relevant role processes.
+- Before writing a target lemma, resolve its event relation from proof_context.target_lemmas.required_events, proof_context.event_obligations, or protocol_ir.claims[].event_schema; do not fall back to a name-only lemma template when reviewed event schemas exist.
+- Authentication goals should use Running/Commit-style events or protocol-specific equivalents with matching actor, peer, and session parameters.
+- Injective authentication goals must include the reviewed partner correspondence evidence (`Running*`, `Server`, or equivalent) plus uniqueness. Never reduce injective agreement to duplicate-`Commit` uniqueness unless the reviewed contract explicitly asks for that.
+- Do not invent dummy, placeholder, wildcard, or existential-only values inside proof-event payloads. Event arguments must be values the role actually knows or has checked at that point, following the reviewed proof context.
+- Secrecy goals should emit Secret-style events at the point the role actually believes the value is secret.
+- Keep event payload schemas uniform for the same proof value across roles. If a session key, nonce pair, or transcript is represented as `session` in Running/Commit, use the same shape in Secret and matching lemmas unless proof_context explicitly requires different facts.
+- Exists-trace goals must be reachable by the process and should reference meaningful completion or session events.
+	Sapic+ generation abstraction contract:
+- Treat abstraction_hints as retrieval-based proof-engineering guidance only. Use lessons for proof-friendly abstraction choices, but do not copy protocol names, concrete message flows, lemma formulas, or case-specific fixes from retrieved examples.
+- If proof_context.preservation_boundary.needed is true, use its constraints as the high-level abstraction boundary: preserve target preservation contracts, state stages, value dependencies, event dependencies, compromise assumptions, and expected proof outcomes.
+- If proof_context.preservation_boundary.needed is false, keep the model simple and avoid adding abstraction machinery not needed by protocol_ir/proof_context.
+- For long key schedules, transcript hashes, MAC inputs, or exporter/application keys, bind compact phase variables and reuse them. Do not repeatedly inline the full nested derivation/transcript term in later messages, events, or lemmas.
+	Sapic+ generation value-provenance contract:
+- Preserve value provenance and trust boundaries from protocol_ir/proof_context. Do not turn setup/state knowledge into arbitrary network input, or network input into trusted setup, unless the reviewed artifacts explicitly say so.
+- Values marked by semantic constraints as trusted setup, role state, long-term keys, or private keys must originate as fresh private setup/state, role parameters, or persistent private facts.
+- Do not replace private setup/state values with public constants or public functions of identity.
+- Values classified as secret/private setup or role state by protocol_ir/proof_context must not be made public unless the reviewed compromise model explicitly exposes them.
+- Do not introduce extra principals, keys, or compromise paths unless protocol_ir/proof_context explicitly includes them.
+- Values needed later in events, checks, or lemmas should be passed as stable role parameters or bound public identifiers rather than recomputed as reducible terms inside guarded branches.
+- Do not bridge Sapic+ role state through `insert`/`lookup` pseudo-statements. Bind setup keys and public identities once in `process:` and pass them to the roles that need them.
+	Proof-engineering baseline:
+- Treat proof-search risk as protocol-shape driven, not difficulty driven: server/KDC mediation, tickets/certificates, source/typing targets, multiple authentication directions, expected replay/counterexample targets, and heavy destructor/equation use all require a compact proof model from the first generation.
+- Prefer proof-friendly abstractions once the reviewed protocol dependencies are preserved. When abstraction_hints are present, use only their modeling lessons for compact topology, event payloads, and state-space control.
+- Emit Secret/Running/Commit and other proof events over compact bound variables or session identifiers, not selector, destructor, hash, KDF, MAC, signature-verification, or decryption expressions.
+- Normalize equivalent representations before emitting proof events: after a role checks that two terms represent the same reviewed value, use one canonical bound variable consistently for that target.
+- Start with the smallest role topology that can witness the reviewed targets; add replication, extra principals, compromise branches, or second sessions only when the target semantics require them.
+- For source/typing targets, derive the lemma and supporting events from the reviewed `Source obligations:` text. If that text is absent or ambiguous, keep the source target explicit but note the limitation rather than inventing broad helper obligations.
+- When proof search or derivation checks time out, first reduce topology, event-term complexity, repeated derivations, and source-helper breadth; do not change target outcomes, lemma names, or add non-target helper lemmas.
+	Server-mediated proof baseline:
+- For server, KDC, ticket, or authority-mediated protocols, preserve the reviewed event schema for each target direction instead of forcing one global session payload.
+- Represent issued keys, tickets, certificates, and credentials with compact bound variables plus origin/acceptance events; keep the full cryptographic container out of terminal proof-event payloads unless the target requires it.
+- Use a bounded topology by default: one honest witness path, plus only the explicit replay, attacker principal, compromise, or second-session branch needed by a reviewed target.
+- Forward opaque tickets, ciphertexts, and certificates opaquely unless the role is meant to decrypt or validate them.
+
+	Sapic+ syntax contract for this project:
+- Use an untyped Sapic+ subset unless the input explicitly requires advanced typing.
+- A complete model must look like:
+  theory Name
+  begin
+  functions: f/1, g/2
+  let A() =
+    new n;
+    out(n);
+    in(x);
+    event Done('A', x)
+  process:
+    (!A())
+  lemma executable:
+    exists-trace
+    "Ex #i x. Done('A', x) @ i"
+  end
+- Role processes are declared with `let Role(params) = ...`; zero-argument roles must be `let Role() = ...`, not `let Role = ...`.
+- Do not terminate `let Role(...) =` process macros with a standalone `.`. A role body ends before the next top-level `let`, `process:`, or lemma declaration.
+- Role invocations must match the declaration: use `Role()` for zero-argument roles, including under replication as `!Role()`, not `!Role`.
+- Role parameters must be flat identifiers. Do not put tuple/pair patterns in role parameter lists; use `let Role(id1, pk1, id2, pk2) = ...`, not `let Role((id1, pk1), (id2, pk2)) = ...`.
+- Role arguments that need to appear later in checks, events, or lemmas should be stable identifiers, not reducible terms over local fresh secrets. Bind public values first, e.g. `let pkS = pk(skS) in`, then pass `pkS` to roles and events instead of repeatedly using `pk(skS)` inside guarded branches.
+- Fresh names are introduced only inside processes with `new n;` or `new ~n;`.
+- Use public-channel communication as `out(term);` and `in(x);` by default.
+- Do not use pseudo-state process statements such as `insert Fact(...)`, `lookup !Fact(...) as x in`, or `[ Fact(...) ];`. In Sapic+ roles, pass setup/state values as role parameters or bind them in `process:` before role invocation.
+- Use pattern matching with `let pattern = term in ...` when deconstructing messages. Tuple decomposition must put the tuple pattern on the left and the received/decrypted term on the right: write `let <a,b> = msg in`. Tuple construction is different and is valid as `let msg = <a,b> in`.
+- Every local `let` binding or pattern match inside a process must continue with `in`, not `;`. Write `let m = <a,b> in`, not `let m = <a,b>;`.
+- Avoid local parse/check chains that create implicit failed branches for adversary-controlled input. Prefer the successful-branch receive/protected-message templates in the process-reachability contract below.
+- If an `if ... then` branch contains more than one process statement, wrap the whole continuation in parentheses. Without parentheses, later statements can be parsed outside the guarded branch and create unreachable translated state facts.
+- Use `let` patterns, not `if`, to bind new variables from decrypted/parsed messages. Write `let decoded = adec(cipher, sk) in` then `let <=expected, fresh_value> = decoded in`. Do not write `if adec(cipher, sk) = <expected, fresh_value> then` when `fresh_value` is new.
+- Use equality patterns `=expected` inside `let` patterns only for small checks over already-bound identifiers when a direct successful-branch receive/protected-message pattern is not clearer.
+- Equality patterns compare against already-bound non-boolean identifiers only. Do not write `let =<tag, x> = msg in`, `let <='TAG', x> = msg in`, `let ='TAG' = tag in`, `let =h(x) = y in`, or `let =true = ok in`; bind the expected term first, then compare with `let =expected = actual in`.
+- Boolean checks cannot stand alone as process statements, and boolean constants are not valid equality-pattern binders. Do not write `verify(sig, m, pk) = true;` or `let =true = verify(sig, m, pk) in`; use `if verify(sig, m, pk) = true then (...)`.
+- Do not add a builtin to fix ordinary tuple syntax, pair syntax, or a wellformedness warning. Tuples such as `<a,b>` need no `pairing` builtin.
+- Events are emitted inside processes with `event Fact(args);`. Do not declare events at top level.
+- Lemma trace qualifiers are lemma-body lines, not bracket attributes: write `lemma l:
+  exists-trace
+  "..."`, never `lemma l [exists-trace]: "..."` or `lemma l [exists_trace]: "..."`.
+- Lemma formulas are quoted strings in `.spthy` syntax. Keep formulas inside double quotes; do not remove quotes around `All`/`Ex` formulas during repair.
+- Lemma formulas may only use public constants and variables bound by quantifiers/action facts. Do not write process-local fresh names such as `~sk`, or constructed terms over them such as `pk(~sk)`, directly in lemmas; expose the needed public key/identity through action-fact arguments and quantify that variable.
+- Universal all-traces lemmas are the default: write `lemma l:
+  "All ..."` without an `all-traces` body line.
+- Exists-trace lemmas need a separate body line: write `lemma l:
+  exists-trace
+  "Ex ..."`.
+- Do not write `lemma l: exists-trace "..."`, `lemma l: all-traces "..."`, or `lemma l: "..."`.
+- Tamarin trace timepoint ordering uses `<`; rewrite `#j > #i` as `#i < #j`.
+- Asymmetric encryption uses function-style terms such as `aenc(m, pk)` and `adec(c, sk)` with `builtins: asymmetric-encryption` or suitable function/equation declarations. Do not use ProVerif-style `{m}_k`, `aenc{m}_k`, or `adec{c,k}`.
+- When `builtins: asymmetric-encryption` is present, do not declare `functions: pk/1`; `pk` is reserved/provided by that builtin.
+- When `builtins: hashing` is present, do not declare `functions: h/1`; use the builtin hash symbol directly, or choose a non-reserved helper name such as `hash1/1` only when a separate uninterpreted helper is needed.
+- Sapic+ equality patterns cannot call functions on the left side. Do not write `let =h(x) = y in`; instead write `let expected = h(x) in let =expected = y in`.
+- Identifiers must be alphanumeric/underscore. Do not use primed variables like `na'`; use `na_recv`, `na1`, or another valid identifier.
+- Constants should be quoted terms such as `'A'`, `'B'`, and `'ACK'`.
+- Builtins must use Tamarin names such as `hashing`, `symmetric-encryption`,
+  `asymmetric-encryption`, `signing`, `diffie-hellman`, `xor`, or `natural-numbers`.
+- Builtins are comma-separated. Do not write space-separated builtin lists.
+- MAC/HMAC/KDF helpers are functions, not builtins. Use declarations such as `functions: kdf/2, mac/2`. Do not put `mac`, `hmac`, or `kdf` in `builtins:`, and do not redeclare builtin names such as `h/1` when `hashing` is enabled.
+- Functions use declarations such as `functions: kdf/2, hash1/1`. Do not emit empty `equations:`.
+- Diffie-Hellman idiom when `builtins: diffie-hellman` is used:
+  use the quoted generator constant `'g'`, e.g. `'g'^x`; do not declare `g/0`.
+  Do not declare `+/2` or `*/2`; `^` and `*` are provided by the DH builtin.
+  Do not invent `add(...)` for exponent addition. If a protocol needs
+  exponent mixing, prefer stable terms used by Tamarin examples such as
+  `let exI = h1(<~eskI, ~lkI>) in`, `let hkI = 'g'^exI in`,
+  and `let kI = h2(<Y^~lkI, pkR^exI, Y^exI, pkI, pkR>) in`.
+
+Forbidden pseudo-Sapic+ patterns:
+- `public A: agent`, `public agent A`, `const A`, `constants: ...`
+- top-level `event Secret(agent, agent, msg)`
+- `builtins: pairing` or adding `pairing` to a builtin list for ordinary tuples
+- `builtins: ..., mac, ...` or space-separated builtins such as `builtins: hashing signing`
+- `let A = ...`, `process: !A`, or `process: A` for role macros
+- standalone `.` after a `let Role(...) =` process macro
+- tuple/pair role parameters such as `let Role((id1, pk1)) = ...`
+- role invocations that pass reducible identity terms such as `!B(skD, pk(skS))` when that public key is later used in checks/events; bind `pkS = pk(skS)` first and pass `pkS`
+- local let bindings terminated by semicolon such as `let m = <a,b>;`
+- treating tuple construction as tuple decomposition; `let msg = <a,b> in` is valid construction, while destructuring must be `let <a,b> = msg in`
+- deeply nested parsing branches such as `let <a,b> = x in let <c,d> = y in ... else 0`
+- binding checks such as `if adec(c, sk) = <na, nb> then` where `na`/`nb` are newly introduced by the comparison
+- `lemma l [exists-trace]: ...` or `lemma l [exists_trace]: ...`
+- unquoted lemma formulas such as `All x #i. Fact(x) @ i ==> ...`
+- `lemma l: all-traces "..."`, `lemma l: exists-trace "..."`, `lemma l: "..."`
+- `#j > #i` or any timepoint `>` comparison
+- `aenc{m}_k`, `adec{c,k}`, `{m}_k`, or variables with prime suffixes such as `na'`
+- `functions: pk/1` together with `builtins: asymmetric-encryption`
+- `functions: h/1` together with `builtins: hashing`
+- function calls, tuple terms, boolean constants, or quoted constants in equality patterns such as `let =h(x) = y in`, `let =true = ok in`, `let =<'TAG', x> = m in`, `let <='TAG', x> = m in`, or `let ='TAG' = tag in`
+- standalone checks such as `verify(sig, m, pk) = true;`
+- process pseudo-state such as `insert Fact(x);`, `lookup !Fact(x) as y in`, or `[ Fact(x) ];`
+- vacuous proof goals such as `Fact(...) @ i ==> True` or `==> true`
+- `functions: +/2`, `functions: */2`, `functions: g/0`, bare `g^x`, or `add(x,y)` in DH models
+- `let A(x:agent) = ...` unless all types are valid Sapic+ types and are necessary
+- `out(net, msg)` / `in(net, x)` unless a channel discipline is explicitly required
+- Coq/ProVerif/TLA-style declarations, sort declarations, or standalone type declarations.
+	Sapic+ process-reachability contract:
+- The warning "Facts occur in the left-hand-side but not in any right-hand-side" is a process translation problem: a continuation or failure-state fact is consumed by a generated rule but never produced. Fix the role process shape, not lemmas, events, restrictions, builtins, or proof expectations.
+- Model roles as continuing only on messages that pass their local parse/decrypt/check. Failed network attempts may stop silently; they do not need explicit `else 0`, dummy events, or dummy branches.
+- Prefer successful-branch receive templates for untrusted network messages:
+  - Plain structured input: `in(<tag, peer, payload>);` when the wire message is a public tuple and the role only continues for that shape. Use fresh field names in the input pattern; if a field must equal an already-bound role value, receive it as `field_recv` and check it in the role body.
+  - Protected input: receive an opaque ciphertext variable, decrypt once, and then check fields with projections or simple `if` guards, e.g. `in(cipher); let plain = adec(cipher, skR) in let tag = fst(plain) in if tag = expected_tag then (...)`. Do not pattern-match encrypted constructors directly in `in(...)`.
+  - Opaque forwarding: receive `in(cipher);` only when the role really treats `cipher` as opaque or forwards it without parsing.
+- Avoid the fragile pattern `in(msg); let <...> = msg in ...` for public tuple messages when a structured input can bind the same fields directly.
+- Do not put already-bound role parameters, local fresh names, or earlier state variables directly inside an `in(<...>)` tuple pattern. Patterns such as `in(<C_I, G_Y, C_R, cipher2>);` or `in(<C_R, cipher3, AD3>);` can bind `C_I`/`C_R` twice. Use `in(<ci_recv, G_Y, cr_recv, cipher2>);` followed by simple checks against `C_I`/`C_R`.
+- Avoid the fragile pattern `in(cipher); let decoded = sdec(cipher, k) in let <...> = decoded in ...` when tuple matching creates dead failed-parse branches. Prefer nested `fst`/`snd` plus simple `if` guards, or keep the ciphertext opaque until a later event truly needs parsed fields.
+- Do not write input patterns such as `in(aenc(<x,y>, pkA));`, `in(aenc(=nonce, pkB));`, or `in(senc(<x,y>, k));`. They often introduce non-derivable variables or "Variable bound twice" warnings because role parameters and new fields are being matched inside the input premise.
+- Do not write equality subpatterns inside public input tuples, such as `in(<='TAG', x>);` or `in(<=expected, x);`. Receive fresh fields and compare them inside the role body with a simple `if` or a valid equality pattern over a bound identifier.
+- Do not put quoted tags/constants inside local tuple destructuring of adversary-controlled or decrypted terms, such as `let <'TAG', x> = term in`. Put the tag in the successful receive/protected constructor shape, or bind `expected_tag = 'TAG'` and compare against an already-bound field only if direct receiving is impossible.
+- For encrypted messages with tagged tuple payloads, avoid local tuple destructuring entirely after decryption when the plaintext came from the network. Use only built-in `fst`/`snd` selector chains plus simple checks against already-bound expected values; then emit events using the projected variables.
+- Do not invent selector helpers such as `proj3/1`, `m2_tag/1`, or `req_na/1` unless you also define correct equations for every selector and use them consistently. Undeclared-equation selectors are ordinary uninterpreted functions and make honest traces unreachable.
+- If a real semantic check must remain as `if condition then`, keep the condition simple and put the whole continuation inside parentheses when it has more than one statement.
+- If the same reachability warning survives a local patch, or diagnostics mention several generated state facts/rules in one role, rewrite the affected role using these successful-branch templates instead of making another small textual patch.
+	Proof-goal modeling contract:
+- Treat proof_spec expectations as target contracts, not just names.
+- Target lemma names are immutable. Do not split, rename, suffix, or replace a target lemma with per-message variants. If a source/typing lemma needs per-message obligations, keep one lemma with the exact target name and put separate guarded conjuncts inside its single quoted formula.
+- For source/typing target lemmas, first read the target `intent`; if it contains `Source obligations: ...`, implement those exact `IN_* => OUT_* or KU/K` obligations as the lemma's guarded conjuncts.
+- For source/typing targets, preserve the reviewed `IN_*`/`OUT_*` action-fact schema from proof_context or preservation_boundary: keep fact names, arities, and payload roles stable unless the reviewed context explicitly permits abstraction.
+- Treat `IN_*` source facts as accepted-input facts, not raw receive markers: emit them only after the reviewed parse/decrypt/check boundary for the referenced value. If a reviewed compromise/reveal path lets the adversary forge a protected input, include the matching exception or limit the source obligation to uncompromised traces.
+- For source/typing obligations over accepted protected inputs, do not assert an unqualified honest origin across a compromised protection boundary; according to the reviewed compromise model, either relate the accepted value to a prior honest OUT, show adversary knowledge/public origin, or include the relevant compromise exception with its identity/key owner properly bound.
+- Do not add non-target source-helper lemmas, `sources` lemmas, or auxiliary source-helper events unless a user-facing target lemma is explicitly `goal_type=source` or `goal_type=typing`.
+- `goal_type=source` or source/typing target lemmas are helper lemmas. They must not be vacuous. Relate parsed inputs to prior outputs or adversary knowledge. Use known Tamarin attributes such as `[sources]` only when the target itself is a source/typing helper; never put `[sources]` on secrecy, authentication, property, or executability targets.
+- For source/typing lemmas, use the canonical shape `lemma NAME [sources]: "(All ... #i. IN_X(...) @ i ==> ((Ex #j. OUT_Y(...) @ j & j < i) | (Ex #k. KU(v) @ k & k < i))) & (All ...)"`.
+- Each source/typing conjunct must have its own `All ... . IN_... @ #i ==> ...`, be parenthesized before the top-level `&`, and relate an input event to a matching prior output or adversary knowledge. Do not replace this with generic `Sent/Received` events, a disjunctive antecedent, or a well-sortedness claim.
+- Secrecy lemmas should reason about adversary knowledge with `K(secret) @ #j`, guarded by honest/reveal events when the protocol has long-term keys. Do not use process input facts `In(secret) @ #j` as a secrecy condition.
+- For secrecy reveal/compromise exceptions, preserve the reviewed timing policy. Do not add time-ordering constraints to exception clauses unless the reviewed contract requires them.
+- If a protected input can be forged after a long-term-key reveal, source/typing and secrecy lemmas need the matching reveal/compromise exception. Do not assert unqualified honest origin or secrecy across a compromised protection boundary.
+- Authentication lemmas should connect `Commit`/`Running` or protocol-specific completion events, include matching actor/peer/session parameters, and include compromise/reveal escape clauses when long-term keys can be revealed. Injective agreement must include this partner correspondence plus uniqueness; do not reduce it to duplicate-`Commit` uniqueness unless the reviewed contract explicitly asks for that property.
+- For compromise/reveal/corruption actions used as lemma exceptions, emit the exception action fact before leaking the compromised secret. A process like `out(secret); event Reveal(id)` is wrong for lemmas guarded by that reveal/corruption fact; use `event Reveal(id); out(secret)` so adversary use of the leaked value is covered by the exception.
+- `exists-trace` lemmas should witness reachable protocol completion or secret/session events. They should not be empty reachability shells.
+- Every action fact referenced in a target lemma must be emitted by the process with the same fact name and arity. Keep event argument lists consistent across all emissions and lemma references.
+- Keep the term shape of proof-relevant session values consistent across Secret/Running/Commit facts. Avoid proving about both `kab` and `<kab,t>` for the same session secret unless the reviewed target intentionally distinguishes those values.
+- Lemma variables for public keys, peers, sessions, and reveal exceptions must be bound through emitted action facts. Never refer to process-local fresh names or reducible terms over them, such as `pk(~skA)`, directly inside a lemma; emit and quantify variables like `pkA`, `pkB`, or `actor`.
+- Do not satisfy a target lemma by making it vacuous, deleting events, deleting lemmas, or replacing formulas with `True`/`true`.
+- If the reviewed expected outcome is `CounterexampleFound` (including legacy `expected_state` fields in reviewed artifacts), preserve the intended attack surface while keeping the lemma semantically meaningful.
+- If a `CounterexampleFound` target times out, reduce redundant search while preserving the attack surface: prefer one explicit adversary-controlled principal/key/session or one bounded attack branch supported by protocol_ir/proof_context. Do not force all peers to be honest, remove attacker-chosen public inputs, or use unbounded attacker-registration replication when one adversary identity suffices.
+
+Return this JSON shape:
+{
+  "sapic_plus": "theory ...\nbegin\n...\nprocess:\n...\nend",
+  "modeling_notes": ["..."],
+  "expected_limitations": ["..."]
+}
+
+Input:
+{
+  "case": {
+    "name": "Toy",
+    "difficulty": "easy"
+  },
+  "protocol_ir": {
+    "schema": "autosm_style_protocol_ir_v1",
+    "protocol_name": "Toy",
+    "roles": [
+      "A",
+      "B"
+    ],
+    "principals": [
+      {
+        "name": "A",
+        "role_hint": "A"
+      },
+      {
+        "name": "B",
+        "role_hint": "B"
+      }
+    ],
+    "crypto": {
+      "builtins": [
+        "hashing"
+      ],
+      "functions": [
+        "kdf/2"
+      ],
+      "equations": [],
+      "assumptions": []
+    },
+    "fresh_terms": [
+      {
+        "name": "~na",
+        "owner": "A",
+        "purpose": "nonce generated by A"
+      },
+      {
+        "name": "~nb",
+        "owner": "B",
+        "purpose": "nonce generated by B"
+      }
+    ],
+    "long_term_keys": [],
+    "messages": [
+      {
+        "label": "M1",
+        "step": 1,
+        "from": "A",
+        "to": "B",
+        "protection": "none",
+        "term": "~na",
+        "meaning": "A sends its fresh nonce to B in plaintext",
+        "receiver_can_decrypt": true,
+        "receiver_must_treat_as_opaque": []
+      },
+      {
+        "label": "M2",
+        "step": 2,
+        "from": "B",
+        "to": "A",
+        "protection": "none",
+        "term": "~nb",
+        "meaning": "B sends its fresh nonce to A in plaintext",
+        "receiver_can_decrypt": true,
+        "receiver_must_treat_as_opaque": []
+      },
+      {
+        "label": "M3",
+        "step": 3,
+        "from": "A",
+        "to": "B",
+        "protection": "none",
+        "term": "'ACK'",
+        "meaning": "A sends acknowledgement string 'ACK' to B",
+        "receiver_can_decrypt": true,
+        "receiver_must_treat_as_opaque": []
+      }
+    ],
+    "actions": [
+      {
+        "action_id": "A_send_M1",
+        "role": "A",
+        "kind": "send",
+        "generates": [
+          "~na"
+        ],
+        "message_in": [],
+        "message_out": [
+          "M1"
+        ],
+        "checks": [],
+        "events": [
+          "OUT_M1(~na)"
+        ]
+      },
+      {
+        "action_id": "B_recv_M1",
+        "role": "B",
+        "kind": "receive",
+        "generates": [],
+        "message_in": [
+          "M1"
+        ],
+        "message_out": [],
+        "checks": [],
+        "events": [
+          "RECV_M1(~na)"
+        ]
+      },
+      {
+        "action_id": "B_send_M2",
+        "role": "B",
+        "kind": "send",
+        "generates": [
+          "~nb"
+        ],
+        "message_in": [],
+        "message_out": [
+          "M2"
+        ],
+        "checks": [],
+        "events": [
+          "OUT_M2(~nb)"
+        ]
+      },
+      {
+        "action_id": "A_recv_M2",
+        "role": "A",
+        "kind": "receive",
+        "generates": [],
+        "message_in": [
+          "M2"
+        ],
+        "message_out": [],
+        "checks": [],
+        "events": [
+          "RECV_M2(~nb)"
+        ]
+      },
+      {
+        "action_id": "A_install_SK",
+        "role": "A",
+        "kind": "internal",
+        "generates": [],
+        "message_in": [],
+        "message_out": [],
+        "checks": [],
+        "events": [
+          "Install_SK(A, kdf(~na, ~nb))",
+          "Secret(A, kdf(~na, ~nb), B)",
+          "RoleDone(A)"
+        ]
+      },
+      {
+        "action_id": "A_send_M3",
+        "role": "A",
+        "kind": "send",
+        "generates": [],
+        "message_in": [],
+        "message_out": [
+          "M3"
+        ],
+        "checks": [],
+        "events": [
+          "OUT_M3('ACK')"
+        ]
+      },
+      {
+        "action_id": "B_recv_M3",
+        "role": "B",
+        "kind": "receive",
+        "generates": [],
+        "message_in": [
+          "M3"
+        ],
+        "message_out": [],
+        "checks": [],
+        "events": [
+          "RECV_M3('ACK')"
+        ]
+      },
+      {
+        "action_id": "B_install_SK",
+        "role": "B",
+        "kind": "internal",
+        "generates": [],
+        "message_in": [],
+        "message_out": [],
+        "checks": [],
+        "events": [
+          "Install_SK(B, kdf(~na, ~nb))",
+          "Secret(B, kdf(~na, ~nb), A)",
+          "RoleDone(B)"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "role": "B",
+        "condition": "B must have received ANonce from M1 before sending M2",
+        "source_message": "M1",
+        "action": "B_send_M2"
+      },
+      {
+        "role": "A",
+        "condition": "A knows ANonce (~na) and BNonce (~nb) before installing SK",
+        "source_message": "M2",
+        "action": "A_install_SK"
+      },
+      {
+        "role": "A",
+        "condition": "A has installed SK and switched to DONE before sending ACK",
+        "source_message": "internal",
+        "action": "A_send_M3"
+      },
+      {
+        "role": "B",
+        "condition": "B receives 'ACK' and checks it is the expected string",
+        "source_message": "M3",
+        "action": "B_recv_M3"
+      },
+      {
+        "role": "B",
+        "condition": "B knows ANonce (from M1) and BNonce (~nb) before installing SK",
+        "source_message": "M1",
+        "action": "B_install_SK"
+      }
+    ],
+    "events": [
+      {
+        "name": "RoleDone",
+        "role": "A",
+        "when": "A finishes protocol",
+        "arguments": [
+          "A"
+        ],
+        "proof_relevance": [
+          "successful_run"
+        ]
+      },
+      {
+        "name": "RoleDone",
+        "role": "B",
+        "when": "B finishes protocol",
+        "arguments": [
+          "B"
+        ],
+        "proof_relevance": [
+          "successful_run"
+        ]
+      },
+      {
+        "name": "Secret",
+        "role": "A",
+        "when": "A installs session key",
+        "arguments": [
+          "A",
+          "kdf(~na, ~nb)",
+          "B"
+        ],
+        "proof_relevance": [
+          "sk_secret_a",
+          "sk_secret_b"
+        ]
+      },
+      {
+        "name": "Secret",
+        "role": "B",
+        "when": "B installs session key",
+        "arguments": [
+          "B",
+          "kdf(~na, ~nb)",
+          "A"
+        ],
+        "proof_relevance": [
+          "sk_secret_a",
+          "sk_secret_b"
+        ]
+      }
+    ],
+    "claims": [
+      {
+        "lemma_name": "successful_run",
+        "goal_type": "executability",
+        "expected_state": "ProvedSatisfying",
+        "trace_kind": "exists-trace",
+        "intent": "There exists a trace where both Alex and Blake complete the protocol.",
+        "event_schema": [
+          "RoleDone('A')",
+          "RoleDone('B')"
+        ],
+        "witness": ""
+      },
+      {
+        "lemma_name": "sk_secret_a",
+        "goal_type": "secrecy",
+        "expected_state": "CounterexampleFound",
+        "trace_kind": "all-traces",
+        "intent": "Session key SK computed by A remains secret from adversary.",
+        "event_schema": [
+          "Secret(A, kdf(~na, ~nb), B)"
+        ],
+        "witness": ""
+      },
+      {
+        "lemma_name": "sk_secret_b",
+        "goal_type": "secrecy",
+        "expected_state": "CounterexampleFound",
+        "trace_kind": "all-traces",
+        "intent": "Session key SK computed by B remains secret from adversary.",
+        "event_schema": [
+          "Secret(B, kdf(~na, ~nb), A)"
+        ],
+        "witness": ""
+      }
+    ],
+    "compromise": {
+      "reveal_events": [],
+      "policy": "No long-term keys, so no compromise model; adversary can intercept clear nonces."
+    },
+    "abstractions": [
+      "Dolev-Yao model with fully insecure channel; adversary can read, modify, inject, and drop messages. Nonces are sent in clear, no cryptographic protection."
+    ],
+    "modeling_assumptions": [
+      "Key derivation function kdf/2 is uninterpreted (no equations) and assumed strong if inputs are secret.",
+      "Fresh nonces are generated uniquely per session."
+    ],
+    "resolved_open_questions": [],
+    "semantic_constraints": [
+      {
+        "kind": "field_review_decision",
+        "field_path": "compromise.reveal_events",
+        "review_status": "must_review",
+        "priority_score": 1,
+        "priority_source": "formula",
+        "policy": "This proof-critical field remains unresolved; do not silently strengthen or reinterpret it."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.0.receiver_can_decrypt",
+        "review_status": "needs_review",
+        "priority_score": 0.5,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.1.receiver_can_decrypt",
+        "review_status": "needs_review",
+        "priority_score": 0.5,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.2.receiver_can_decrypt",
+        "review_status": "needs_review",
+        "priority_score": 0.5,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.0.sender_knows",
+        "review_status": "needs_review",
+        "priority_score": 0,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.0.step",
+        "review_status": "needs_review",
+        "priority_score": 0,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.1.sender_knows",
+        "review_status": "needs_review",
+        "priority_score": 0,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.1.step",
+        "review_status": "needs_review",
+        "priority_score": 0,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.2.step",
+        "review_status": "needs_review",
+        "priority_score": 0,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      }
+    ],
+    "field_evidence": [
+      {
+        "field_path": "fresh_terms.0.name",
+        "source_quote": "Alex computes a nonce",
+        "evidence_kind": "direct",
+        "reason": "Derived from A's first message",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "fresh_terms.0.owner",
+        "source_quote": "Alex computes a nonce",
+        "evidence_kind": "direct",
+        "reason": "Owner is Alex (A)",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "fresh_terms.0.purpose",
+        "source_quote": "Alex computes a nonce and sends it to Blake",
+        "evidence_kind": "direct",
+        "reason": "Purpose explicitly stated",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "fresh_terms.1.name",
+        "source_quote": "Blake computes their own nonce",
+        "evidence_kind": "direct",
+        "reason": "Derived from B's message",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "fresh_terms.1.owner",
+        "source_quote": "Blake computes their own nonce",
+        "evidence_kind": "direct",
+        "reason": "Owner is Blake (B)",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "fresh_terms.1.purpose",
+        "source_quote": "Blake computes their own nonce and sends it to Alex",
+        "evidence_kind": "direct",
+        "reason": "Purpose explicitly stated",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "messages.0.label",
+        "source_quote": "A -> B: ANonce",
+        "evidence_kind": "direct",
+        "reason": "Label inferred from first arrow notation",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "messages.0.from",
+        "source_quote": "A -> B: ANonce",
+        "evidence_kind": "direct",
+        "reason": "Sender is A",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "messages.0.to",
+        "source_quote": "A -> B: ANonce",
+        "evidence_kind": "direct",
+        "reason": "Receiver is B",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "messages.0.protection",
+        "source_quote": "sends it to Blake (no encryption mentioned)",
+        "evidence_kind": "direct",
+        "reason": "No cryptographic wrapping described",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "messages.0.term",
+        "source_quote": "Alex computes a nonce and sends it to Blake",
+        "evidence_kind": "direct",
+        "reason": "Term is the fresh nonce ~na",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "messages.0.meaning",
+        "source_quote": "Alex computes a nonce and sends it to Blake",
+        "evidence_kind": "direct",
+        "reason": "Meaning directly stated",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "messages.1.label",
+        "source_quote": "B -> A: BNonce",
+        "evidence_kind": "direct",
+        "reason": "Label inferred from second arrow notation",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "messages.1.from",
+        "source_quote": "B -> A: BNonce",
+        "evidence_kind": "direct",
+        "reason": "Sender is B",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "messages.1.to",
+        "source_quote": "B -> A: BNonce",
+        "evidence_kind": "direct",
+        "reason": "Receiver is A",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "messages.1.protection",
+        "source_quote": "sends it to Alex (no encryption mentioned)",
+        "evidence_kind": "direct",
+        "reason": "No cryptographic wrapping described",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "messages.1.term",
+        "source_quote": "Blake computes their own nonce and sends it to Alex",
+        "evidence_kind": "direct",
+        "reason": "Term is the fresh nonce ~nb",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "messages.1.meaning",
+        "source_quote": "Blake computes their own nonce and sends it to Alex",
+        "evidence_kind": "direct",
+        "reason": "Meaning directly stated",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "messages.2.label",
+        "source_quote": "A -> B: \"ACK\"",
+        "evidence_kind": "direct",
+        "reason": "Label inferred from third message arrow notation",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "messages.2.from",
+        "source_quote": "A -> B: \"ACK\"",
+        "evidence_kind": "direct",
+        "reason": "Sender is A",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "messages.2.to",
+        "source_quote": "A -> B: \"ACK\"",
+        "evidence_kind": "direct",
+        "reason": "Receiver is B",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "messages.2.protection",
+        "source_quote": "sends a message with the string \"ACK\" (no encryption mentioned)",
+        "evidence_kind": "direct",
+        "reason": "No cryptographic wrapping described",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "messages.2.term",
+        "source_quote": "sends a message with the string \"ACK\"",
+        "evidence_kind": "direct",
+        "reason": "Term is string constant \"ACK\"",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "messages.2.meaning",
+        "source_quote": "Alex sends a message with the string \"ACK\" to Blake",
+        "evidence_kind": "direct",
+        "reason": "Meaning directly stated",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.0.role",
+        "source_quote": "When Blake receives Alex's nonce, Blake computes their own nonce",
+        "evidence_kind": "direct",
+        "reason": "B must have received M1 before sending M2",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.0.condition",
+        "source_quote": "Blake receives Alex's nonce (M1) then sends BNonce (M2)",
+        "evidence_kind": "direct",
+        "reason": "Precondition for sending M2",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.0.source_message",
+        "source_quote": "Alex's nonce",
+        "evidence_kind": "direct",
+        "reason": "Source message is M1 containing ANonce",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.0.action",
+        "source_quote": "B sends BNonce (M2)",
+        "evidence_kind": "direct",
+        "reason": "Action is B_send_M2",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "checks.1.role",
+        "source_quote": "When Alex receives Blake's nonce, Alex does two things",
+        "evidence_kind": "direct",
+        "reason": "A receives M2 before installing SK",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.1.condition",
+        "source_quote": "Alex installs a session key SK, which is derived from ANonce and BNonce",
+        "evidence_kind": "direct",
+        "reason": "A must have both nonces to derive SK",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.1.source_message",
+        "source_quote": "when Alex receives Blake's nonce",
+        "evidence_kind": "direct",
+        "reason": "Source of BNonce is M2",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.1.action",
+        "source_quote": "Alex installs a session key",
+        "evidence_kind": "direct",
+        "reason": "Action is A_install_SK",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "checks.2.role",
+        "source_quote": "Once the session key is installed, Alex sends a message with the string \"ACK\"",
+        "evidence_kind": "direct",
+        "reason": "A must have installed SK before sending M3",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.2.condition",
+        "source_quote": "A has installed SK and switched to DONE",
+        "evidence_kind": "direct",
+        "reason": "Precondition for sending ACK",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.2.source_message",
+        "source_quote": "internal state after installation",
+        "evidence_kind": "direct",
+        "reason": "Source is internal transition, not a message",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.85,
+        "consistency_confidence_score": 0.85,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "checks.2.action",
+        "source_quote": "Alex sends a message with the string \"ACK\"",
+        "evidence_kind": "direct",
+        "reason": "Action is A_send_M3",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "checks.3.role",
+        "source_quote": "When Blake receives the \"ACK\" message",
+        "evidence_kind": "direct",
+        "reason": "B receives M3",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.3.condition",
+        "source_quote": "Blake receives the \"ACK\" message",
+        "evidence_kind": "direct",
+        "reason": "Check that received string is 'ACK'",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.3.source_message",
+        "source_quote": "\"ACK\" message from Alex",
+        "evidence_kind": "direct",
+        "reason": "Source is M3",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.3.action",
+        "source_quote": "Blake receives the \"ACK\" message",
+        "evidence_kind": "direct",
+        "reason": "Action is B_recv_M3",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "checks.4.role",
+        "source_quote": "Blake also computes the session key SK = kdf(ANonce, BNonce), installs it",
+        "evidence_kind": "direct",
+        "reason": "B computes SK after receiving ACK",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.4.condition",
+        "source_quote": "Blake knows ANonce (from M1) and BNonce (generated)",
+        "evidence_kind": "direct",
+        "reason": "B must have both nonces to compute SK",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.4.source_message",
+        "source_quote": "ANonce from Alex (M1)",
+        "evidence_kind": "direct",
+        "reason": "Source for ANonce is M1",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "checks.4.action",
+        "source_quote": "Blake also computes the session key... installs it",
+        "evidence_kind": "direct",
+        "reason": "Action is B_install_SK",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "events.0.name",
+        "source_quote": "switches to a 'DONE' state to indicate that the protocol has been executed successfully on Alex's side",
+        "evidence_kind": "direct",
+        "reason": "DONE state on Alex's side",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "events.0.role",
+        "source_quote": "Alex's side",
+        "evidence_kind": "direct",
+        "reason": "Role is A",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "events.0.when",
+        "source_quote": "Once the session key is installed, Alex sends a message with the string 'ACK' to Blake and switches to a 'DONE' state",
+        "evidence_kind": "direct",
+        "reason": "A finishes protocol after installing SK and sending ACK",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "events.0.arguments",
+        "source_quote": "Aaron completes",
+        "evidence_kind": "direct",
+        "reason": "Argument is A's identity",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "events.1.name",
+        "source_quote": "switches to a 'DONE' state (for Blake)",
+        "evidence_kind": "direct",
+        "reason": "DONE state on Blake's side",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "events.1.role",
+        "source_quote": "Blake's side",
+        "evidence_kind": "direct",
+        "reason": "Role is B",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "events.1.when",
+        "source_quote": "When Blake receives the 'ACK' message, Blake also computes the session key... installs it and switches to a 'DONE' state.",
+        "evidence_kind": "direct",
+        "reason": "B finishes after installing SK",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "events.1.arguments",
+        "source_quote": "Blake completes",
+        "evidence_kind": "direct",
+        "reason": "Argument is B's identity",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "events.2.name",
+        "source_quote": "secrecy goal for A",
+        "evidence_kind": "direct",
+        "reason": "Secret event for session key",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "events.2.role",
+        "source_quote": "secrecy goal named sk_secret_a",
+        "evidence_kind": "direct",
+        "reason": "Role A emits secret event",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "events.2.when",
+        "source_quote": "Alex installs session key SK",
+        "evidence_kind": "direct",
+        "reason": "When A derives and installs the session key",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "events.2.arguments",
+        "source_quote": "Secret(A,SK,B)",
+        "evidence_kind": "direct",
+        "reason": "Arguments are A, SK (kdf(...)), B",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "events.3.name",
+        "source_quote": "secrecy goal for B",
+        "evidence_kind": "direct",
+        "reason": "Secret event for session key",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "events.3.role",
+        "source_quote": "secrecy goal named sk_secret_b",
+        "evidence_kind": "direct",
+        "reason": "Role B emits secret event",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "events.3.when",
+        "source_quote": "Blake installs session key SK",
+        "evidence_kind": "direct",
+        "reason": "When B derives and installs the session key",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.85
+      },
+      {
+        "field_path": "events.3.arguments",
+        "source_quote": "Secret(B,SK,A)",
+        "evidence_kind": "direct",
+        "reason": "Arguments are B, SK (kdf(...)), A",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.9,
+        "consistency_confidence_score": 0.9,
+        "semantic_impact_score": 0.8
+      },
+      {
+        "field_path": "claims.0.lemma_name",
+        "source_quote": "goal name: successful_run",
+        "evidence_kind": "direct",
+        "reason": "Goal name from user-supplied goals",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.0.goal_type",
+        "source_quote": "type: executability",
+        "evidence_kind": "direct",
+        "reason": "Goal type from user input",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.0.trace_kind",
+        "source_quote": "trace_kind: exists-trace",
+        "evidence_kind": "direct",
+        "reason": "Trace kind from user input",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.0.expected_state",
+        "source_quote": "expected_state: ProvedSatisfying",
+        "evidence_kind": "direct",
+        "reason": "Expected state from user input",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.0.event_schema",
+        "source_quote": "executability existence of two RoleDone events",
+        "evidence_kind": "direct",
+        "reason": "Schema derived from DONE state requirements for both roles",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "claims.1.lemma_name",
+        "source_quote": "goal name: sk_secret_a",
+        "evidence_kind": "direct",
+        "reason": "Goal name from user input",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.1.goal_type",
+        "source_quote": "type: secrecy",
+        "evidence_kind": "direct",
+        "reason": "Goal type from user input",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.1.trace_kind",
+        "source_quote": "trace_kind: all-traces",
+        "evidence_kind": "direct",
+        "reason": "Trace kind from user input",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.1.expected_state",
+        "source_quote": "expected_state: CounterexampleFound",
+        "evidence_kind": "direct",
+        "reason": "Expected state from user input",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.1.event_schema",
+        "source_quote": "secrecy of SK derived by A",
+        "evidence_kind": "direct",
+        "reason": "Event Secret(A, kdf(...), B) matches secrecy goal",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      },
+      {
+        "field_path": "claims.2.lemma_name",
+        "source_quote": "goal name: sk_secret_b",
+        "evidence_kind": "direct",
+        "reason": "Goal name from user input",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.2.goal_type",
+        "source_quote": "type: secrecy",
+        "evidence_kind": "direct",
+        "reason": "Goal type from user input",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.2.trace_kind",
+        "source_quote": "trace_kind: all-traces",
+        "evidence_kind": "direct",
+        "reason": "Trace kind from user input",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.2.expected_state",
+        "source_quote": "expected_state: CounterexampleFound",
+        "evidence_kind": "direct",
+        "reason": "Expected state from user input",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 1.0,
+        "consistency_confidence_score": 1.0,
+        "semantic_impact_score": 0.95
+      },
+      {
+        "field_path": "claims.2.event_schema",
+        "source_quote": "secrecy of SK derived by B",
+        "evidence_kind": "direct",
+        "reason": "Event Secret(B, kdf(...), A) matches secrecy goal",
+        "priority_llm": 0.1,
+        "evidence_confidence_score": 0.95,
+        "consistency_confidence_score": 0.95,
+        "semantic_impact_score": 0.9
+      }
+    ],
+    "open_questions": []
+  },
+  "proof_context": {
+    "target_lemmas": [
+      {
+        "name": "successful_run",
+        "goal_type": "executability",
+        "trace_kind": "exists-trace",
+        "expected_state": "ProvedSatisfying",
+        "expected_raw": "",
+        "intent": "There exists a trace where both Alex and Blake complete the protocol.",
+        "required_events": [
+          "RoleDone('A')",
+          "RoleDone('B')"
+        ],
+        "witness": "",
+        "claim_source": "reviewed_contract"
+      },
+      {
+        "name": "sk_secret_a",
+        "goal_type": "secrecy",
+        "trace_kind": "all-traces",
+        "expected_state": "CounterexampleFound",
+        "expected_raw": "",
+        "intent": "Session key SK computed by A remains secret from adversary.",
+        "required_events": [
+          "Secret(A, kdf(~na, ~nb), B)"
+        ],
+        "witness": "",
+        "claim_source": "reviewed_contract"
+      },
+      {
+        "name": "sk_secret_b",
+        "goal_type": "secrecy",
+        "trace_kind": "all-traces",
+        "expected_state": "CounterexampleFound",
+        "expected_raw": "",
+        "intent": "Session key SK computed by B remains secret from adversary.",
+        "required_events": [
+          "Secret(B, kdf(~na, ~nb), A)"
+        ],
+        "witness": "",
+        "claim_source": "reviewed_contract"
+      }
+    ],
+    "event_obligations": [
+      {
+        "lemma": "successful_run",
+        "required_events": [
+          "RoleDone('A')",
+          "RoleDone('B')"
+        ]
+      },
+      {
+        "lemma": "sk_secret_a",
+        "required_events": [
+          "Secret(A, kdf(~na, ~nb), B)"
+        ]
+      },
+      {
+        "lemma": "sk_secret_b",
+        "required_events": [
+          "Secret(B, kdf(~na, ~nb), A)"
+        ]
+      }
+    ],
+    "proof_obligations": {
+      "requires_sources_lemma": false,
+      "source_line_map": [],
+      "source_policy": "Source/typing helper obligations are disabled unless a user-facing target lemma is explicitly classified as source/typing. Do not add non-target source-helper lemmas or auxiliary source-helper events for secrecy, authentication, executability, or general property targets."
+    },
+    "preservation_boundary": {
+      "needed": false,
+      "score": 4,
+      "triggers": [
+        "message_count=3",
+        "explicit_compromise_model"
+      ],
+      "reason": "Protocol appears simple enough for direct Sapic+ generation from ProtocolIR and proof goals.",
+      "constraints": {}
+    },
+    "semantic_constraints": [
+      {
+        "kind": "field_review_decision",
+        "field_path": "compromise.reveal_events",
+        "review_status": "must_review",
+        "priority_score": 1,
+        "priority_source": "formula",
+        "policy": "This proof-critical field remains unresolved; do not silently strengthen or reinterpret it."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.0.receiver_can_decrypt",
+        "review_status": "needs_review",
+        "priority_score": 0.5,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.1.receiver_can_decrypt",
+        "review_status": "needs_review",
+        "priority_score": 0.5,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.2.receiver_can_decrypt",
+        "review_status": "needs_review",
+        "priority_score": 0.5,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.0.sender_knows",
+        "review_status": "needs_review",
+        "priority_score": 0,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.0.step",
+        "review_status": "needs_review",
+        "priority_score": 0,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.1.sender_knows",
+        "review_status": "needs_review",
+        "priority_score": 0,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.1.step",
+        "review_status": "needs_review",
+        "priority_score": 0,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      },
+      {
+        "kind": "field_review_decision",
+        "field_path": "messages.2.step",
+        "review_status": "needs_review",
+        "priority_score": 0,
+        "priority_source": "formula",
+        "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+      }
+    ],
+    "generation_policies": [
+      "Generate from ProtocolIR and derived proof goals as reviewed parser output; do not reinterpret the natural-language protocol after this stage.",
+      "Preserve value provenance: setup/state stays setup/state, fresh terms are generated by their owner, network inputs remain adversary-controlled until checked, and derived values stay tied to their derivation.",
+      "Preserve ordered check/event boundaries: emit proof events only after the role has the evidence represented by the event arguments.",
+      "Keep event payload schemas compact and consistent across roles and lemmas for the same session, secret, transcript, or source value.",
+      "For expected CounterexampleFound targets, preserve the reviewed attack surface; do not add protocol checks, restrictions, closed-world principals, or vacuous lemmas solely to make the target prove.",
+      "Model compromise/reveal events explicitly and preserve which values they expose and how lemma exceptions or ordering depend on them."
+    ]
+  },
+  "abstraction_hints": {
+    "enabled": false,
+    "selected": [],
+    "reason": "disabled"
+  },
+  "ir_validation": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "checks": [
+      {
+        "name": "roles_present",
+        "result": "pass",
+        "detail": "roles are available"
+      },
+      {
+        "name": "messages_present",
+        "result": "pass",
+        "detail": "3 message declaration(s)"
+      },
+      {
+        "name": "message_labels_unique",
+        "result": "pass",
+        "detail": "message labels are unique"
+      },
+      {
+        "name": "target_claims_present",
+        "result": "pass",
+        "detail": "all proof_spec targets have claim records"
+      },
+      {
+        "name": "message_tags_present",
+        "result": "pass",
+        "detail": "encrypted/message-authenticated messages have public tags or none detected"
+      }
+    ],
+    "repair_target": "ProtocolIR"
+  },
+  "field_reviews": [
+    {
+      "id": "compromise.reveal_events",
+      "schema": "autosm_style_field_review_v1",
+      "section": "compromise",
+      "field_path": "compromise.reveal_events",
+      "value_snapshot": [],
+      "source_evidence": [],
+      "evidence_confidence": "low",
+      "evidence_confidence_score": 0,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 1,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 1,
+      "priority_score": 1,
+      "priority_source": "formula",
+      "priority_level": "high",
+      "review_status": "must_review",
+      "diagnostics": [],
+      "suggested_action": "Confirm reveal scope and timing before generating secrecy or authentication lemmas.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.0.receiver_can_decrypt",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.0.receiver_can_decrypt",
+      "value_snapshot": true,
+      "source_evidence": [
+        {
+          "kind": "none",
+          "quote": "",
+          "char_start": null,
+          "char_end": null
+        }
+      ],
+      "evidence_confidence": "low",
+      "evidence_confidence_score": 0,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "medium",
+      "semantic_impact_score": 0.5,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0.5,
+      "priority_score": 0.5,
+      "priority_source": "formula",
+      "priority_level": "medium",
+      "review_status": "needs_review",
+      "diagnostics": [],
+      "suggested_action": "Check provenance and derivability before confirming this field.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.1.receiver_can_decrypt",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.1.receiver_can_decrypt",
+      "value_snapshot": true,
+      "source_evidence": [
+        {
+          "kind": "none",
+          "quote": "",
+          "char_start": null,
+          "char_end": null
+        }
+      ],
+      "evidence_confidence": "low",
+      "evidence_confidence_score": 0,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "medium",
+      "semantic_impact_score": 0.5,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0.5,
+      "priority_score": 0.5,
+      "priority_source": "formula",
+      "priority_level": "medium",
+      "review_status": "needs_review",
+      "diagnostics": [],
+      "suggested_action": "Check provenance and derivability before confirming this field.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.2.receiver_can_decrypt",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.2.receiver_can_decrypt",
+      "value_snapshot": true,
+      "source_evidence": [
+        {
+          "kind": "none",
+          "quote": "",
+          "char_start": null,
+          "char_end": null
+        }
+      ],
+      "evidence_confidence": "low",
+      "evidence_confidence_score": 0,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "medium",
+      "semantic_impact_score": 0.5,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0.5,
+      "priority_score": 0.5,
+      "priority_source": "formula",
+      "priority_level": "medium",
+      "review_status": "needs_review",
+      "diagnostics": [],
+      "suggested_action": "Check provenance and derivability before confirming this field.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.2.source_message",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.2.source_message",
+      "value_snapshot": "internal",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "internal state after installation",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Source is internal transition, not a message"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.85,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.12,
+      "priority_score": 0.12,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.0.condition",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.0.condition",
+      "value_snapshot": "B must have received ANonce from M1 before sending M2",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "Blake receives Alex's nonce (M1) then sends BNonce (M2)",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Precondition for sending M2"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.0.role",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.0.role",
+      "value_snapshot": "B",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "When Blake receives Alex's nonce, Blake computes their own nonce",
+          "char_start": 433,
+          "char_end": 497,
+          "reason": "B must have received M1 before sending M2"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.0.source_message",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.0.source_message",
+      "value_snapshot": "M1",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Alex's nonce",
+          "char_start": 453,
+          "char_end": 465,
+          "reason": "Source message is M1 containing ANonce"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.1.condition",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.1.condition",
+      "value_snapshot": "A knows ANonce (~na) and BNonce (~nb) before installing SK",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Alex installs a session key SK, which is derived from ANonce and BNonce",
+          "char_start": 593,
+          "char_end": 664,
+          "reason": "A must have both nonces to derive SK"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.1.role",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.1.role",
+      "value_snapshot": "A",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "When Alex receives Blake's nonce, Alex does two things",
+          "char_start": 537,
+          "char_end": 591,
+          "reason": "A receives M2 before installing SK"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.1.source_message",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.1.source_message",
+      "value_snapshot": "M2",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "when Alex receives Blake's nonce",
+          "char_start": 537,
+          "char_end": 569,
+          "reason": "Source of BNonce is M2"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.2.condition",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.2.condition",
+      "value_snapshot": "A has installed SK and switched to DONE before sending ACK",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "A has installed SK and switched to DONE",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Precondition for sending ACK"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.2.role",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.2.role",
+      "value_snapshot": "A",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Once the session key is installed, Alex sends a message with the string \"ACK\"",
+          "char_start": 737,
+          "char_end": 814,
+          "reason": "A must have installed SK before sending M3"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.3.condition",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.3.condition",
+      "value_snapshot": "B receives 'ACK' and checks it is the expected string",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Blake receives the \"ACK\" message",
+          "char_start": 953,
+          "char_end": 985,
+          "reason": "Check that received string is 'ACK'"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.3.role",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.3.role",
+      "value_snapshot": "B",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "When Blake receives the \"ACK\" message",
+          "char_start": 948,
+          "char_end": 985,
+          "reason": "B receives M3"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.3.source_message",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.3.source_message",
+      "value_snapshot": "M3",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "\"ACK\" message from Alex",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Source is M3"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.4.condition",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.4.condition",
+      "value_snapshot": "B knows ANonce (from M1) and BNonce (~nb) before installing SK",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "Blake knows ANonce (from M1) and BNonce (generated)",
+          "char_start": null,
+          "char_end": null,
+          "reason": "B must have both nonces to compute SK"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.4.role",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.4.role",
+      "value_snapshot": "B",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Blake also computes the session key SK = kdf(ANonce, BNonce), installs it",
+          "char_start": 987,
+          "char_end": 1060,
+          "reason": "B computes SK after receiving ACK"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.4.source_message",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.4.source_message",
+      "value_snapshot": "M1",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "ANonce from Alex (M1)",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Source for ANonce is M1"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.0.when",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.0.when",
+      "value_snapshot": "A finishes protocol",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "Once the session key is installed, Alex sends a message with the string 'ACK' to Blake and switches to a 'DONE' state",
+          "char_start": null,
+          "char_end": null,
+          "reason": "A finishes protocol after installing SK and sending ACK"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.1.when",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.1.when",
+      "value_snapshot": "B finishes protocol",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "When Blake receives the 'ACK' message, Blake also computes the session key... installs it and switches to a 'DONE' state.",
+          "char_start": null,
+          "char_end": null,
+          "reason": "B finishes after installing SK"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.2.name",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.2.name",
+      "value_snapshot": "Secret",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "secrecy goal for A",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Secret event for session key"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.2.role",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.2.role",
+      "value_snapshot": "A",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "secrecy goal named sk_secret_a",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Role A emits secret event"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.2.when",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.2.when",
+      "value_snapshot": "A installs session key",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "Alex installs session key SK",
+          "char_start": null,
+          "char_end": null,
+          "reason": "When A derives and installs the session key"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.3.name",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.3.name",
+      "value_snapshot": "Secret",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "secrecy goal for B",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Secret event for session key"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.3.role",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.3.role",
+      "value_snapshot": "B",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "secrecy goal named sk_secret_b",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Role B emits secret event"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.3.when",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.3.when",
+      "value_snapshot": "B installs session key",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "Blake installs session key SK",
+          "char_start": null,
+          "char_end": null,
+          "reason": "When B derives and installs the session key"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.085,
+      "priority_score": 0.085,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.0.action",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.0.action",
+      "value_snapshot": "B_send_M2",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "B sends BNonce (M2)",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Action is B_send_M2"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.08,
+      "priority_score": 0.08,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.1.action",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.1.action",
+      "value_snapshot": "A_install_SK",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Alex installs a session key",
+          "char_start": 593,
+          "char_end": 620,
+          "reason": "Action is A_install_SK"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.08,
+      "priority_score": 0.08,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.2.action",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.2.action",
+      "value_snapshot": "A_send_M3",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Alex sends a message with the string \"ACK\"",
+          "char_start": 772,
+          "char_end": 814,
+          "reason": "Action is A_send_M3"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.08,
+      "priority_score": 0.08,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.3.action",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.3.action",
+      "value_snapshot": "B_recv_M3",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Blake receives the \"ACK\" message",
+          "char_start": 953,
+          "char_end": 985,
+          "reason": "Action is B_recv_M3"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.08,
+      "priority_score": 0.08,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "checks.4.action",
+      "schema": "autosm_style_field_review_v1",
+      "section": "checks",
+      "field_path": "checks.4.action",
+      "value_snapshot": "B_install_SK",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "Blake also computes the session key... installs it",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Action is B_install_SK"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.08,
+      "priority_score": 0.08,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.0.arguments",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.0.arguments",
+      "value_snapshot": [
+        "A"
+      ],
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "Aaron completes",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Argument is A's identity"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.08,
+      "priority_score": 0.08,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.1.arguments",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.1.arguments",
+      "value_snapshot": [
+        "B"
+      ],
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "Blake completes",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Argument is B's identity"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.08,
+      "priority_score": 0.08,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.2.arguments",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.2.arguments",
+      "value_snapshot": [
+        "A",
+        "kdf(~na, ~nb)",
+        "B"
+      ],
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "Secret(A,SK,B)",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Arguments are A, SK (kdf(...)), B"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.08,
+      "priority_score": 0.08,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.3.arguments",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.3.arguments",
+      "value_snapshot": [
+        "B",
+        "kdf(~na, ~nb)",
+        "A"
+      ],
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "Secret(B,SK,A)",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Arguments are B, SK (kdf(...)), A"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.9,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.08,
+      "priority_score": 0.08,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.0.term",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.0.term",
+      "value_snapshot": "~na",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Alex computes a nonce and sends it to Blake",
+          "char_start": 371,
+          "char_end": 414,
+          "reason": "Term is the fresh nonce ~na"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.048,
+      "priority_score": 0.048,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.1.term",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.1.term",
+      "value_snapshot": "~nb",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Blake computes their own nonce and sends it to Alex",
+          "char_start": 467,
+          "char_end": 518,
+          "reason": "Term is the fresh nonce ~nb"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.048,
+      "priority_score": 0.048,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.2.term",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.2.term",
+      "value_snapshot": "'ACK'",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "sends a message with the string \"ACK\"",
+          "char_start": 777,
+          "char_end": 814,
+          "reason": "Term is string constant \"ACK\""
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.048,
+      "priority_score": 0.048,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.0.event_schema",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.0.required_events",
+      "value_snapshot": [
+        "RoleDone('A')",
+        "RoleDone('B')"
+      ],
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "executability existence of two RoleDone events",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Schema derived from DONE state requirements for both roles"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.1.event_schema",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.1.required_events",
+      "value_snapshot": [
+        "Secret(A, kdf(~na, ~nb), B)"
+      ],
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "secrecy of SK derived by A",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Event Secret(A, kdf(...), B) matches secrecy goal"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.2.event_schema",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.2.required_events",
+      "value_snapshot": [
+        "Secret(B, kdf(~na, ~nb), A)"
+      ],
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "secrecy of SK derived by B",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Event Secret(B, kdf(...), A) matches secrecy goal"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.0.name",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.0.name",
+      "value_snapshot": "RoleDone",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "switches to a 'DONE' state to indicate that the protocol has been executed successfully on Alex's side",
+          "char_start": 844,
+          "char_end": 946,
+          "reason": "DONE state on Alex's side"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.0.role",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.0.role",
+      "value_snapshot": "A",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Alex's side",
+          "char_start": 935,
+          "char_end": 946,
+          "reason": "Role is A"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.1.name",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.1.name",
+      "value_snapshot": "RoleDone",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "switches to a 'DONE' state (for Blake)",
+          "char_start": null,
+          "char_end": null,
+          "reason": "DONE state on Blake's side"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "events.1.role",
+      "schema": "autosm_style_field_review_v1",
+      "section": "events",
+      "field_path": "events.1.role",
+      "value_snapshot": "B",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "Blake's side",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Role is B"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "fresh_terms.0.name",
+      "schema": "autosm_style_field_review_v1",
+      "section": "fresh",
+      "field_path": "fresh.0.name",
+      "value_snapshot": "~na",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Alex computes a nonce",
+          "char_start": 371,
+          "char_end": 392,
+          "reason": "Derived from A's first message"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "fresh_terms.0.owner",
+      "schema": "autosm_style_field_review_v1",
+      "section": "fresh",
+      "field_path": "fresh.0.owner",
+      "value_snapshot": "A",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Alex computes a nonce",
+          "char_start": 371,
+          "char_end": 392,
+          "reason": "Owner is Alex (A)"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "fresh_terms.1.name",
+      "schema": "autosm_style_field_review_v1",
+      "section": "fresh",
+      "field_path": "fresh.1.name",
+      "value_snapshot": "~nb",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Blake computes their own nonce",
+          "char_start": 467,
+          "char_end": 497,
+          "reason": "Derived from B's message"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "fresh_terms.1.owner",
+      "schema": "autosm_style_field_review_v1",
+      "section": "fresh",
+      "field_path": "fresh.1.owner",
+      "value_snapshot": "B",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Blake computes their own nonce",
+          "char_start": 467,
+          "char_end": 497,
+          "reason": "Owner is Blake (B)"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.0.from",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.0.from",
+      "value_snapshot": "A",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "A -> B: ANonce",
+          "char_start": 417,
+          "char_end": 431,
+          "reason": "Sender is A"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.0.protection",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.0.protection",
+      "value_snapshot": "none",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "sends it to Blake (no encryption mentioned)",
+          "char_start": null,
+          "char_end": null,
+          "reason": "No cryptographic wrapping described"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.0.to",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.0.to",
+      "value_snapshot": "B",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "A -> B: ANonce",
+          "char_start": 417,
+          "char_end": 431,
+          "reason": "Receiver is B"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.1.from",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.1.from",
+      "value_snapshot": "B",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "B -> A: BNonce",
+          "char_start": 521,
+          "char_end": 535,
+          "reason": "Sender is B"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.1.protection",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.1.protection",
+      "value_snapshot": "none",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "sends it to Alex (no encryption mentioned)",
+          "char_start": null,
+          "char_end": null,
+          "reason": "No cryptographic wrapping described"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.1.to",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.1.to",
+      "value_snapshot": "A",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "B -> A: BNonce",
+          "char_start": 521,
+          "char_end": 535,
+          "reason": "Receiver is A"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.2.from",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.2.from",
+      "value_snapshot": "A",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "A -> B: \"ACK\"",
+          "char_start": 825,
+          "char_end": 838,
+          "reason": "Sender is A"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.2.protection",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.2.protection",
+      "value_snapshot": "none",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "sends a message with the string \"ACK\" (no encryption mentioned)",
+          "char_start": null,
+          "char_end": null,
+          "reason": "No cryptographic wrapping described"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.2.to",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.2.to",
+      "value_snapshot": "B",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "A -> B: \"ACK\"",
+          "char_start": 825,
+          "char_end": 838,
+          "reason": "Receiver is B"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.9,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.045,
+      "priority_score": 0.045,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.0.label",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.0.label",
+      "value_snapshot": "M1",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "A -> B: ANonce",
+          "char_start": 417,
+          "char_end": 431,
+          "reason": "Label inferred from first arrow notation"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.043,
+      "priority_score": 0.043,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.0.meaning",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.0.meaning",
+      "value_snapshot": "A sends its fresh nonce to B in plaintext",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Alex computes a nonce and sends it to Blake",
+          "char_start": 371,
+          "char_end": 414,
+          "reason": "Meaning directly stated"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.043,
+      "priority_score": 0.043,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.1.label",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.1.label",
+      "value_snapshot": "M2",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "B -> A: BNonce",
+          "char_start": 521,
+          "char_end": 535,
+          "reason": "Label inferred from second arrow notation"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.043,
+      "priority_score": 0.043,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.1.meaning",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.1.meaning",
+      "value_snapshot": "B sends its fresh nonce to A in plaintext",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Blake computes their own nonce and sends it to Alex",
+          "char_start": 467,
+          "char_end": 518,
+          "reason": "Meaning directly stated"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.043,
+      "priority_score": 0.043,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.2.label",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.2.label",
+      "value_snapshot": "M3",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "A -> B: \"ACK\"",
+          "char_start": 825,
+          "char_end": 838,
+          "reason": "Label inferred from third message arrow notation"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.043,
+      "priority_score": 0.043,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.2.meaning",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.2.meaning",
+      "value_snapshot": "A sends acknowledgement string 'ACK' to B",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Alex sends a message with the string \"ACK\" to Blake",
+          "char_start": 772,
+          "char_end": 823,
+          "reason": "Meaning directly stated"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.85,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.043,
+      "priority_score": 0.043,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "fresh_terms.0.purpose",
+      "schema": "autosm_style_field_review_v1",
+      "section": "fresh",
+      "field_path": "fresh.0.purpose",
+      "value_snapshot": "nonce generated by A",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Alex computes a nonce and sends it to Blake",
+          "char_start": 371,
+          "char_end": 414,
+          "reason": "Purpose explicitly stated"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.04,
+      "priority_score": 0.04,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "fresh_terms.1.purpose",
+      "schema": "autosm_style_field_review_v1",
+      "section": "fresh",
+      "field_path": "fresh.1.purpose",
+      "value_snapshot": "nonce generated by B",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Blake computes their own nonce and sends it to Alex",
+          "char_start": 467,
+          "char_end": 518,
+          "reason": "Purpose explicitly stated"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 0.95,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.8,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0.04,
+      "priority_score": 0.04,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.0.expected_state",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.0.expected_state",
+      "value_snapshot": "ProvedSatisfying",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "expected_state: ProvedSatisfying",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Expected state from user input"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.0.goal_type",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.0.goal_type",
+      "value_snapshot": "executability",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "type: executability",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Goal type from user input"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.0.intent",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.0.intent",
+      "value_snapshot": "There exists a trace where both Alex and Blake complete the protocol.",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "There",
+          "char_start": 172,
+          "char_end": 177
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 1,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.0.lemma_name",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.0.name",
+      "value_snapshot": "successful_run",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "goal name: successful_run",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Goal name from user-supplied goals"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.0.trace_kind",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.0.trace_kind",
+      "value_snapshot": "exists-trace",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "trace_kind: exists-trace",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Trace kind from user input"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.1.expected_state",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.1.expected_state",
+      "value_snapshot": "CounterexampleFound",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "expected_state: CounterexampleFound",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Expected state from user input"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.1.goal_type",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.1.goal_type",
+      "value_snapshot": "secrecy",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "type: secrecy",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Goal type from user input"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.1.intent",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.1.intent",
+      "value_snapshot": "Session key SK computed by A remains secret from adversary.",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Session",
+          "char_start": 235,
+          "char_end": 242
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 1,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.1.lemma_name",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.1.name",
+      "value_snapshot": "sk_secret_a",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "goal name: sk_secret_a",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Goal name from user input"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.1.trace_kind",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.1.trace_kind",
+      "value_snapshot": "all-traces",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "trace_kind: all-traces",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Trace kind from user input"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.2.expected_state",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.2.expected_state",
+      "value_snapshot": "CounterexampleFound",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "expected_state: CounterexampleFound",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Expected state from user input"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.2.goal_type",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.2.goal_type",
+      "value_snapshot": "secrecy",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "type: secrecy",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Goal type from user input"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.2.intent",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.2.intent",
+      "value_snapshot": "Session key SK computed by B remains secret from adversary.",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "Session",
+          "char_start": 235,
+          "char_end": 242
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 1,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.2.lemma_name",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.2.name",
+      "value_snapshot": "sk_secret_b",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "goal name: sk_secret_b",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Goal name from user input"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "claims.2.trace_kind",
+      "schema": "autosm_style_field_review_v1",
+      "section": "proof_targets",
+      "field_path": "proof_targets.2.trace_kind",
+      "value_snapshot": "all-traces",
+      "source_evidence": [
+        {
+          "kind": "nearby",
+          "quote": "trace_kind: all-traces",
+          "char_start": null,
+          "char_end": null,
+          "reason": "Trace kind from user input"
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 0.95,
+      "semantic_impact_source": "llm",
+      "priority_llm": 0.1,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "compromise.policy",
+      "schema": "autosm_style_field_review_v1",
+      "section": "compromise",
+      "field_path": "compromise.policy",
+      "value_snapshot": "No long-term keys, so no compromise model; adversary can intercept clear nonces.",
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "No",
+          "char_start": 426,
+          "char_end": 428
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "high",
+      "semantic_impact_score": 1,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.0.sender_knows",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.0.sender_knows",
+      "value_snapshot": [
+        "~na"
+      ],
+      "source_evidence": [
+        {
+          "kind": "none",
+          "quote": "",
+          "char_start": null,
+          "char_end": null
+        }
+      ],
+      "evidence_confidence": "low",
+      "evidence_confidence_score": 0,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "low",
+      "semantic_impact_score": 0,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "needs_review",
+      "diagnostics": [],
+      "suggested_action": "Confirm or mark as a system/default assumption.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.0.step",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.0.step",
+      "value_snapshot": 1,
+      "source_evidence": [
+        {
+          "kind": "none",
+          "quote": "",
+          "char_start": null,
+          "char_end": null
+        }
+      ],
+      "evidence_confidence": "low",
+      "evidence_confidence_score": 0,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "low",
+      "semantic_impact_score": 0,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "needs_review",
+      "diagnostics": [],
+      "suggested_action": "Confirm or mark as a system/default assumption.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.1.sender_knows",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.1.sender_knows",
+      "value_snapshot": [
+        "~nb"
+      ],
+      "source_evidence": [
+        {
+          "kind": "none",
+          "quote": "",
+          "char_start": null,
+          "char_end": null
+        }
+      ],
+      "evidence_confidence": "low",
+      "evidence_confidence_score": 0,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "low",
+      "semantic_impact_score": 0,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "needs_review",
+      "diagnostics": [],
+      "suggested_action": "Confirm or mark as a system/default assumption.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.1.step",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.1.step",
+      "value_snapshot": 2,
+      "source_evidence": [
+        {
+          "kind": "none",
+          "quote": "",
+          "char_start": null,
+          "char_end": null
+        }
+      ],
+      "evidence_confidence": "low",
+      "evidence_confidence_score": 0,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "low",
+      "semantic_impact_score": 0,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "needs_review",
+      "diagnostics": [],
+      "suggested_action": "Confirm or mark as a system/default assumption.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.2.sender_knows",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.2.sender_knows",
+      "value_snapshot": [
+        "'ACK'"
+      ],
+      "source_evidence": [
+        {
+          "kind": "direct",
+          "quote": "ACK",
+          "char_start": 810,
+          "char_end": 813
+        }
+      ],
+      "evidence_confidence": "high",
+      "evidence_confidence_score": 1,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "low",
+      "semantic_impact_score": 0,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "high_confidence",
+      "diagnostics": [],
+      "suggested_action": "No action needed unless the source description was interpreted incorrectly.",
+      "review_decision": ""
+    },
+    {
+      "id": "messages.2.step",
+      "schema": "autosm_style_field_review_v1",
+      "section": "messages",
+      "field_path": "messages.2.step",
+      "value_snapshot": 3,
+      "source_evidence": [
+        {
+          "kind": "none",
+          "quote": "",
+          "char_start": null,
+          "char_end": null
+        }
+      ],
+      "evidence_confidence": "low",
+      "evidence_confidence_score": 0,
+      "consistency_confidence": "high",
+      "consistency_confidence_score": 1,
+      "semantic_impact": "low",
+      "semantic_impact_score": 0,
+      "semantic_impact_source": "fallback",
+      "priority_llm": null,
+      "priority_formula": 0,
+      "priority_score": 0,
+      "priority_source": "formula",
+      "priority_level": "low",
+      "review_status": "needs_review",
+      "diagnostics": [],
+      "suggested_action": "Confirm or mark as a system/default assumption.",
+      "review_decision": ""
+    }
+  ],
+  "reviewed_proof_targets": {
+    "case": "Toy",
+    "targets": [
+      {
+        "name": "successful_run",
+        "trace_kind": "exists-trace",
+        "reviewed_expected_outcome": "ProvedSatisfying",
+        "goal_type": "executability",
+        "intent": "There exists a trace where both Alex and Blake complete the protocol.",
+        "required_events": [
+          "RoleDone('A')",
+          "RoleDone('B')"
+        ]
+      },
+      {
+        "name": "sk_secret_a",
+        "trace_kind": "all-traces",
+        "reviewed_expected_outcome": "CounterexampleFound",
+        "goal_type": "secrecy",
+        "intent": "Session key SK computed by A remains secret from adversary.",
+        "required_events": [
+          "Secret(A, kdf(~na, ~nb), B)"
+        ]
+      },
+      {
+        "name": "sk_secret_b",
+        "trace_kind": "all-traces",
+        "reviewed_expected_outcome": "CounterexampleFound",
+        "goal_type": "secrecy",
+        "intent": "Session key SK computed by B remains secret from adversary.",
+        "required_events": [
+          "Secret(B, kdf(~na, ~nb), A)"
+        ]
+      }
+    ]
+  },
+  "previous_generation_diagnostics": ""
+}

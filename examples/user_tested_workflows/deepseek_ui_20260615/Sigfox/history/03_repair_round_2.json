@@ -1,0 +1,30 @@
+{
+  "repair_scope": "local_patch",
+  "patches": [
+    {
+      "type": "replace_lines",
+      "start_line": 6,
+      "end_line": 15,
+      "new": "let A(skA, pkA, pkB) =\n  new na;\n  let enc = aenc(<pkA, na>, pkB) in\n  let sig = sign(enc, skA) in\n  let m = <sig, enc> in\n  event Role('A');\n  event Send(pkA, m);\n  event Secret_A(na, pkB);\n  out(m)"
+    },
+    {
+      "type": "replace_lines",
+      "start_line": 17,
+      "end_line": 30,
+      "new": "let B(skB, pkB, pkA) =\n  in(m);\n  let sig = fst(m) in\n  let enc = snd(m) in\n  if verify(sig, enc, pkA) = true then (\n    let plain = adec(enc, skB) in\n    let pk_recv = fst(plain) in\n    let na = snd(plain) in\n    if pk_recv = pkA then (\n      event Role('B');\n      event Recv(pkB, m);\n      event Secret_B(na, pkB);\n      event End()\n    )\n  )"
+    },
+    {
+      "type": "replace_lines",
+      "start_line": 37,
+      "end_line": 42,
+      "new": "process:\n  new skA;\n  new skB;\n  let pkA = pk(skA) in\n  let pkB = pk(skB) in\n  ( !A(skA, pkA, pkB) | !B(skB, pkB, pkA) | !RevealLTK(skA) | !RevealLTK(skB) )"
+    }
+  ],
+  "repair_notes": [
+    "Eliminated 'Variable bound twice' by passing public keys as stable role arguments instead of recomputing pk(sk) inside each role.",
+    "Rewrote B's message reception to avoid fragile tuple destructuring on adversarial input: receive m directly, then use fst/snd projections and simple checks; this removes the unreachable state facts reported by the wellformedness checker.",
+    "Changed B's decryption handling to use fst/snd on the decrypted plaintext and a separate equality guard, removing the second fragile destructuring that caused an unreachable state.",
+    "Adjusted process block to invoke roles with the new stable public-key arguments, preserving all event names, arities, and argument semantics required by the target lemmas.",
+    "Kept executable, secret_A, secret_B, and secrecy_PFS_A lemmas unchanged; the repaired process now makes every continuation reachable and avoids stale-fact warnings."
+  ]
+}

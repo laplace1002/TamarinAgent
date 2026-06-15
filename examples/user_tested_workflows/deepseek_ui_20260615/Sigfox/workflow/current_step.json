@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-06-15T17:56:37",
+  "step": "tamarin_prove",
+  "status": "done",
+  "ok": true,
+  "result_status": "expected-matched",
+  "mismatched": [],
+  "pipeline": "run_prepared_pipeline"
+}

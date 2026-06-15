@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "expected": [
+    "executable",
+    "secret_A",
+    "secret_B",
+    "secrecy_PFS_A"
+  ],
+  "present": [
+    "executable",
+    "secret_A",
+    "secret_B",
+    "secrecy_PFS_A"
+  ],
+  "missing": [],
+  "extra": []
+}

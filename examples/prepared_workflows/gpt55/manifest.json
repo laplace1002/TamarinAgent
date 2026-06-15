@@ -1,0 +1,30 @@
+{
+  "schema": "autosm_style_public_prepared_ir_manifest_v1",
+  "source": "AutoSM UI experiment frozen_v1/gpt55 reviewed runs",
+  "description": "Prepared GPT-5.5 Raw IR and Reviewed IR only. Tamarin code, proof logs, prompts, and run histories are intentionally omitted.",
+  "case_count": 18,
+  "cases": [
+    "CCITT_X509",
+    "Denning_Sacco",
+    "EDHOC",
+    "Example",
+    "KEMTLS",
+    "Kao_Chow",
+    "LAK06",
+    "NSPK",
+    "NSSK",
+    "Naxos",
+    "Neuman_Stubblebine",
+    "Otway_Rees",
+    "SPLICE",
+    "SSH",
+    "Toy",
+    "Woo_Lam",
+    "Yahalom",
+    "sigfox"
+  ],
+  "files_per_case": [
+    "ir/protocol_ir.json",
+    "ir/protocol_ir.reviewed.json"
+  ]
+}
