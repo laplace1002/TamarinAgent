@@ -1,0 +1,909 @@
+theory TPM2_Claim_Profile_Repaired
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: cfb/3, cphash/1, create_primary_response/3, fst/1, h/1,
+           hmac/2, kdf/2, pair/2, protected_cmd/6, protected_resp/5, rphash/1,
+           sdec/2, senc/2, snd/1
+equations:
+    fst(<x.1, x.2>) = x.1,
+    sdec(senc(x.1, x.2), x.2) = x.1,
+    snd(<x.1, x.2>) = x.2
+
+heuristic: p
+
+lemma tpm2_session_command_authentication:
+  all-traces
+  "∀ hostNonce authHandle encryptedCommandParameter commandHMAC #i.
+    (CommandSent( 'H', 'T', hostNonce, authHandle, encryptedCommandParameter,
+                  commandHMAC
+     ) @ #i) ⇒
+    (∃ cpHash tpmNonce #j.
+      (CommandHmacComputed( cpHash, hostNonce, tpmNonce, commandHMAC ) @ #j) ∧
+      (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ hostNonce authHandle encryptedCommandParameter commandHMAC #i.
+  (CommandSent( 'H', 'T', hostNonce, authHandle, encryptedCommandParameter,
+                commandHMAC
+   ) @ #i)
+ ∧
+  ∀ cpHash tpmNonce #j.
+   (CommandHmacComputed( cpHash, hostNonce, tpmNonce, commandHMAC ) @ #j)
+  ⇒
+   ¬(#j < #i)"
+*/
+by sorry
+
+lemma tpm2_session_response_authentication:
+  all-traces
+  "∀ rpHash tpmNonce hostNonce expectedHMAC receivedHMAC #i.
+    (ResponseHmacVerified( rpHash, tpmNonce, hostNonce, expectedHMAC,
+                           receivedHMAC
+     ) @ #i) ⇒
+    (∃ rc encryptedParameters #j.
+      (ResponseReceived( rc, tpmNonce, encryptedParameters, receivedHMAC
+       ) @ #j) ∧
+      (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ rpHash tpmNonce hostNonce expectedHMAC receivedHMAC #i.
+  (ResponseHmacVerified( rpHash, tpmNonce, hostNonce, expectedHMAC,
+                         receivedHMAC
+   ) @ #i)
+ ∧
+  ∀ rc encryptedParameters #j.
+   (ResponseReceived( rc, tpmNonce, encryptedParameters, receivedHMAC
+    ) @ #j)
+  ⇒
+   ¬(#j < #i)"
+*/
+by sorry
+
+lemma tpm2_session_command_payload_confidentiality:
+  all-traces
+  "∀ commandParameter encryptedParameter aesKeyAndIV #i.
+    (CommandParameterEncrypted( commandParameter, encryptedParameter,
+                                aesKeyAndIV
+     ) @ #i) ⇒
+    (¬(∃ #j. K( commandParameter ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ commandParameter encryptedParameter aesKeyAndIV #i.
+  (CommandParameterEncrypted( commandParameter, encryptedParameter,
+                              aesKeyAndIV
+   ) @ #i)
+ ∧
+  ∃ #j. (K( commandParameter ) @ #j)"
+*/
+by sorry
+
+lemma tpm2_session_response_payload_confidentiality:
+  all-traces
+  "∀ encryptedParameter decryptedParameter aesDecKeyAndIV #i.
+    (ResponseParameterDecrypted( encryptedParameter, decryptedParameter,
+                                 aesDecKeyAndIV
+     ) @ #i) ⇒
+    (¬(∃ #j. K( decryptedParameter ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ encryptedParameter decryptedParameter aesDecKeyAndIV #i.
+  (ResponseParameterDecrypted( encryptedParameter, decryptedParameter,
+                               aesDecKeyAndIV
+   ) @ #i)
+ ∧
+  ∃ #j. (K( decryptedParameter ) @ #j)"
+*/
+by sorry
+
+lemma tpm2_session_key_secrecy:
+  all-traces
+  "∀ authHandle tpmNonce sessionKey #i.
+    (SessionKeyDerived( authHandle, tpmNonce, sessionKey ) @ #i) ⇒
+    (¬(∃ #j. K( sessionKey ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ authHandle tpmNonce sessionKey #i.
+  (SessionKeyDerived( authHandle, tpmNonce, sessionKey ) @ #i)
+ ∧
+  ∃ #j. (K( sessionKey ) @ #j)"
+*/
+by sorry
+
+lemma tpm2_session_salt_secrecy:
+  all-traces
+  "∀ ecdhSharedSecret sessionSalt #i.
+    (SaltDerived( ecdhSharedSecret, sessionSalt ) @ #i) ⇒
+    (¬(∃ #j. K( sessionSalt ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ ecdhSharedSecret sessionSalt #i.
+  (SaltDerived( ecdhSharedSecret, sessionSalt ) @ #i)
+ ∧
+  ∃ #j. (K( sessionSalt ) @ #j)"
+*/
+by sorry
+
+lemma tpm2_null_key_public_material_validation:
+  all-traces
+  "∀ keyhandle nullKeyX nullKeyY name #i.
+    (NullKeyPublicMaterialAccepted( keyhandle, nullKeyX, nullKeyY, name
+     ) @ #i) ⇒
+    (name = <nullKeyX, nullKeyY>)"
+/*
+guarded formula characterizing all counter-examples:
+"∃ keyhandle nullKeyX nullKeyY name #i.
+  (NullKeyPublicMaterialAccepted( keyhandle, nullKeyX, nullKeyY, name
+   ) @ #i)
+ ∧
+  ¬(name = <nullKeyX, nullKeyY>)"
+*/
+by sorry
+
+lemma tpm2_initial_create_primary_mitm_attack:
+  exists-trace
+  "∃ attackerKeyX attackerKeyY #i #j #k.
+    ((((CreatePrimarySent( 'H', 'T' ) @ #i) ∧
+       (AttackerModifiedResponse( attackerKeyX, attackerKeyY ) @ #j)) ∧
+      (CreatePrimaryResponseReceived( 'H', 'fakeHandle',
+                                      <attackerKeyX, attackerKeyY>
+       ) @ #k)) ∧
+     (#i < #j)) ∧
+    (#j < #k)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ attackerKeyX attackerKeyY #i #j #k.
+  (CreatePrimarySent( 'H', 'T' ) @ #i) ∧
+  (AttackerModifiedResponse( attackerKeyX, attackerKeyY ) @ #j) ∧
+  (CreatePrimaryResponseReceived( 'H', 'fakeHandle',
+                                  <attackerKeyX, attackerKeyY>
+   ) @ #k)
+ ∧
+  (#i < #j) ∧ (#j < #k)"
+*/
+by sorry
+
+lemma tpm2_continued_session_state_reset:
+  all-traces
+  "∀ authHandle sessionKey tpmNonce hostNonce #i.
+    (SessionContinued( authHandle, sessionKey, tpmNonce, hostNonce ) @ #i) ⇒
+    (∃ #j.
+      (SessionKeyDerived( authHandle, tpmNonce, sessionKey ) @ #j) ∧
+      (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ authHandle sessionKey tpmNonce hostNonce #i.
+  (SessionContinued( authHandle, sessionKey, tpmNonce, hostNonce ) @ #i)
+ ∧
+  ∀ #j.
+   (SessionKeyDerived( authHandle, tpmNonce, sessionKey ) @ #j)
+  ⇒
+   ¬(#j < #i)"
+*/
+by sorry
+
+lemma tpm2_session_termination_cleanup:
+  all-traces
+  "∀ authHandle #i.
+    (SessionTerminated( authHandle ) @ #i) ⇒
+    (∃ tpmNonce sessionKey #j.
+      (SessionKeyDerived( authHandle, tpmNonce, sessionKey ) @ #j) ∧
+      (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ authHandle #i.
+  (SessionTerminated( authHandle ) @ #i)
+ ∧
+  ∀ tpmNonce sessionKey #j.
+   (SessionKeyDerived( authHandle, tpmNonce, sessionKey ) @ #j)
+  ⇒
+   ¬(#j < #i)"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="!", issapicrule,
+                     role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) p_0_[color=#ffffff, process="!", issapicrule,
+                     role='Process']:
+   [ State_( ) ] --> [ !Semistate_1( ) ]
+
+rule (modulo E) p_1_[color=#ffffff, process="!", issapicrule,
+                     role='Process']:
+   [ !Semistate_1( ) ] --> [ State_1( ) ]
+
+rule (modulo E) p_0_1[color=#ffffff, process="|", issapicrule,
+                      role='Process']:
+   [ State_1( ) ] --> [ State_11( ), State_12( ) ]
+
+rule (modulo E) HonestSession_0_11[color=#ffffff,
+                                   process="HonestSession()", issapicrule, role='Process']:
+   [ State_11( ) ] --> [ State_111( ), State_112( ) ]
+
+rule (modulo E) newsessionSalt_0_111[color=#404b80,
+                                     process="new sessionSalt.1;", issapicrule, role='HonestSession']:
+   [ State_111( ), Fr( sessionSalt.1 ) ] --> [ State_1111( sessionSalt.1 ) ]
+
+rule (modulo E) newecdhSharedSecret_0_1111[color=#404b80,
+                                           process="new ecdhSharedSecret.1;", issapicrule,
+                                           role='HonestSession']:
+   [ State_1111( sessionSalt.1 ), Fr( ecdhSharedSecret.1 ) ]
+  -->
+   [ State_11111( ecdhSharedSecret.1, sessionSalt.1 ) ]
+
+rule (modulo E) newtpmNonce_0_11111[color=#404b80,
+                                    process="new tpmNonce.1;", issapicrule, role='HonestSession']:
+   [ State_11111( ecdhSharedSecret.1, sessionSalt.1 ), Fr( tpmNonce.1 ) ]
+  -->
+   [ State_111111( ecdhSharedSecret.1, sessionSalt.1, tpmNonce.1 ) ]
+
+rule (modulo E) newhostNonce_0_111111[color=#404b80,
+                                      process="new hostNonce.1;", issapicrule, role='HonestSession']:
+   [
+   State_111111( ecdhSharedSecret.1, sessionSalt.1, tpmNonce.1 ),
+   Fr( hostNonce.1 )
+   ]
+  -->
+   [
+   State_1111111( ecdhSharedSecret.1, hostNonce.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) newauthHandle_0_1111111[color=#404b80,
+                                        process="new authHandle.1;", issapicrule, role='HonestSession']:
+   [
+   State_1111111( ecdhSharedSecret.1, hostNonce.1, sessionSalt.1, tpmNonce.1
+   ),
+   Fr( authHandle.1 )
+   ]
+  -->
+   [
+   State_11111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                   sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) eventSaltDerivedecdhSharedSecretsessionSalt_0_11111111[color=#404b80,
+                                                                       process="event SaltDerived( ecdhSharedSecret.1, sessionSalt.1 );",
+                                                                       issapicrule, role='HonestSession']:
+   [
+   State_11111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                   sessionSalt.1, tpmNonce.1
+   )
+   ]
+  --[ SaltDerived( ecdhSharedSecret.1, sessionSalt.1 ) ]->
+   [
+   State_111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                    sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) eventSessionKeyDerivedauthHandletpmNoncekdfsessionSaltATHtpmNoncehostNonce_0_111111111[color=#404b80,
+                                                                                                       process="event SessionKeyDerived( authHandle.1, tpmNonce.1,
+                   kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>)
+);",
+                                                                                                       issapicrule,
+                                                                                                       role='HonestSession']:
+   [
+   State_111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                    sessionSalt.1, tpmNonce.1
+   )
+   ]
+  --[
+  SessionKeyDerived( authHandle.1, tpmNonce.1,
+                     kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>)
+  )
+  ]->
+   [
+   State_1111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                     sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) newnullKeyX_0_1111111111[color=#404b80,
+                                         process="new nullKeyX.1;", issapicrule, role='HonestSession']:
+   [
+   State_1111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                     sessionSalt.1, tpmNonce.1
+   ),
+   Fr( nullKeyX.1 )
+   ]
+  -->
+   [
+   State_11111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                      nullKeyX.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) newnullKeyY_0_11111111111[color=#404b80,
+                                          process="new nullKeyY.1;", issapicrule, role='HonestSession']:
+   [
+   State_11111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                      nullKeyX.1, sessionSalt.1, tpmNonce.1
+   ),
+   Fr( nullKeyY.1 )
+   ]
+  -->
+   [
+   State_111111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                       nullKeyX.1, nullKeyY.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) outnullKeyXnullKeyY_0_111111111111[color=#404b80,
+                                                   process="out(<nullKeyX.1, nullKeyY.1>);", issapicrule,
+                                                   role='HonestSession']:
+   [
+   State_111111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                       nullKeyX.1, nullKeyY.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+  -->
+   [
+   State_1111111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                        nullKeyX.1, nullKeyY.1, sessionSalt.1, tpmNonce.1
+   ),
+   Out( <nullKeyX.1, nullKeyY.1> )
+   ]
+
+rule (modulo E) eventNullKeyPublicMaterialAcceptedauthHandlenullKeyXnullKeyYnullKeyXnullKeyY_0_1111111111111[color=#404b80,
+                                                                                                             process="event NullKeyPublicMaterialAccepted( authHandle.1, nullKeyX.1,
+                               nullKeyY.1, <nullKeyX.1, nullKeyY.1>
+);",
+                                                                                                             issapicrule,
+                                                                                                             role='HonestSession']:
+   [
+   State_1111111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                        nullKeyX.1, nullKeyY.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+  --[
+  NullKeyPublicMaterialAccepted( authHandle.1, nullKeyX.1, nullKeyY.1,
+                                 <nullKeyX.1, nullKeyY.1>
+  )
+  ]->
+   [
+   State_11111111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                         nullKeyX.1, nullKeyY.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) newcommandParameter_0_11111111111111[color=#404b80,
+                                                     process="new commandParameter.1;", issapicrule,
+                                                     role='HonestSession']:
+   [
+   State_11111111111111( authHandle.1, ecdhSharedSecret.1, hostNonce.1,
+                         nullKeyX.1, nullKeyY.1, sessionSalt.1, tpmNonce.1
+   ),
+   Fr( commandParameter.1 )
+   ]
+  -->
+   [
+   State_111111111111111( authHandle.1, commandParameter.1,
+                          ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1, sessionSalt.1,
+                          tpmNonce.1
+   )
+   ]
+
+rule (modulo E) eventCommandHmacComputedcphashCCsenccommandParametercfbkdfsessionSaltATHtpmNoncehostNoncecmdtpmNoncehostNoncetpmNoncehmackdfsessionSaltATHtpmNoncehostNoncecphashCCsenccommandParametercfbkdfsessionSaltATHtpmNoncehostNoncecmdtpmNoncehostNoncetpmNonceattrs_0_111111111111111[color=#404b80,
+                                                                                                                                                                                                                                                                                                process="event CommandHmacComputed( cphash(<'CC', 
+                             senc(commandParameter.1,
+                                  cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                                      tpmNonce.1))
+                            >),
+                     hostNonce.1, tpmNonce.1,
+                     hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                          <
+                           cphash(<'CC', 
+                                   senc(commandParameter.1,
+                                        cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                                            'cmd', tpmNonce.1))
+                                  >), 
+                           hostNonce.1, tpmNonce.1, 'attrs'>)
+);",
+                                                                                                                                                                                                                                                                                                issapicrule,
+                                                                                                                                                                                                                                                                                                role='HonestSession']:
+   [
+   State_111111111111111( authHandle.1, commandParameter.1,
+                          ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1, sessionSalt.1,
+                          tpmNonce.1
+   )
+   ]
+  --[
+  CommandHmacComputed( cphash(<'CC', 
+                               senc(commandParameter.1,
+                                    cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                                        tpmNonce.1))
+                              >),
+                       hostNonce.1, tpmNonce.1,
+                       hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                            <
+                             cphash(<'CC', 
+                                     senc(commandParameter.1,
+                                          cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                                              tpmNonce.1))
+                                    >), 
+                             hostNonce.1, tpmNonce.1, 'attrs'>)
+  )
+  ]->
+   [
+   State_1111111111111111( authHandle.1, commandParameter.1,
+                           ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1, sessionSalt.1,
+                           tpmNonce.1
+   )
+   ]
+
+rule (modulo E) eventCommandParameterEncryptedcommandParametersenccommandParametercfbkdfsessionSaltATHtpmNoncehostNoncecmdtpmNoncecfbkdfsessionSaltATHtpmNoncehostNoncecmdtpmNonce_0_1111111111111111[color=#404b80,
+                                                                                                                                                                                                      process="event CommandParameterEncrypted( commandParameter.1,
+                           senc(commandParameter.1,
+                                cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                                    tpmNonce.1)),
+                           cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                               tpmNonce.1)
+);",
+                                                                                                                                                                                                      issapicrule,
+                                                                                                                                                                                                      role='HonestSession']:
+   [
+   State_1111111111111111( authHandle.1, commandParameter.1,
+                           ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1, sessionSalt.1,
+                           tpmNonce.1
+   )
+   ]
+  --[
+  CommandParameterEncrypted( commandParameter.1,
+                             senc(commandParameter.1,
+                                  cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                                      tpmNonce.1)),
+                             cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                                 tpmNonce.1)
+  )
+  ]->
+   [
+   State_11111111111111111( authHandle.1, commandParameter.1,
+                            ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1, sessionSalt.1,
+                            tpmNonce.1
+   )
+   ]
+
+rule (modulo E) outprotectedcmdCChostNonceauthHandlesenccommandParametercfbkdfsessionSaltATHtpmNoncehostNoncecmdtpmNoncehmackdfsessionSaltATHtpmNoncehostNoncecphashCCsenccommandParametercfbkdfsessionSaltATHtpmNoncehostNoncecmdtpmNoncehostNoncetpmNonceattrsattrs_0_11111111111111111[color=#404b80,
+                                                                                                                                                                                                                                                                                          process="out(protected_cmd('CC', hostNonce.1, authHandle.1,
+              senc(commandParameter.1,
+                   cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                       tpmNonce.1)),
+              hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                   <
+                    cphash(<'CC', 
+                            senc(commandParameter.1,
+                                 cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                                     tpmNonce.1))
+                           >), 
+                    hostNonce.1, tpmNonce.1, 'attrs'>),
+              'attrs'));",
+                                                                                                                                                                                                                                                                                          issapicrule,
+                                                                                                                                                                                                                                                                                          role='HonestSession']:
+   [
+   State_11111111111111111( authHandle.1, commandParameter.1,
+                            ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1, sessionSalt.1,
+                            tpmNonce.1
+   )
+   ]
+  -->
+   [
+   State_111111111111111111( authHandle.1, commandParameter.1,
+                             ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1, sessionSalt.1,
+                             tpmNonce.1
+   ),
+   Out( protected_cmd('CC', hostNonce.1, authHandle.1,
+                      senc(commandParameter.1,
+                           cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                               tpmNonce.1)),
+                      hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                           <
+                            cphash(<'CC', 
+                                    senc(commandParameter.1,
+                                         cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                                             tpmNonce.1))
+                                   >), 
+                            hostNonce.1, tpmNonce.1, 'attrs'>),
+                      'attrs')
+   )
+   ]
+
+rule (modulo E) eventCommandSentHThostNonceauthHandlesenccommandParametercfbkdfsessionSaltATHtpmNoncehostNoncecmdtpmNoncehmackdfsessionSaltATHtpmNoncehostNoncecphashCCsenccommandParametercfbkdfsessionSaltATHtpmNoncehostNoncecmdtpmNoncehostNoncetpmNonceattrs_0_111111111111111111[color=#404b80,
+                                                                                                                                                                                                                                                                                       process="event CommandSent( 'H', 'T', hostNonce.1, authHandle.1,
+             senc(commandParameter.1,
+                  cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                      tpmNonce.1)),
+             hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                  <
+                   cphash(<'CC', 
+                           senc(commandParameter.1,
+                                cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                                    tpmNonce.1))
+                          >), 
+                   hostNonce.1, tpmNonce.1, 'attrs'>)
+);",
+                                                                                                                                                                                                                                                                                       issapicrule,
+                                                                                                                                                                                                                                                                                       role='HonestSession']:
+   [
+   State_111111111111111111( authHandle.1, commandParameter.1,
+                             ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1, sessionSalt.1,
+                             tpmNonce.1
+   )
+   ]
+  --[
+  CommandSent( 'H', 'T', hostNonce.1, authHandle.1,
+               senc(commandParameter.1,
+                    cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                        tpmNonce.1)),
+               hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                    <
+                     cphash(<'CC', 
+                             senc(commandParameter.1,
+                                  cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'cmd',
+                                      tpmNonce.1))
+                            >), 
+                     hostNonce.1, tpmNonce.1, 'attrs'>)
+  )
+  ]->
+   [
+   State_1111111111111111111( authHandle.1, commandParameter.1,
+                              ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1, sessionSalt.1,
+                              tpmNonce.1
+   )
+   ]
+
+rule (modulo E) newresponseParameter_0_1111111111111111111[color=#404b80,
+                                                           process="new responseParameter.1;", issapicrule,
+                                                           role='HonestSession']:
+   [
+   State_1111111111111111111( authHandle.1, commandParameter.1,
+                              ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1, sessionSalt.1,
+                              tpmNonce.1
+   ),
+   Fr( responseParameter.1 )
+   ]
+  -->
+   [
+   State_11111111111111111111( authHandle.1, commandParameter.1,
+                               ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                               responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) outprotectedrespSUCCESStpmNoncesencresponseParametercfbkdfsessionSaltATHtpmNoncehostNonceresphostNoncehmackdfsessionSaltATHtpmNoncehostNoncerphashSUCCESSCCsencresponseParametercfbkdfsessionSaltATHtpmNoncehostNonceresphostNoncetpmNoncehostNonceattrsattrs_0_11111111111111111111[color=#404b80,
+                                                                                                                                                                                                                                                                                                     process="out(protected_resp('SUCCESS', tpmNonce.1,
+               senc(responseParameter.1,
+                    cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                        hostNonce.1)),
+               hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                    <
+                     rphash(<'SUCCESS', 'CC', 
+                             senc(responseParameter.1,
+                                  cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                      hostNonce.1))
+                            >), 
+                     tpmNonce.1, hostNonce.1, 'attrs'>),
+               'attrs'));",
+                                                                                                                                                                                                                                                                                                     issapicrule,
+                                                                                                                                                                                                                                                                                                     role='HonestSession']:
+   [
+   State_11111111111111111111( authHandle.1, commandParameter.1,
+                               ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                               responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+  -->
+   [
+   State_111111111111111111111( authHandle.1, commandParameter.1,
+                                ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                responseParameter.1, sessionSalt.1, tpmNonce.1
+   ),
+   Out( protected_resp('SUCCESS', tpmNonce.1,
+                       senc(responseParameter.1,
+                            cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                hostNonce.1)),
+                       hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                            <
+                             rphash(<'SUCCESS', 'CC', 
+                                     senc(responseParameter.1,
+                                          cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                              hostNonce.1))
+                                    >), 
+                             tpmNonce.1, hostNonce.1, 'attrs'>),
+                       'attrs')
+   )
+   ]
+
+rule (modulo E) eventResponseReceivedSUCCESStpmNoncesencresponseParametercfbkdfsessionSaltATHtpmNoncehostNonceresphostNoncehmackdfsessionSaltATHtpmNoncehostNoncerphashSUCCESSCCsencresponseParametercfbkdfsessionSaltATHtpmNoncehostNonceresphostNoncetpmNoncehostNonceattrs_0_111111111111111111111[color=#404b80,
+                                                                                                                                                                                                                                                                                                      process="event ResponseReceived( 'SUCCESS', tpmNonce.1,
+                  senc(responseParameter.1,
+                       cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                           hostNonce.1)),
+                  hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                       <
+                        rphash(<'SUCCESS', 'CC', 
+                                senc(responseParameter.1,
+                                     cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                                         'resp', hostNonce.1))
+                               >), 
+                        tpmNonce.1, hostNonce.1, 'attrs'>)
+);",
+                                                                                                                                                                                                                                                                                                      issapicrule,
+                                                                                                                                                                                                                                                                                                      role='HonestSession']:
+   [
+   State_111111111111111111111( authHandle.1, commandParameter.1,
+                                ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+  --[
+  ResponseReceived( 'SUCCESS', tpmNonce.1,
+                    senc(responseParameter.1,
+                         cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                             hostNonce.1)),
+                    hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                         <
+                          rphash(<'SUCCESS', 'CC', 
+                                  senc(responseParameter.1,
+                                       cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                           hostNonce.1))
+                                 >), 
+                          tpmNonce.1, hostNonce.1, 'attrs'>)
+  )
+  ]->
+   [
+   State_1111111111111111111111( authHandle.1, commandParameter.1,
+                                 ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                 responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) eventResponseHmacVerifiedrphashSUCCESSCCsencresponseParametercfbkdfsessionSaltATHtpmNoncehostNonceresphostNoncetpmNoncehostNoncehmackdfsessionSaltATHtpmNoncehostNoncerphashSUCCESSCCsencresponseParametercfbkdfsessionSaltATHtpmNoncehostNonceresphostNoncetpmNoncehostNonceattrshmackdfsessionSaltATHtpmNoncehostNoncerphashSUCCESSCCsencresponseParametercfbkdfsessionSaltATHtpmNoncehostNonceresphostNoncetpmNoncehostNonceattrs_0_1111111111111111111111[color=#404b80,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                              process="event ResponseHmacVerified( rphash(<'SUCCESS', 'CC', 
+                              senc(responseParameter.1,
+                                   cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                       hostNonce.1))
+                             >),
+                      tpmNonce.1, hostNonce.1,
+                      hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                           <
+                            rphash(<'SUCCESS', 'CC', 
+                                    senc(responseParameter.1,
+                                         cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                                             'resp', hostNonce.1))
+                                   >), 
+                            tpmNonce.1, hostNonce.1, 'attrs'>),
+                      hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                           <
+                            rphash(<'SUCCESS', 'CC', 
+                                    senc(responseParameter.1,
+                                         cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                                             'resp', hostNonce.1))
+                                   >), 
+                            tpmNonce.1, hostNonce.1, 'attrs'>)
+);",
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                              issapicrule,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                              role='HonestSession']:
+   [
+   State_1111111111111111111111( authHandle.1, commandParameter.1,
+                                 ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                 responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+  --[
+  ResponseHmacVerified( rphash(<'SUCCESS', 'CC', 
+                                senc(responseParameter.1,
+                                     cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                         hostNonce.1))
+                               >),
+                        tpmNonce.1, hostNonce.1,
+                        hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                             <
+                              rphash(<'SUCCESS', 'CC', 
+                                      senc(responseParameter.1,
+                                           cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                               hostNonce.1))
+                                     >), 
+                              tpmNonce.1, hostNonce.1, 'attrs'>),
+                        hmac(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>),
+                             <
+                              rphash(<'SUCCESS', 'CC', 
+                                      senc(responseParameter.1,
+                                           cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                               hostNonce.1))
+                                     >), 
+                              tpmNonce.1, hostNonce.1, 'attrs'>)
+  )
+  ]->
+   [
+   State_11111111111111111111111( authHandle.1, commandParameter.1,
+                                  ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                  responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) eventResponseParameterDecryptedsencresponseParametercfbkdfsessionSaltATHtpmNoncehostNonceresphostNonceresponseParametercfbkdfsessionSaltATHtpmNoncehostNonceresphostNonce_0_11111111111111111111111[color=#404b80,
+                                                                                                                                                                                                                    process="event ResponseParameterDecrypted( senc(responseParameter.1,
+                                 cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                     hostNonce.1)),
+                            responseParameter.1,
+                            cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                hostNonce.1)
+);",
+                                                                                                                                                                                                                    issapicrule,
+                                                                                                                                                                                                                    role='HonestSession']:
+   [
+   State_11111111111111111111111( authHandle.1, commandParameter.1,
+                                  ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                  responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+  --[
+  ResponseParameterDecrypted( senc(responseParameter.1,
+                                   cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                       hostNonce.1)),
+                              responseParameter.1,
+                              cfb(kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), 'resp',
+                                  hostNonce.1)
+  )
+  ]->
+   [
+   State_111111111111111111111111( authHandle.1, commandParameter.1,
+                                   ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                   responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) eventSessionContinuedauthHandlekdfsessionSaltATHtpmNoncehostNoncetpmNoncehostNonce_0_111111111111111111111111[color=#404b80,
+                                                                                                                              process="event SessionContinued( authHandle.1,
+                  kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), tpmNonce.1,
+                  hostNonce.1
+);",
+                                                                                                                              issapicrule,
+                                                                                                                              role='HonestSession']:
+   [
+   State_111111111111111111111111( authHandle.1, commandParameter.1,
+                                   ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                   responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+  --[
+  SessionContinued( authHandle.1,
+                    kdf(sessionSalt.1, <'ATH', tpmNonce.1, hostNonce.1>), tpmNonce.1,
+                    hostNonce.1
+  )
+  ]->
+   [
+   State_1111111111111111111111111( authHandle.1, commandParameter.1,
+                                    ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                    responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) eventSessionTerminatedauthHandle_0_1111111111111111111111111[color=#404b80,
+                                                                             process="event SessionTerminated( authHandle.1 );",
+                                                                             issapicrule,
+                                                                             role='HonestSession']:
+   [
+   State_1111111111111111111111111( authHandle.1, commandParameter.1,
+                                    ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                    responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+  --[ SessionTerminated( authHandle.1 ) ]->
+   [
+   State_11111111111111111111111111( authHandle.1, commandParameter.1,
+                                     ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                     responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+
+rule (modulo E) p_0_11111111111111111111111111[color=#404b80,
+                                               process="0", issapicrule, role='HonestSession']:
+   [
+   State_11111111111111111111111111( authHandle.1, commandParameter.1,
+                                     ecdhSharedSecret.1, hostNonce.1, nullKeyX.1, nullKeyY.1,
+                                     responseParameter.1, sessionSalt.1, tpmNonce.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_112[color=#ffffff, process="0", issapicrule,
+                        role='Process']:
+   [ State_112( ) ] --> [ ]
+
+rule (modulo E) p_0_12[color=#ffffff, process="!", issapicrule,
+                       role='Process']:
+   [ State_12( ) ] --> [ !Semistate_121( ) ]
+
+rule (modulo E) p_1_12[color=#ffffff, process="!", issapicrule,
+                       role='Process']:
+   [ !Semistate_121( ) ] --> [ State_121( ) ]
+
+rule (modulo E) MitmWitness_0_121[color=#ffffff, process="MitmWitness()",
+                                  issapicrule, role='Process']:
+   [ State_121( ) ] --> [ State_1211( ), State_1212( ) ]
+
+rule (modulo E) newattackerKeyX_0_1211[color=#724080,
+                                       process="new attackerKeyX.1;", issapicrule, role='MitmWitness']:
+   [ State_1211( ), Fr( attackerKeyX.1 ) ]
+  -->
+   [ State_12111( attackerKeyX.1 ) ]
+
+rule (modulo E) newattackerKeyY_0_12111[color=#724080,
+                                        process="new attackerKeyY.1;", issapicrule, role='MitmWitness']:
+   [ State_12111( attackerKeyX.1 ), Fr( attackerKeyY.1 ) ]
+  -->
+   [ State_121111( attackerKeyX.1, attackerKeyY.1 ) ]
+
+rule (modulo E) eventCreatePrimarySentHT_0_121111[color=#724080,
+                                                  process="event CreatePrimarySent( 'H', 'T' );", issapicrule,
+                                                  role='MitmWitness']:
+   [ State_121111( attackerKeyX.1, attackerKeyY.1 ) ]
+  --[ CreatePrimarySent( 'H', 'T' ) ]->
+   [ State_1211111( attackerKeyX.1, attackerKeyY.1 ) ]
+
+rule (modulo E) outcreateprimaryresponsefakeHandleattackerKeyXattackerKeyYfakeName_0_1211111[color=#724080,
+                                                                                             process="out(create_primary_response('fakeHandle',
+                        <attackerKeyX.1, attackerKeyY.1>, 'fakeName'));",
+                                                                                             issapicrule,
+                                                                                             role='MitmWitness']:
+   [ State_1211111( attackerKeyX.1, attackerKeyY.1 ) ]
+  -->
+   [
+   State_12111111( attackerKeyX.1, attackerKeyY.1 ),
+   Out( create_primary_response('fakeHandle',
+                                <attackerKeyX.1, attackerKeyY.1>, 'fakeName')
+   )
+   ]
+
+rule (modulo E) eventAttackerModifiedResponseattackerKeyXattackerKeyY_0_12111111[color=#724080,
+                                                                                 process="event AttackerModifiedResponse( attackerKeyX.1, attackerKeyY.1 );",
+                                                                                 issapicrule,
+                                                                                 role='MitmWitness']:
+   [ State_12111111( attackerKeyX.1, attackerKeyY.1 ) ]
+  --[ AttackerModifiedResponse( attackerKeyX.1, attackerKeyY.1 ) ]->
+   [ State_121111111( attackerKeyX.1, attackerKeyY.1 ) ]
+
+rule (modulo E) eventCreatePrimaryResponseReceivedHfakeHandleattackerKeyXattackerKeyY_0_121111111[color=#724080,
+                                                                                                  process="event CreatePrimaryResponseReceived( 'H', 'fakeHandle',
+                               <attackerKeyX.1, attackerKeyY.1>
+);",
+                                                                                                  issapicrule,
+                                                                                                  role='MitmWitness']:
+   [ State_121111111( attackerKeyX.1, attackerKeyY.1 ) ]
+  --[
+  CreatePrimaryResponseReceived( 'H', 'fakeHandle',
+                                 <attackerKeyX.1, attackerKeyY.1>
+  )
+  ]->
+   [ State_1211111111( attackerKeyX.1, attackerKeyY.1 ) ]
+
+rule (modulo E) p_0_1211111111[color=#724080, process="0", issapicrule,
+                               role='MitmWitness']:
+   [ State_1211111111( attackerKeyX.1, attackerKeyY.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1212[color=#ffffff, process="0", issapicrule,
+                         role='Process']:
+   [ State_1212( ) ] --> [ ]
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/* All wellformedness checks were successful. */
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

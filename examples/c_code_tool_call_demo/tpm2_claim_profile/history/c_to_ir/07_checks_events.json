@@ -1,0 +1,508 @@
+{
+  "checks": [
+    {
+      "condition": "auth != NULL",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 746,
+          "line_start": 744,
+          "reason": "if (!auth) return rc; — early return if no auth session"
+        }
+      ],
+      "name": "auth_session_exists",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "session integrity"
+      ],
+      "source_message": "M8_Generic_Response_with_HMAC_Session"
+    },
+    {
+      "condition": "auth->session >= TPM_HEADER_SIZE",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 750,
+          "line_start": 748,
+          "reason": "if (auth->session >= TPM_HEADER_SIZE) { WARN(1, ...); goto out; } — warns and goes to cleanup if session offset is invalid"
+        }
+      ],
+      "name": "session_offset_valid",
+      "on_failure": "abort",
+      "on_success_event": "",
+      "protects": [
+        "session integrity"
+      ],
+      "source_message": "M8_Generic_Response_with_HMAC_Session"
+    },
+    {
+      "condition": "rc == 0",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 754,
+          "line_start": 752,
+          "reason": "if (rc != 0) goto out; — passes non-zero return code through and closes session"
+        }
+      ],
+      "name": "tpm_command_succeeded",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "session integrity"
+      ],
+      "source_message": "M8_Generic_Response_with_HMAC_Session"
+    },
+    {
+      "condition": "tag == TPM2_ST_SESSIONS",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 758,
+          "line_start": 756,
+          "reason": "if (tag != TPM2_ST_SESSIONS) { dev_err(...); goto out; } — rejects response without session tag"
+        }
+      ],
+      "name": "response_has_sessions_tag",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "session integrity"
+      ],
+      "source_message": "M8_Generic_Response_with_HMAC_Session"
+    },
+    {
+      "condition": "tpm2_find_cc(chip, cc) >= 0",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 762,
+          "line_start": 760,
+          "reason": "i = tpm2_find_cc(chip, cc); if (i < 0) goto out; — fails if command code not found"
+        }
+      ],
+      "name": "command_code_known",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "session integrity"
+      ],
+      "source_message": "M8_Generic_Response_with_HMAC_Session"
+    },
+    {
+      "condition": "TPM nonce length == SHA256_DIGEST_SIZE",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 776,
+          "line_start": 774,
+          "reason": "len = tpm_buf_read_u16(buf, &offset_s); if (offset_s + len > tpm_buf_length(buf)) goto out; if (len != SHA256_DIGEST_SIZE) goto out; — validates nonce length"
+        }
+      ],
+      "name": "tpm_nonce_length_valid",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "session integrity"
+      ],
+      "source_message": "M8_Generic_Response_with_HMAC_Session"
+    },
+    {
+      "condition": "HMAC length == SHA256_DIGEST_SIZE and buffer ends exactly after HMAC",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 784,
+          "line_start": 780,
+          "reason": "len = tpm_buf_read_u16(buf, &offset_s); if (offset_s + len != tpm_buf_length(buf)) goto out; if (len != SHA256_DIGEST_SIZE) goto out; — validates HMAC length and buffer boundary"
+        }
+      ],
+      "name": "hmac_length_and_boundary_valid",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "session integrity"
+      ],
+      "source_message": "M8_Generic_Response_with_HMAC_Session"
+    },
+    {
+      "condition": "crypto_memneq(rphash, &buf->data[offset_s], SHA256_DIGEST_SIZE) == 0",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 846,
+          "line_start": 846,
+          "reason": "if (crypto_memneq(rphash, &buf->data[offset_s], SHA256_DIGEST_SIZE)) { dev_err(...); goto out; } — HMAC comparison failure"
+        }
+      ],
+      "name": "response_hmac_matches",
+      "on_failure": "return_error",
+      "on_success_event": "hmac_verified",
+      "protects": [
+        "session integrity",
+        "response authenticity"
+      ],
+      "source_message": "M8_Generic_Response_with_HMAC_Session"
+    },
+    {
+      "condition": "tot_len == 4 + 2 + sizeof(auth->tpm_nonce)",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 916,
+          "line_start": 914,
+          "reason": "if (tot_len != 4 + 2 + sizeof(auth->tpm_nonce)) return -EINVAL; — validates response length"
+        }
+      ],
+      "name": "start_auth_session_response_length_valid",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "session integrity"
+      ],
+      "source_message": "M4_TPM2_StartAuthSession_Response"
+    },
+    {
+      "condition": "nonce length field == sizeof(auth->tpm_nonce)",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 920,
+          "line_start": 918,
+          "reason": "val = tpm_buf_read_u16(buf, &offset); if (val != sizeof(auth->tpm_nonce)) return -EINVAL; — validates nonce length field"
+        }
+      ],
+      "name": "start_auth_session_nonce_length_valid",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "session integrity"
+      ],
+      "source_message": "M4_TPM2_StartAuthSession_Response"
+    },
+    {
+      "condition": "param_len + 8 <= total_len",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1088,
+          "line_start": 1086,
+          "reason": "if (param_len + 8 > total_len) return -EINVAL; — validates parameter length"
+        }
+      ],
+      "name": "create_primary_param_length_valid",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "key type == TPM_ALG_ECC",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1100,
+          "line_start": 1098,
+          "reason": "if (val != TPM_ALG_ECC) return -EINVAL; — validates key type"
+        }
+      ],
+      "name": "create_primary_key_type_ecc",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "name algorithm == TPM_ALG_SHA256",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1104,
+          "line_start": 1102,
+          "reason": "if (val != TPM_ALG_SHA256) return -EINVAL; — validates name algorithm"
+        }
+      ],
+      "name": "create_primary_name_alg_sha256",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "object properties == TPM2_OA_NULL_KEY",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1108,
+          "line_start": 1106,
+          "reason": "if (val != TPM2_OA_NULL_KEY) return -EINVAL; — validates object properties"
+        }
+      ],
+      "name": "create_primary_object_properties_null_key",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "auth policy is empty",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1112,
+          "line_start": 1110,
+          "reason": "if (val != 0) return -EINVAL; — validates empty auth policy"
+        }
+      ],
+      "name": "create_primary_auth_policy_empty",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "symmetric algorithm == TPM_ALG_AES",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1116,
+          "line_start": 1114,
+          "reason": "if (val != TPM_ALG_AES) return -EINVAL; — validates symmetric algorithm"
+        }
+      ],
+      "name": "create_primary_symmetric_alg_aes",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "symmetric key length == AES_KEY_BITS",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1120,
+          "line_start": 1118,
+          "reason": "if (val != AES_KEY_BITS) return -EINVAL; — validates symmetric key length"
+        }
+      ],
+      "name": "create_primary_symmetric_key_length_valid",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "symmetric encryption scheme == TPM_ALG_CFB",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1124,
+          "line_start": 1122,
+          "reason": "if (val != TPM_ALG_CFB) return -EINVAL; — validates symmetric encryption scheme"
+        }
+      ],
+      "name": "create_primary_symmetric_scheme_cfb",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "signing scheme == TPM_ALG_NULL",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1128,
+          "line_start": 1126,
+          "reason": "if (val != TPM_ALG_NULL) return -EINVAL; — validates signing scheme"
+        }
+      ],
+      "name": "create_primary_signing_scheme_null",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "ECC curve == TPM2_ECC_NIST_P256",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1132,
+          "line_start": 1130,
+          "reason": "if (val != TPM2_ECC_NIST_P256) return -EINVAL; — validates ECC curve"
+        }
+      ],
+      "name": "create_primary_ecc_curve_nist_p256",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "KDF scheme == TPM_ALG_NULL",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1136,
+          "line_start": 1134,
+          "reason": "if (val != TPM_ALG_NULL) return -EINVAL; — validates KDF scheme"
+        }
+      ],
+      "name": "create_primary_kdf_scheme_null",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "public key x point size == EC_PT_SZ",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1140,
+          "line_start": 1138,
+          "reason": "if (val != EC_PT_SZ) return -EINVAL; — validates x point size"
+        }
+      ],
+      "name": "create_primary_pubkey_x_size_valid",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    },
+    {
+      "condition": "public key y point size == EC_PT_SZ",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1144,
+          "line_start": 1142,
+          "reason": "if (val != EC_PT_SZ) return -EINVAL; — validates y point size"
+        }
+      ],
+      "name": "create_primary_pubkey_y_size_valid",
+      "on_failure": "return_error",
+      "on_success_event": "",
+      "protects": [
+        "key integrity"
+      ],
+      "source_message": "M6_TPM2_CreatePrimary_Response"
+    }
+  ],
+  "events": [
+    {
+      "arguments": [
+        "auth->tpm_nonce",
+        "auth->our_nonce",
+        "auth->session_key",
+        "auth->passphrase_len",
+        "auth->attrs",
+        "rphash",
+        "buf->data[offset_s]"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 846,
+          "line_start": 846,
+          "reason": "if (crypto_memneq(rphash, &buf->data[offset_s], SHA256_DIGEST_SIZE)) { dev_err(...); goto out; } — HMAC comparison success leads to implicit trust in response"
+        }
+      ],
+      "name": "hmac_verified",
+      "role": "host",
+      "when": "after_check"
+    },
+    {
+      "arguments": [
+        "auth->handle",
+        "auth->tpm_nonce",
+        "auth->session_key"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 928,
+          "line_start": 922,
+          "reason": "auth->handle = tpm_buf_read_u32(buf, &offset); ... memcpy(auth->tpm_nonce, &buf->data[offset], sizeof(auth->tpm_nonce)); tpm2_KDFa(...); — session key derived after parsing"
+        }
+      ],
+      "name": "session_key_derived",
+      "role": "host",
+      "when": "after_receive"
+    },
+    {
+      "arguments": [
+        "keyhandle",
+        "chip->null_ec_key_x",
+        "chip->null_ec_key_y",
+        "name"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1144,
+          "line_start": 1070,
+          "reason": "keyhandle = tpm_buf_read_u32(...); ... memcpy(chip->null_ec_key_x, ...); memcpy(chip->null_ec_key_y, ...); put_unaligned_be16(TPM_ALG_SHA256, name); sha256(...); — public key and name extracted after all checks pass"
+        }
+      ],
+      "name": "null_key_public_material_accepted",
+      "role": "host",
+      "when": "after_check"
+    }
+  ],
+  "open_questions": [
+    {
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 846,
+          "line_start": 846,
+          "reason": "The HMAC comparison failure path logs an error and returns -EINVAL, but the exact error handling for the session cleanup is not fully detailed in the slice."
+        }
+      ],
+      "id": "oq_check_1",
+      "question": "What is the exact behavior when HMAC verification fails? The code logs an error and goes to 'out', but the 'out' label's cleanup actions are not fully visible in the slice."
+    },
+    {
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1144,
+          "line_start": 1144,
+          "reason": "The slice is truncated at '/* origi...' so the complete validation of the public key is not visible."
+        }
+      ],
+      "id": "oq_check_2",
+      "question": "Are there additional checks on the public key material after the point size validation? The slice is truncated."
+    }
+  ]
+}

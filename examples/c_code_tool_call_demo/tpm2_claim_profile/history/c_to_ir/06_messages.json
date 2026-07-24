@@ -1,0 +1,757 @@
+{
+  "abstractions": [],
+  "messages": [
+    {
+      "label": "M1_TPM2_ReadPublic_Request",
+      "from": "host",
+      "to": "TPM",
+      "constructed_by": [
+        "tpm2_read_public"
+      ],
+      "accepted_by": [],
+      "fields": [
+        {
+          "name": "commandCode",
+          "term": "TPM2_CC_READ_PUBLIC",
+          "attacker_visible_fields": [
+            "commandCode"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 179,
+              "line_end": 179,
+              "reason": "tpm_buf_init(&buf, TPM2_ST_NO_SESSIONS, TPM2_CC_READ_PUBLIC)"
+            }
+          ]
+        },
+        {
+          "name": "handle",
+          "term": "handle",
+          "attacker_visible_fields": [
+            "handle"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 183,
+              "line_end": 183,
+              "reason": "tpm_buf_append_u32(&buf, handle)"
+            }
+          ]
+        }
+      ],
+      "term": "symbolic_term(TPM2_CC_READ_PUBLIC, handle)",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 166,
+          "line_end": 221,
+          "reason": "Function tpm2_read_public constructs and sends this command."
+        }
+      ]
+    },
+    {
+      "label": "M2_TPM2_ReadPublic_Response",
+      "from": "TPM",
+      "to": "host",
+      "constructed_by": [],
+      "accepted_by": [
+        "tpm2_read_public"
+      ],
+      "fields": [
+        {
+          "name": "responseCode",
+          "term": "rc",
+          "attacker_visible_fields": [
+            "responseCode"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 185,
+              "line_end": 185,
+              "reason": "rc = tpm_transmit_cmd(chip, &buf, 0, \"TPM2_ReadPublic\")"
+            }
+          ]
+        },
+        {
+          "name": "name",
+          "term": "name",
+          "attacker_visible_fields": [
+            "name"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 215,
+              "line_end": 215,
+              "reason": "memcpy(name, &buf.data[offset], rc)"
+            }
+          ]
+        }
+      ],
+      "term": "symbolic_term(responseCode, name)",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 166,
+          "line_end": 221,
+          "reason": "Function tpm2_read_public parses this response."
+        }
+      ]
+    },
+    {
+      "label": "M3_TPM2_StartAuthSession_Request",
+      "from": "host",
+      "to": "TPM",
+      "constructed_by": [
+        "tpm2_start_auth_session"
+      ],
+      "accepted_by": [],
+      "fields": [
+        {
+          "name": "commandCode",
+          "term": "TPM2_CC_START_AUTH_SESSION",
+          "attacker_visible_fields": [
+            "commandCode"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1004,
+              "line_end": 1004,
+              "reason": "tpm_buf_init(&buf, TPM2_ST_NO_SESSIONS, TPM2_CC_START_AUTH_SESSION)"
+            }
+          ]
+        },
+        {
+          "name": "tpmKey",
+          "term": "TPM2_RH_NULL",
+          "attacker_visible_fields": [
+            "tpmKey"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1006,
+              "line_end": 1006,
+              "reason": "tpm_buf_append_u32(&buf, TPM2_RH_NULL)"
+            }
+          ]
+        },
+        {
+          "name": "bind",
+          "term": "TPM2_RH_NULL",
+          "attacker_visible_fields": [
+            "bind"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1007,
+              "line_end": 1007,
+              "reason": "tpm_buf_append_u32(&buf, TPM2_RH_NULL)"
+            }
+          ]
+        },
+        {
+          "name": "nonceCaller",
+          "term": "nonceCaller",
+          "attacker_visible_fields": [
+            "nonceCaller"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1013,
+              "line_end": 1013,
+              "reason": "get_random_bytes(nonce, sizeof(nonce))"
+            }
+          ]
+        },
+        {
+          "name": "encryptedSalt",
+          "term": "encryptedSalt",
+          "attacker_visible_fields": [
+            "encryptedSalt"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1015,
+              "line_end": 1015,
+              "reason": "tpm_buf_append(&buf, nonce, sizeof(nonce))"
+            }
+          ]
+        },
+        {
+          "name": "sessionType",
+          "term": "TPM2_SE_HMAC",
+          "attacker_visible_fields": [
+            "sessionType"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1018,
+              "line_end": 1018,
+              "reason": "tpm_buf_append_u8(&buf, TPM2_SE_HMAC)"
+            }
+          ]
+        },
+        {
+          "name": "symmetric",
+          "term": "TPM2_ALG_AES_128_CFB",
+          "attacker_visible_fields": [
+            "symmetric"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1019,
+              "line_end": 1019,
+              "reason": "tpm_buf_append_u16(&buf, TPM2_ALG_AES_128_CFB)"
+            }
+          ]
+        },
+        {
+          "name": "authHash",
+          "term": "TPM2_ALG_SHA256",
+          "attacker_visible_fields": [
+            "authHash"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1020,
+              "line_end": 1020,
+              "reason": "tpm_buf_append_u8(&buf, TPM2_ALG_SHA256)"
+            }
+          ]
+        }
+      ],
+      "term": "symbolic_term(TPM2_CC_START_AUTH_SESSION, TPM2_RH_NULL, TPM2_RH_NULL, nonceCaller, encryptedSalt, TPM2_SE_HMAC, TPM2_ALG_AES_128_CFB, TPM2_ALG_SHA256)",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 973,
+          "line_end": 1048,
+          "reason": "Function tpm2_start_auth_session constructs and sends this command."
+        }
+      ]
+    },
+    {
+      "label": "M4_TPM2_StartAuthSession_Response",
+      "from": "TPM",
+      "to": "host",
+      "constructed_by": [],
+      "accepted_by": [
+        "tpm2_parse_start_auth_session"
+      ],
+      "fields": [
+        {
+          "name": "responseCode",
+          "term": "rc",
+          "attacker_visible_fields": [
+            "responseCode"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1025,
+              "line_end": 1025,
+              "reason": "rc = tpm_transmit_cmd(chip, &buf, 0, \"start_auth_session\")"
+            }
+          ]
+        },
+        {
+          "name": "handle",
+          "term": "authHandle",
+          "attacker_visible_fields": [
+            "handle"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 922,
+              "line_end": 922,
+              "reason": "auth->handle = tpm_buf_read_u32(buf, &offset)"
+            }
+          ]
+        },
+        {
+          "name": "nonceTPM",
+          "term": "tpmNonce",
+          "attacker_visible_fields": [
+            "nonceTPM"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 928,
+              "line_end": 928,
+              "reason": "memcpy(auth->tpm_nonce, &buf->data[offset], sizeof(auth->tpm_nonce))"
+            }
+          ]
+        }
+      ],
+      "term": "symbolic_term(responseCode, authHandle, tpmNonce)",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 907,
+          "line_end": 933,
+          "reason": "Function tpm2_parse_start_auth_session parses this response."
+        }
+      ]
+    },
+    {
+      "label": "M5_TPM2_CreatePrimary_Request",
+      "from": "host",
+      "to": "TPM",
+      "constructed_by": [
+        "tpm2_create_primary"
+      ],
+      "accepted_by": [],
+      "fields": [
+        {
+          "name": "commandCode",
+          "term": "TPM2_CC_CREATE_PRIMARY",
+          "attacker_visible_fields": [
+            "commandCode"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1263,
+              "line_end": 1263,
+              "reason": "tpm_buf_init(&buf, TPM2_ST_SESSIONS, TPM2_CC_CREATE_PRIMARY)"
+            }
+          ]
+        },
+        {
+          "name": "primaryHandle",
+          "term": "primaryHandle",
+          "attacker_visible_fields": [
+            "primaryHandle"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1265,
+              "line_end": 1265,
+              "reason": "tpm_buf_append_u32(&buf, primaryHandle)"
+            }
+          ]
+        },
+        {
+          "name": "sensitiveCreate",
+          "term": "sensitiveCreate",
+          "attacker_visible_fields": [
+            "sensitiveCreate"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1267,
+              "line_end": 1267,
+              "reason": "tpm_buf_append_u16(&buf, 0)"
+            }
+          ]
+        },
+        {
+          "name": "publicTemplate",
+          "term": "publicTemplate",
+          "attacker_visible_fields": [
+            "publicTemplate"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1268,
+              "line_end": 1268,
+              "reason": "tpm_buf_append_u16(&buf, 0)"
+            }
+          ]
+        },
+        {
+          "name": "outsideInfo",
+          "term": "outsideInfo",
+          "attacker_visible_fields": [
+            "outsideInfo"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1269,
+              "line_end": 1269,
+              "reason": "tpm_buf_append_u16(&buf, 0)"
+            }
+          ]
+        },
+        {
+          "name": "creationPCR",
+          "term": "creationPCR",
+          "attacker_visible_fields": [
+            "creationPCR"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1270,
+              "line_end": 1270,
+              "reason": "tpm_buf_append_u16(&buf, 0)"
+            }
+          ]
+        }
+      ],
+      "term": "symbolic_term(TPM2_CC_CREATE_PRIMARY, primaryHandle, sensitiveCreate, publicTemplate, outsideInfo, creationPCR)",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 1236,
+          "line_end": 1353,
+          "reason": "Function tpm2_create_primary constructs and sends this command."
+        }
+      ]
+    },
+    {
+      "label": "M6_TPM2_CreatePrimary_Response",
+      "from": "TPM",
+      "to": "host",
+      "constructed_by": [],
+      "accepted_by": [
+        "tpm2_parse_create_primary"
+      ],
+      "fields": [
+        {
+          "name": "responseCode",
+          "term": "rc",
+          "attacker_visible_fields": [
+            "responseCode"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1272,
+              "line_end": 1272,
+              "reason": "rc = tpm_transmit_cmd(chip, &buf, 0, \"create_primary\")"
+            }
+          ]
+        },
+        {
+          "name": "handle",
+          "term": "handle",
+          "attacker_visible_fields": [
+            "handle"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1085,
+              "line_end": 1085,
+              "reason": "handle = be32_to_cpu(tpm_buf_read_u32(buf, &offset))"
+            }
+          ]
+        },
+        {
+          "name": "name",
+          "term": "name",
+          "attacker_visible_fields": [
+            "name"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 1111,
+              "line_end": 1111,
+              "reason": "put_unaligned_be16(name_size_alg, name)"
+            }
+          ]
+        }
+      ],
+      "term": "symbolic_term(responseCode, handle, name)",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 1065,
+          "line_end": 1234,
+          "reason": "Function tpm2_parse_create_primary parses this response."
+        }
+      ]
+    },
+    {
+      "label": "M7_Generic_Command_with_HMAC_Session",
+      "from": "host",
+      "to": "TPM",
+      "constructed_by": [
+        "tpm_buf_append_hmac_session",
+        "tpm_buf_fill_hmac_session"
+      ],
+      "accepted_by": [],
+      "fields": [
+        {
+          "name": "commandCode",
+          "term": "commandCode",
+          "attacker_visible_fields": [
+            "commandCode"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 602,
+              "line_end": 602,
+              "reason": "auth->ordinal = head->ordinal"
+            }
+          ]
+        },
+        {
+          "name": "handle",
+          "term": "handle",
+          "attacker_visible_fields": [
+            "handle"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 299,
+              "line_end": 299,
+              "reason": "auth->name_h[slot] = handle"
+            }
+          ]
+        },
+        {
+          "name": "nonceCaller",
+          "term": "hostNonce",
+          "attacker_visible_fields": [
+            "nonceCaller"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 413,
+              "line_end": 413,
+              "reason": "get_random_bytes(nonce, sizeof(nonce)); memcpy(auth->our_nonce, nonce, sizeof(nonce))"
+            }
+          ]
+        },
+        {
+          "name": "sessionHandle",
+          "term": "authHandle",
+          "attacker_visible_fields": [
+            "sessionHandle"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 414,
+              "line_end": 414,
+              "reason": "tpm_buf_append_u32(buf, auth->handle)"
+            }
+          ]
+        },
+        {
+          "name": "encryptedParameters",
+          "term": "encryptedParameters",
+          "attacker_visible_fields": [
+            "encryptedParameters"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 681,
+              "line_end": 681,
+              "reason": "aescfb_encrypt(&auth->aes_key, &buf->data[offset_p], tpm_buf_length(buf) - offset_p, auth->scratch + AES_KEY_BYTES)"
+            }
+          ]
+        },
+        {
+          "name": "hmac",
+          "term": "hmac",
+          "attacker_visible_fields": [
+            "hmac"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 722,
+              "line_end": 722,
+              "reason": "hmac_sha256_final(&hctx, hmac)"
+            }
+          ]
+        }
+      ],
+      "term": "symbolic_term(commandCode, handle, hostNonce, authHandle, encryptedParameters, hmac)",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 338,
+          "line_end": 423,
+          "reason": "Function tpm_buf_append_hmac_session constructs the session element."
+        },
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 566,
+          "line_end": 728,
+          "reason": "Function tpm_buf_fill_hmac_session finalizes the HMAC and encrypts parameters."
+        }
+      ]
+    },
+    {
+      "label": "M8_Generic_Response_with_HMAC_Session",
+      "from": "TPM",
+      "to": "host",
+      "constructed_by": [],
+      "accepted_by": [
+        "tpm_buf_check_hmac_response"
+      ],
+      "fields": [
+        {
+          "name": "responseCode",
+          "term": "rc",
+          "attacker_visible_fields": [
+            "responseCode"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 731,
+              "line_end": 731,
+              "reason": "rc parameter of tpm_buf_check_hmac_response"
+            }
+          ]
+        },
+        {
+          "name": "nonceTPM",
+          "term": "tpmNonce",
+          "attacker_visible_fields": [
+            "nonceTPM"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 774,
+              "line_end": 774,
+              "reason": "tpm_buf_read_u32(buf, &offset_s)"
+            }
+          ]
+        },
+        {
+          "name": "encryptedParameters",
+          "term": "encryptedParameters",
+          "attacker_visible_fields": [
+            "encryptedParameters"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 862,
+              "line_end": 862,
+              "reason": "aescfb_decrypt(&auth->aes_key, &buf->data[offset_p], parm_len, auth->scratch + AES_KEY_BYTES)"
+            }
+          ]
+        },
+        {
+          "name": "hmac",
+          "term": "hmac",
+          "attacker_visible_fields": [
+            "hmac"
+          ],
+          "protected_fields": [],
+          "evidence": [
+            {
+              "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+              "line_start": 845,
+              "line_end": 845,
+              "reason": "hmac_sha256_final(&hctx, rphash)"
+            }
+          ]
+        }
+      ],
+      "term": "symbolic_term(responseCode, tpmNonce, encryptedParameters, hmac)",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 731,
+          "line_end": 881,
+          "reason": "Function tpm_buf_check_hmac_response parses and verifies this response."
+        }
+      ]
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "oq_msg_1",
+      "question": "How exactly is the encryptedSalt field in M3 constructed? The code uses tpm_buf_append_salt which generates an ECDH public key and computes a shared secret, but the exact format of the encrypted salt in the command buffer is not fully specified.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 489,
+          "line_end": 564,
+          "reason": "Function tpm_buf_append_salt constructs the salt but the exact byte layout is complex."
+        }
+      ]
+    },
+    {
+      "id": "oq_msg_2",
+      "question": "What is the exact format of the 'name' field in M6? The code mentions it is a hash of the public area with algorithm id appended, but the precise encoding is not specified.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 224,
+          "line_end": 247,
+          "reason": "Function comment for tpm_buf_append_name describes the name but not the exact byte layout."
+        }
+      ]
+    },
+    {
+      "id": "oq_msg_3",
+      "question": "How are the encryptedParameters fields in M7 and M8 exactly formatted? The code uses AES-CFB encryption but the exact parameter boundaries and padding are not specified.",
+      "confidence": "low",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 681,
+          "line_end": 681,
+          "reason": "aescfb_encrypt is called but the exact parameter structure is not detailed."
+        }
+      ]
+    }
+  ]
+}

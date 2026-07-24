@@ -1,0 +1,600 @@
+{
+  "claims": [
+    {
+      "lemma_name": "tpm2_session_command_authentication",
+      "claim_category": "command_authentication",
+      "goal_type": "authentication",
+      "intent": "Every TPM command sent with an HMAC session must be authenticated: the TPM must receive the same command parameters, handles, nonces, and attributes that the host intended, and the HMAC must be computed over the correct cpHash.",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "holds_under": [
+        "HMAC-SHA256 is a secure MAC",
+        "sessionKey and passphrase are secret",
+        "cpHash correctly reflects command parameters"
+      ],
+      "does_not_hold_under": [
+        "sessionKey or passphrase is leaked",
+        "cpHash computation is incorrect"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 722,
+          "line_start": 712,
+          "reason": "HMAC computed over cpHash, hostNonce, tpmNonce, attrs using sessionKey and passphrase"
+        },
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 712,
+          "line_start": 686,
+          "reason": "cpHash computed from ordinal, names, handles, and parameters"
+        }
+      ],
+      "required_events": [
+        {
+          "name": "command_hmac_computed",
+          "role": "host",
+          "source_boundary": "tpm_buf_fill_hmac_session",
+          "when": "after cpHash and HMAC computation",
+          "arguments": [
+            "cpHash",
+            "hostNonce",
+            "tpmNonce",
+            "attrs",
+            "commandHMAC"
+          ]
+        },
+        {
+          "name": "command_sent",
+          "role": "host",
+          "source_boundary": "tpm_transmit_cmd",
+          "when": "after buffer is finalized",
+          "arguments": [
+            "commandCode",
+            "handle",
+            "hostNonce",
+            "authHandle",
+            "encryptedParameters",
+            "commandHMAC"
+          ]
+        }
+      ],
+      "preserved_values": [
+        "cpHash",
+        "hostNonce",
+        "tpmNonce",
+        "attrs",
+        "commandHMAC"
+      ],
+      "anti_compression_note": "This claim is specific to command authentication and must not be merged with response authentication or key secrecy claims because the HMAC computation uses different nonce order and different hash inputs (cpHash vs rpHash)."
+    },
+    {
+      "lemma_name": "tpm2_session_response_authentication",
+      "claim_category": "response_authentication",
+      "goal_type": "authentication",
+      "intent": "Every TPM response received with an HMAC session must be authenticated: the host must verify that the response parameters, return code, nonces, and attributes match the HMAC computed by the TPM.",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "holds_under": [
+        "HMAC-SHA256 is a secure MAC",
+        "sessionKey and passphrase are secret",
+        "rpHash correctly reflects response parameters"
+      ],
+      "does_not_hold_under": [
+        "sessionKey or passphrase is leaked",
+        "rpHash computation is incorrect"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 846,
+          "line_start": 834,
+          "reason": "HMAC computed over rpHash, tpmNonce, hostNonce, attrs using sessionKey and passphrase, then compared with received HMAC"
+        },
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 834,
+          "line_start": 823,
+          "reason": "rpHash computed from return_code, ordinal, and response parameters"
+        }
+      ],
+      "required_events": [
+        {
+          "name": "response_hmac_verified",
+          "role": "host",
+          "source_boundary": "tpm_buf_check_hmac_response",
+          "when": "after HMAC comparison succeeds",
+          "arguments": [
+            "rpHash",
+            "tpmNonce",
+            "hostNonce",
+            "attrs",
+            "expectedHMAC",
+            "receivedHMAC"
+          ]
+        },
+        {
+          "name": "response_received",
+          "role": "host",
+          "source_boundary": "tpm_transmit_cmd",
+          "when": "after response buffer is available",
+          "arguments": [
+            "responseCode",
+            "tpmNonce",
+            "encryptedParameters",
+            "receivedHMAC"
+          ]
+        }
+      ],
+      "preserved_values": [
+        "rpHash",
+        "tpmNonce",
+        "hostNonce",
+        "attrs",
+        "expectedHMAC",
+        "receivedHMAC"
+      ],
+      "anti_compression_note": "This claim is specific to response authentication and must not be merged with command authentication because the HMAC computation uses reversed nonce order (tpmNonce then hostNonce) and different hash inputs (rpHash vs cpHash)."
+    },
+    {
+      "lemma_name": "tpm2_session_command_payload_confidentiality",
+      "claim_category": "command_payload_confidentiality",
+      "goal_type": "secrecy",
+      "intent": "The first command parameter encrypted with AES-CFB under the session key must remain confidential from an attacker who observes the TPM transport.",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "holds_under": [
+        "AES-CFB is a secure encryption scheme",
+        "sessionKey is secret",
+        "aesKeyAndIV is correctly derived from sessionKey and nonces"
+      ],
+      "does_not_hold_under": [
+        "sessionKey is leaked",
+        "AES-CFB implementation is flawed"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 681,
+          "line_start": 680,
+          "reason": "aescfb_encrypt called with key from scratch buffer (derived from sessionKey) and IV from scratch buffer"
+        },
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 677,
+          "line_start": 675,
+          "reason": "AES key and IV derived from sessionKey, hostNonce, tpmNonce using KDFa with label 'CFB'"
+        }
+      ],
+      "required_events": [
+        {
+          "name": "command_parameter_encrypted",
+          "role": "host",
+          "source_boundary": "tpm_buf_fill_hmac_session",
+          "when": "after encryption",
+          "arguments": [
+            "plaintextParameter",
+            "encryptedParameter",
+            "aesKeyAndIV"
+          ]
+        }
+      ],
+      "preserved_values": [
+        "plaintextParameter",
+        "encryptedParameter",
+        "aesKeyAndIV"
+      ],
+      "anti_compression_note": "This claim is specific to command payload confidentiality and must not be merged with response payload confidentiality because the encryption uses different nonce order (hostNonce then tpmNonce) and different key derivation context."
+    },
+    {
+      "lemma_name": "tpm2_session_response_payload_confidentiality",
+      "claim_category": "response_payload_confidentiality",
+      "goal_type": "secrecy",
+      "intent": "The response parameter encrypted with AES-CFB under the session key must remain confidential from an attacker who observes the TPM transport.",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "holds_under": [
+        "AES-CFB is a secure encryption scheme",
+        "sessionKey is secret",
+        "aesDecKeyAndIV is correctly derived from sessionKey and nonces"
+      ],
+      "does_not_hold_under": [
+        "sessionKey is leaked",
+        "AES-CFB implementation is flawed"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 862,
+          "line_start": 860,
+          "reason": "aescfb_decrypt called with key from scratch buffer (derived from sessionKey) and IV from scratch buffer"
+        },
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 862,
+          "line_start": 860,
+          "reason": "AES key and IV derived from sessionKey, tpmNonce, hostNonce using KDFa with label 'CFB' (reversed nonce order)"
+        }
+      ],
+      "required_events": [
+        {
+          "name": "response_parameter_decrypted",
+          "role": "host",
+          "source_boundary": "tpm_buf_check_hmac_response",
+          "when": "after decryption",
+          "arguments": [
+            "encryptedParameter",
+            "decryptedParameter",
+            "aesDecKeyAndIV"
+          ]
+        }
+      ],
+      "preserved_values": [
+        "encryptedParameter",
+        "decryptedParameter",
+        "aesDecKeyAndIV"
+      ],
+      "anti_compression_note": "This claim is specific to response payload confidentiality and must not be merged with command payload confidentiality because the encryption uses reversed nonce order (tpmNonce then hostNonce) and different key derivation context."
+    },
+    {
+      "lemma_name": "tpm2_session_key_secrecy",
+      "claim_category": "key_secrecy",
+      "goal_type": "secrecy",
+      "intent": "The session key (sessionKey) derived from the salt and nonces must remain secret from an attacker who observes the TPM transport.",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "holds_under": [
+        "HMAC-SHA256 is a secure MAC (used in KDFa)",
+        "sessionSalt is secret",
+        "hostNonce and tpmNonce are fresh and unpredictable"
+      ],
+      "does_not_hold_under": [
+        "sessionSalt is leaked",
+        "nonces are predictable or reused"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 928,
+          "line_start": 928,
+          "reason": "sessionKey derived from salt, tpmNonce, hostNonce using KDFa with label 'ATH'"
+        },
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 560,
+          "line_start": 559,
+          "reason": "sessionSalt derived from ECDH shared secret using KDFe with label 'SECRET'"
+        }
+      ],
+      "required_events": [
+        {
+          "name": "session_key_derived",
+          "role": "host",
+          "source_boundary": "tpm2_parse_start_auth_session",
+          "when": "after KDFa computation",
+          "arguments": [
+            "sessionSalt",
+            "tpmNonce",
+            "hostNonce",
+            "sessionKey"
+          ]
+        }
+      ],
+      "preserved_values": [
+        "sessionSalt",
+        "tpmNonce",
+        "hostNonce",
+        "sessionKey"
+      ],
+      "anti_compression_note": "This claim is specific to session key secrecy and must not be merged with payload confidentiality claims because the key is used for both HMAC and encryption, and its secrecy is a precondition for both authentication and confidentiality."
+    },
+    {
+      "lemma_name": "tpm2_session_salt_secrecy",
+      "claim_category": "key_secrecy",
+      "goal_type": "secrecy",
+      "intent": "The session salt (sessionSalt) derived from the ECDH shared secret must remain secret from an attacker who observes the TPM transport.",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "holds_under": [
+        "ECDH is a secure key agreement protocol",
+        "the host ephemeral private key is secret",
+        "the TPM null key private key is secret"
+      ],
+      "does_not_hold_under": [
+        "host ephemeral private key is leaked",
+        "TPM null key private key is compromised"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 560,
+          "line_start": 559,
+          "reason": "sessionSalt derived from ECDH shared secret using KDFe with label 'SECRET'"
+        },
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 551,
+          "line_start": 549,
+          "reason": "ECDH shared secret computed using host ephemeral private key and TPM null key public key"
+        }
+      ],
+      "required_events": [
+        {
+          "name": "salt_derived",
+          "role": "host",
+          "source_boundary": "tpm_buf_append_salt",
+          "when": "after KDFe computation",
+          "arguments": [
+            "ecdhSharedSecret",
+            "sessionSalt"
+          ]
+        }
+      ],
+      "preserved_values": [
+        "ecdhSharedSecret",
+        "sessionSalt"
+      ],
+      "anti_compression_note": "This claim is specific to salt secrecy and must not be merged with session key secrecy because the salt is derived from ECDH while the session key is derived from the salt and nonces, and they have different security dependencies."
+    },
+    {
+      "lemma_name": "tpm2_null_key_public_material_validation",
+      "claim_category": "validation",
+      "goal_type": "state_safety",
+      "intent": "The host must validate that the public key material (x, y coordinates) returned by the TPM in the CreatePrimary response matches the expected template for a NULL key (ECC P-256, specific attributes).",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "holds_under": [
+        "the TPM correctly implements CreatePrimary",
+        "the validation checks are correct"
+      ],
+      "does_not_hold_under": [
+        "the TPM is malicious or compromised",
+        "the validation checks are bypassed"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1144,
+          "line_start": 1098,
+          "reason": "Multiple validation checks: key type ECC, name alg SHA256, object properties NULL_KEY, empty auth policy, symmetric AES, key length 128, scheme CFB, signing NULL, curve NIST_P256, KDF NULL, point sizes EC_PT_SZ"
+        }
+      ],
+      "required_events": [
+        {
+          "name": "null_key_public_material_accepted",
+          "role": "host",
+          "source_boundary": "tpm2_parse_create_primary",
+          "when": "after all validation checks pass",
+          "arguments": [
+            "keyhandle",
+            "chip->null_ec_key_x",
+            "chip->null_ec_key_y",
+            "name"
+          ]
+        }
+      ],
+      "preserved_values": [
+        "keyhandle",
+        "chip->null_ec_key_x",
+        "chip->null_ec_key_y",
+        "name"
+      ],
+      "anti_compression_note": "This claim is a validation-only claim and must not be merged with authentication claims because it does not establish origin authenticity; it only checks that the received public material matches expected properties."
+    },
+    {
+      "lemma_name": "tpm2_initial_create_primary_mitm_attack",
+      "claim_category": "known_attack",
+      "goal_type": "known_attack",
+      "intent": "The initial TPM2_CreatePrimary command is not session protected, so an attacker can perform a Man-in-the-Middle attack to return a public key they control, allowing interception and decoding of all subsequent session-based transactions.",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "exists-trace",
+      "holds_under": [],
+      "does_not_hold_under": [],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 64,
+          "line_start": 3,
+          "reason": "Top comment explicitly describes this attack scenario: 'the initial TPM2_CreatePrimary is not (and cannot be) session protected, so a clever Man in the Middle could return a public key they control'"
+        }
+      ],
+      "required_events": [
+        {
+          "name": "create_primary_sent",
+          "role": "host",
+          "source_boundary": "tpm2_create_primary",
+          "when": "command is sent without session protection",
+          "arguments": [
+            "primaryHandle",
+            "sensitiveCreate",
+            "publicTemplate",
+            "outsideInfo",
+            "creationPCR"
+          ]
+        },
+        {
+          "name": "create_primary_response_received",
+          "role": "host",
+          "source_boundary": "tpm2_parse_create_primary",
+          "when": "response is parsed and validated",
+          "arguments": [
+            "responseCode",
+            "handle",
+            "name",
+            "chip->null_ec_key_x",
+            "chip->null_ec_key_y"
+          ]
+        },
+        {
+          "name": "attacker_modified_response",
+          "role": "attacker",
+          "source_boundary": "adversarial TPM transport",
+          "when": "attacker intercepts and modifies the response",
+          "arguments": [
+            "attackerPublicKeyX",
+            "attackerPublicKeyY"
+          ]
+        }
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "This is a known attack claim and must not be merged with any proved property. It documents an unmitigated vulnerability that is explicitly acknowledged in the code comments."
+    },
+    {
+      "lemma_name": "tpm2_continued_session_state_reset",
+      "claim_category": "lifecycle",
+      "goal_type": "state_safety",
+      "intent": "When a session is continued (TPM2_SA_CONTINUE_SESSION attribute set), the auth->session offset must be reset to TPM_HEADER_SIZE for the next command, and the session key and nonces must remain unchanged.",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "holds_under": [
+        "the session is not terminated between commands"
+      ],
+      "does_not_hold_under": [
+        "the session is terminated or an error occurs"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 881,
+          "line_start": 866,
+          "reason": "When CONTINUE_SESSION is set, auth->session is reset to TPM_HEADER_SIZE"
+        }
+      ],
+      "required_events": [
+        {
+          "name": "session_continued",
+          "role": "host",
+          "source_boundary": "tpm_buf_check_hmac_response",
+          "when": "after successful HMAC verification and CONTINUE_SESSION attribute is set",
+          "arguments": [
+            "auth->handle",
+            "auth->session_key",
+            "auth->tpm_nonce",
+            "auth->our_nonce"
+          ]
+        }
+      ],
+      "preserved_values": [
+        "auth->handle",
+        "auth->session_key",
+        "auth->tpm_nonce",
+        "auth->our_nonce"
+      ],
+      "anti_compression_note": "This lifecycle claim must not be merged with authentication claims because it describes state management rather than message authentication."
+    },
+    {
+      "lemma_name": "tpm2_session_termination_cleanup",
+      "claim_category": "lifecycle",
+      "goal_type": "state_safety",
+      "intent": "When a session is terminated (TPM2_SA_CONTINUE_SESSION not set), the session context must be flushed and the auth structure must be freed to prevent resource leaks.",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "holds_under": [
+        "tpm2_flush_context and kfree_sensitive are called correctly"
+      ],
+      "does_not_hold_under": [
+        "an error occurs before cleanup"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 881,
+          "line_start": 866,
+          "reason": "When CONTINUE_SESSION is not set, tpm2_flush_context and kfree_sensitive are called"
+        },
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 904,
+          "line_start": 884,
+          "reason": "tpm2_end_auth_session also performs cleanup unconditionally"
+        }
+      ],
+      "required_events": [
+        {
+          "name": "session_terminated",
+          "role": "host",
+          "source_boundary": "tpm_buf_check_hmac_response or tpm2_end_auth_session",
+          "when": "after cleanup",
+          "arguments": [
+            "auth->handle"
+          ]
+        }
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "This lifecycle claim must not be merged with authentication claims because it describes resource management rather than message authentication."
+    }
+  ],
+  "rejected_claims": [
+    {
+      "lemma_name": "tpm2_null_key_origin_authentication",
+      "reason": "The code does not provide any mechanism to authenticate the origin of the NULL key public material. The validation checks only ensure the material matches expected properties, not that it came from a genuine TPM. This would be a false claim.",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 64,
+          "line_start": 3,
+          "reason": "Top comment explicitly states the initial CreatePrimary is vulnerable to MITM, so origin authentication cannot be claimed."
+        }
+      ]
+    },
+    {
+      "lemma_name": "tpm2_session_key_freshness",
+      "reason": "The session key freshness depends on the freshness of hostNonce and tpmNonce. While hostNonce is generated fresh with get_random_bytes, tpmNonce is received from the TPM and its freshness is not independently verified. Claiming freshness would require assuming TPM nonce freshness, which is not explicitly verified.",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 413,
+          "line_start": 412,
+          "reason": "hostNonce is generated with get_random_bytes"
+        },
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 928,
+          "line_start": 928,
+          "reason": "tpmNonce is read from TPM response without freshness verification"
+        }
+      ]
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "oq_claim_1",
+      "question": "How is the NULL seed primary key (chip->null_ec_key_x, chip->null_ec_key_y) exactly derived and stored? The function tpm2_create_null_primary is not fully visible, so the security of the ECDH key agreement depends on assumptions about this key's generation.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1372,
+          "line_start": 1355,
+          "reason": "Function definition is present but implementation details are not shown."
+        }
+      ]
+    },
+    {
+      "id": "oq_claim_2",
+      "question": "What is the exact format of the 'name' field used in cpHash and rpHash? The comment mentions it is a hash of the public area with algorithm id appended, but the precise encoding is not specified, which could affect the correctness of HMAC computation.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 247,
+          "line_start": 224,
+          "reason": "Function comment for tpm_buf_append_name describes the name but not the exact byte layout."
+        }
+      ]
+    },
+    {
+      "id": "oq_claim_3",
+      "question": "Are there any additional checks on the public key material after the point size validation in tpm2_parse_create_primary? The slice is truncated, so the complete validation logic is not visible.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1144,
+          "line_start": 1144,
+          "reason": "The slice is truncated at '/* origi...' so the complete validation of the public key is not visible."
+        }
+      ]
+    }
+  ]
+}

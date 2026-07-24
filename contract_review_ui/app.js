@@ -4,16 +4,24 @@ const state = {
   sourcePath: "",
   reviewedPath: "",
   pendingPatch: null,
+  lemmaRepair: {},
+  lemmaCandidates: {},
+  currentProofResult: null,
   workflow: null,
   workflowLibrary: null,
   abstractionHintsInitialized: false,
 };
 
+const inputMode = document.body && document.body.dataset ? document.body.dataset.inputMode || "nl" : "nl";
+const inputSectionLabel = inputMode === "c_code" ? "C Code" : "NL Input";
+const contractDisplayMode = inputMode === "c_code" ? "msr" : "sapic";
+const contractApiPath = `/api/contract?display=${encodeURIComponent(contractDisplayMode)}`;
+
 const sectionGroups = [
   {
     title: "Start",
     items: [
-      ["nl_input", "NL Input"],
+      ["nl_input", inputSectionLabel],
     ],
   },
   {
@@ -39,7 +47,7 @@ const sectionGroups = [
 
 const sections = sectionGroups.flatMap((group) => group.items);
 const workflowNavSteps = [
-  { id: "nl_input", label: "NL", section: "nl_input", done: (exists) => exists.case },
+  { id: "nl_input", label: inputMode === "c_code" ? "C" : "NL", section: "nl_input", done: (exists) => exists.case },
   { id: "sapic_generation", label: "Sapic+", section: "sapic", done: (exists) => exists.sapic },
   { id: "verify", label: "Verify", section: "tamarin", done: (exists) => exists.repair_verify || exists.verify },
   { id: "tamarin_prove", label: "Prove", section: "tamarin", done: (exists) => exists.proof },
@@ -192,7 +200,7 @@ async function loadContract(options = {}) {
     clearTransientOutputs();
   }
   setStatus("Loading contract...");
-  const { response, data } = await apiJson("/api/contract");
+  const { response, data } = await apiJson(contractApiPath);
   if (!response.ok) {
     setStatus(data.error || "Failed to load contract", true);
     await loadWorkflow({ quiet: true });
@@ -206,6 +214,10 @@ async function loadContract(options = {}) {
   state.sourcePath = data.source_path || "";
   state.reviewedPath = data.reviewed_path || "";
   state.pendingPatch = null;
+  state.lemmaRepair = {};
+  state.lemmaCandidates = {};
+  state.currentProofResult = null;
+  hydrateLemmaCandidateArtifacts(data.lemma_candidate_artifacts);
   document.getElementById("runDir").textContent = "";
   hydrateNlInput(data.case_input);
   await loadWorkflow({ quiet: true });
@@ -225,17 +237,21 @@ function renderExistingTamarinResult(result) {
   if (!result || typeof result !== "object") return false;
   const data = result.data && typeof result.data === "object" ? result.data : null;
   if (!data) return false;
+  if ((result.kind || "compile") === "proof") {
+    state.currentProofResult = deepClone(data);
+  }
   renderTamarinSummary(result.kind || "compile", data, true);
   return true;
 }
 
 async function loadExistingTamarinResult(options = {}) {
   const quiet = Boolean(options.quiet);
-  const { response, data } = await apiJson("/api/contract");
+  const { response, data } = await apiJson(contractApiPath);
   if (!response.ok) {
     if (!quiet) setStatus(data.error || "Failed to load Tamarin result", true);
     return false;
   }
+  hydrateLemmaCandidateArtifacts(data.lemma_candidate_artifacts);
   return renderExistingTamarinResult(data.tamarin_result);
 }
 
@@ -294,9 +310,14 @@ async function importWorkflow() {
   state.reviewedPath = state.sourcePath;
   state.workflow = data.workflow || state.workflow;
   state.pendingPatch = null;
+  state.lemmaRepair = {};
+  state.lemmaCandidates = {};
+  state.currentProofResult = null;
+  hydrateLemmaCandidateArtifacts(data.lemma_candidate_artifacts);
   hydrateNlInput(data.case_input);
   clearTransientOutputs();
   renderAll();
+  renderExistingTamarinResult(data.tamarin_result);
   setStatus(`Imported ${data.case}.`, false, true);
 }
 
@@ -450,6 +471,9 @@ async function generateSapic() {
   });
   setBusy(["generateSapicBtn"], false);
   state.workflow = data.workflow || state.workflow;
+  state.currentProofResult = null;
+  state.lemmaRepair = {};
+  state.lemmaCandidates = {};
   if (!response.ok) {
     renderSapicSummary({
       ok: false,
@@ -489,6 +513,9 @@ async function compileSapic(options = {}) {
   });
   setBusy(busyIds, false);
   state.workflow = data.workflow || state.workflow;
+  state.currentProofResult = null;
+  state.lemmaRepair = {};
+  state.lemmaCandidates = {};
   renderTamarinSummary("compile", data, response.ok);
   renderAll();
   setStatus(response.ok && data.ok ? "Tamarin compile check completed." : data.error || "Tamarin compile check failed.", !(response.ok && data.ok), response.ok && data.ok);
@@ -506,6 +533,9 @@ async function repairVerifySapic() {
   });
   setBusy(["repairVerifyBtn"], false);
   state.workflow = data.workflow || state.workflow;
+  state.currentProofResult = null;
+  state.lemmaRepair = {};
+  state.lemmaCandidates = {};
   renderTamarinSummary("repair", data, response.ok);
   renderAll();
   const ok = response.ok && data.ok;
@@ -523,6 +553,9 @@ async function proveSapic() {
   });
   setBusy(["proveBtn"], false);
   state.workflow = data.workflow || state.workflow;
+  state.currentProofResult = deepClone(data);
+  state.lemmaRepair = {};
+  state.lemmaCandidates = {};
   renderTamarinSummary("proof", data, response.ok);
   renderAll();
   setStatus(response.ok && data.ok ? "Tamarin proof completed." : data.error || "Tamarin proof failed or mismatched expectations.", !(response.ok && data.ok), response.ok && data.ok);
@@ -620,6 +653,10 @@ function renderEvents() {
 }
 
 function renderProofTargets() {
+  if (lemmaAlignmentRouteEnabled()) {
+    renderProofTargetsWithLemmaAlignment();
+    return;
+  }
   renderEditableTable("proofTargetsTable", state.contract.proof_targets || [], [
     ["name", "Name"],
     ["goal_type", "Goal Type"],
@@ -627,6 +664,114 @@ function renderProofTargets() {
     ["expected_state", "Expected State"],
     ["required_events", "Required Events"],
   ], "proof_targets");
+}
+
+function renderProofTargetsWithLemmaAlignment() {
+  const root = document.getElementById("proofTargetsTable");
+  const targets = Array.isArray(state.contract.proof_targets) ? state.contract.proof_targets : [];
+  if (!targets.length) {
+    root.innerHTML = `<div class="muted">No proof targets recorded.</div>`;
+    return;
+  }
+  root.innerHTML = `
+    <div class="proof-target-align-list">
+      ${targets.map((target, index) => renderProofTargetAlignmentCard(target || {}, index)).join("")}
+    </div>
+  `;
+  bindFieldReviewActions(root);
+  bindProofTargetCandidateActions(root);
+}
+
+function renderProofTargetAlignmentCard(target, index) {
+  const key = proofTargetCandidateKey(index);
+  const record = state.lemmaCandidates[key] || {};
+  const openAttr = record.open || record.loading || record.response || record.error ? " open" : "";
+  const hint = record.hint || "";
+  const candidateCount = normalizeLemmaCandidateCount(record.count || 3);
+  return `
+    <details class="proof-target-align-card" data-proof-target-card="${index}"${openAttr}>
+      <summary>
+        <span class="lemma-name">${escapeHtml(target.name || `proof_target_${index + 1}`)}</span>
+        <span class="lemma-status">
+          <span>${escapeHtml(target.goal_type || "-")}</span>
+          <span>${escapeHtml(target.expected_state || "-")}</span>
+        </span>
+      </summary>
+      <div class="proof-target-align-body">
+        <div class="proof-target-fields">
+          ${proofTargetCardField(index, "name", "Name", target.name || "")}
+          ${proofTargetCardField(index, "goal_type", "Goal Type", target.goal_type || "")}
+          ${proofTargetCardField(index, "trace_kind", "Trace Kind", target.trace_kind || "")}
+          ${proofTargetCardField(index, "expected_state", "Expected State", target.expected_state || "")}
+          ${proofTargetCardField(index, "required_events", "Required Events", target.required_events || [])}
+          ${proofTargetCardField(index, "intent", "Intent", target.intent || "")}
+        </div>
+        <div class="lemma-candidate-request">
+          <label for="lemmaCandidateHint-${index}">Optional user's lemma goal hint</label>
+          <div class="lemma-feedback-row">
+            <textarea id="lemmaCandidateHint-${index}" rows="2" data-lemma-candidate-hint="${index}" placeholder="I want this proof target to express ...">${escapeHtml(hint)}</textarea>
+            <div class="lemma-candidate-controls">
+              <label for="lemmaCandidateCount-${index}">Top K</label>
+              <input id="lemmaCandidateCount-${index}" type="number" min="1" max="7" step="1" value="${escapeHtml(String(candidateCount))}" data-lemma-candidate-count="${index}">
+              <button data-lemma-candidates="${index}">${escapeHtml(record.loading ? "Requesting..." : "Generate Top K")}</button>
+            </div>
+          </div>
+        </div>
+        ${record.error ? `<p class="error-text">${escapeHtml(record.error)}</p>` : ""}
+        ${record.response ? renderLemmaCandidateResponse(index, record.response) : ""}
+      </div>
+    </details>
+  `;
+}
+
+function proofTargetCardField(index, key, label, value) {
+  return `
+    <div class="proof-target-field">
+      <label>${escapeHtml(label)}</label>
+      ${cellInput("proof_targets", index, key, value)}
+    </div>
+  `;
+}
+
+function renderLemmaCandidateResponse(proofTargetIndex, response) {
+  const candidates = Array.isArray(response.candidates) ? response.candidates : [];
+  const recommended = Number(response.recommended_index);
+  if (!candidates.length) {
+    return `<div class="lemma-recommendation"><p>No lemma candidates were returned.</p></div>`;
+  }
+  return `
+    <div class="lemma-candidates">
+      <div class="proposal-head">
+        <strong>Lemma Candidates</strong>
+        <span class="chip">top ${escapeHtml(String(candidates.length))}</span>
+      </div>
+      ${candidates.map((candidate, index) => renderLemmaCandidateCard(proofTargetIndex, candidate, {
+        recommended: index === recommended,
+      })).join("")}
+    </div>
+  `;
+}
+
+function renderLemmaCandidateCard(proofTargetIndex, candidate, options = {}) {
+  const issues = candidate.validation && Array.isArray(candidate.validation.issues) ? candidate.validation.issues : [];
+  const fields = candidate.updated_fields && typeof candidate.updated_fields === "object" ? candidate.updated_fields : {};
+  return `
+    <div class="lemma-candidate-card ${options.recommended ? "recommended" : ""}">
+      <div class="proposal-head">
+        <strong>${escapeHtml(candidate.label || "candidate")}</strong>
+        ${options.recommended ? `<span class="chip">recommended</span>` : ""}
+        ${candidate.confidence ? `<span class="chip">confidence: ${escapeHtml(candidate.confidence)}</span>` : ""}
+      </div>
+      ${candidate.nl_translation ? `<p>${escapeHtml(candidate.nl_translation)}</p>` : ""}
+      ${candidate.reason ? `<p class="muted">${escapeHtml(candidate.reason)}</p>` : ""}
+      ${fields.intent ? `<label>Intent</label><p>${escapeHtml(fields.intent)}</p>` : ""}
+      ${Array.isArray(fields.required_events) ? resultMetric("Required events", fields.required_events.join(", ") || "-") : ""}
+      ${issues.length ? `<label>Validation issues</label><ul>${issues.map((issue) => `<li>${escapeHtml(issue)}</li>`).join("")}</ul>` : ""}
+      <div class="button-row compact">
+        <button class="primary" data-lemma-candidate-apply="${proofTargetIndex}:${candidate.index}" ${candidate.can_apply ? "" : "disabled"}>Use Candidate</button>
+      </div>
+    </div>
+  `;
 }
 
 function renderAttackSurface() {
@@ -982,17 +1127,38 @@ function unresolvedReviewItems(items) {
 }
 
 function priorityDetailText(item) {
-  return scorePercentText(item.priority_score);
+  return lmScoreText(item, ["priority_llm", "lm_priority_score", "llm_priority"]);
 }
 
-function reviewMetricText(item, keys) {
+function reviewMetricText(item, keys, sourceKeys = []) {
+  for (const key of keys) {
+    if (!isLmScore(item, key, sourceKeys)) continue;
+    if (item[key] != null && item[key] !== "") {
+      const scoreText = scorePercentText(item[key]);
+      return scoreText === "-" ? "Error: invalid score" : scoreText;
+    }
+  }
+  return "not provided";
+}
+
+function lmScoreText(item, keys) {
   for (const key of keys) {
     if (item[key] != null && item[key] !== "") {
       const scoreText = scorePercentText(item[key]);
       return scoreText === "-" ? "Error: invalid score" : scoreText;
     }
   }
-  return "Error: missing score";
+  return "not provided";
+}
+
+function isLmScore(item, key, sourceKeys = []) {
+  for (const sourceKey of sourceKeys) {
+    const source = String(item[sourceKey] || "").toLowerCase();
+    if (source === "llm" || source.startsWith("llm_")) return true;
+  }
+  const metadataSource = String(item.metadata_source || "").toLowerCase();
+  if (metadataSource.includes("raw_llm") || metadataSource.includes("llm_field_review")) return true;
+  return false;
 }
 
 function scorePercentText(raw) {
@@ -1048,16 +1214,17 @@ function reviewMetadataHtml(item) {
   return `
     <div class="review-metadata">
       <div><span>Priority</span><strong>${escapeHtml(priorityDetailText(item))}</strong></div>
-      <div><span>Evidence</span><strong>${escapeHtml(reviewMetricText(item, ["evidence_confidence_score", "evidence_score"]))}</strong></div>
-      <div><span>Consistency</span><strong>${escapeHtml(reviewMetricText(item, ["consistency_confidence_score", "consistency_score"]))}</strong></div>
-      <div><span>Impact</span><strong>${escapeHtml(reviewMetricText(item, ["semantic_impact_score", "impact_score"]))}</strong></div>
+      <div><span>Evidence</span><strong>${escapeHtml(reviewMetricText(item, ["evidence_confidence_score", "evidence_score"], ["evidence_confidence_score_source", "evidence_score_source"]))}</strong></div>
+      <div><span>Consistency</span><strong>${escapeHtml(reviewMetricText(item, ["consistency_confidence_score", "consistency_score"], ["consistency_confidence_score_source", "consistency_score_source"]))}</strong></div>
+      <div><span>Impact</span><strong>${escapeHtml(reviewMetricText(item, ["semantic_impact_score", "impact_score"], ["semantic_impact_score_source", "impact_score_source", "semantic_impact_source"]))}</strong></div>
     </div>
   `;
 }
 
 function fieldReviewDetailsHtml(reviews) {
-  if (!reviews.length) return "";
-  return reviews.map((item) => `
+  const detailReviews = reviews.filter(shouldShowReviewDetails);
+  if (!detailReviews.length) return "";
+  return detailReviews.map((item) => `
     <details class="field-review-details">
       <summary>Review details</summary>
       ${reviewMetadataHtml(item)}
@@ -1069,6 +1236,20 @@ function fieldReviewDetailsHtml(reviews) {
       </div>
     </details>
   `).join("");
+}
+
+function shouldShowReviewDetails(item) {
+  if (!item || typeof item !== "object") return false;
+  const metadataSource = String(item.metadata_source || "");
+  if (metadataSource.includes("human_review_added_cell_no_raw_llm_metadata")) return false;
+  if (metadataSource.includes("human_review_no_raw_llm_field_review")) return false;
+  if (metadataSource.includes("raw_llm_field_review_reused")) return true;
+  if (item.priority_llm != null && item.priority_llm !== "") return true;
+  if (isLmScore(item, "evidence_confidence_score", ["evidence_confidence_score_source", "evidence_score_source"])) return true;
+  if (isLmScore(item, "consistency_confidence_score", ["consistency_confidence_score_source", "consistency_score_source"])) return true;
+  if (isLmScore(item, "semantic_impact_score", ["semantic_impact_score_source", "impact_score_source", "semantic_impact_source"])) return true;
+  const evidence = Array.isArray(item.source_evidence) ? item.source_evidence : [];
+  return evidence.some((ev) => ev && typeof ev === "object" && String(ev.quote || "").trim());
 }
 
 function diagnosticHtml(item) {
@@ -1559,6 +1740,9 @@ function renderTamarinSummary(kind, data, responseOk) {
   const root = document.getElementById("tamarinResult");
   if (!root) return;
   const payload = data || {};
+  if (kind === "proof") {
+    state.currentProofResult = deepClone(payload);
+  }
   const ok = Boolean(responseOk && payload.ok);
   const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
   const lintIssues = Array.isArray(payload.lint_issues) ? payload.lint_issues : [];
@@ -1595,6 +1779,9 @@ function renderTamarinSummary(kind, data, responseOk) {
     </div>
   `;
   bindResultTabs(root);
+  if (kind === "proof" && lemmaAlignmentRouteEnabled()) {
+    bindLemmaRepairActions(root);
+  }
 }
 
 function renderResultTabs(tabName, processHtml, codeHtml) {
@@ -1604,7 +1791,7 @@ function renderResultTabs(tabName, processHtml, codeHtml) {
     <div class="result-tabs" data-result-tabs="${escapeHtml(tabName)}">
       <div class="result-tab-controls" role="tablist">
         <button type="button" class="result-tab-label active" data-result-tab="process" aria-controls="${escapeHtml(processId)}" aria-selected="true">Process</button>
-        <button type="button" class="result-tab-label" data-result-tab="code" aria-controls="${escapeHtml(codeId)}" aria-selected="false">Tamarin Code</button>
+        <button type="button" class="result-tab-label" data-result-tab="code" aria-controls="${escapeHtml(codeId)}" aria-selected="false">Model Code</button>
       </div>
       <div id="${escapeHtml(processId)}" class="tab-panel process-panel active" data-result-panel="process">${processHtml}</div>
       <div id="${escapeHtml(codeId)}" class="tab-panel code-panel" data-result-panel="code" hidden>${codeHtml}</div>
@@ -1637,20 +1824,23 @@ function bindResultTabs(root) {
 function renderTamarinCodeArtifacts(data) {
   const artifacts = normalizeModelArtifacts(data);
   if (!artifacts.length) {
-    return `<p class="muted">No Tamarin model artifact is available yet.</p>`;
+    return `<p class="muted">No model artifact is available yet.</p>`;
   }
   const successful = artifacts.filter((artifact) => artifact.ok === true || artifact.accepted === true);
   const finalArtifact = artifacts.find((artifact) => artifact.path === "final/model.spthy");
   const primary = successful.length ? successful : finalArtifact ? [finalArtifact] : [artifacts[0]];
+  const primaryKind = modelArtifactKind(primary[0]);
   const primaryKeys = new Set(primary.map((artifact) => artifact.path || artifact.label || ""));
   const secondary = artifacts.filter((artifact) => !primaryKeys.has(artifact.path || artifact.label || ""));
   return `
     <div class="result-grid">
       ${resultMetric("Model artifacts", artifacts.length)}
       ${resultMetric(successful.length ? "Successful models" : "Current models", primary.length)}
+      ${resultMetric("Displayed syntax", primaryKind)}
     </div>
     <div class="result-section code-artifact-group">
-      <h3>${escapeHtml(successful.length ? "Successful Tamarin Code" : "Current Tamarin Code")}</h3>
+      <h3>${escapeHtml(`${successful.length ? "Successful" : "Current"} ${primaryKind}`)}</h3>
+      ${modelArtifactKindNote(primary[0])}
       ${primary.map((artifact, index) => renderCodeArtifact(artifact, { open: index === 0 })).join("")}
     </div>
     ${secondary.length ? `
@@ -1667,7 +1857,7 @@ function normalizeModelArtifacts(data) {
   const artifacts = rawArtifacts
     .filter((artifact) => artifact && String(artifact.code || "").trim())
     .map((artifact) => ({
-      label: String(artifact.label || artifact.path || "Tamarin model"),
+      label: String(artifact.label || artifact.path || "Model"),
       path: String(artifact.path || ""),
       code: String(artifact.code || ""),
       ok: artifact.ok,
@@ -1676,7 +1866,7 @@ function normalizeModelArtifacts(data) {
       warning_count: Number(artifact.warning_count || 0),
       lint_issue_count: Number(artifact.lint_issue_count || 0),
     }));
-  if (!artifacts.length && String(data.sapic_plus || "").trim()) {
+  if (!artifacts.length && inputMode !== "c_code" && String(data.sapic_plus || "").trim()) {
     artifacts.push({
       label: "Current model",
       path: String(data.model_path || "final/model.spthy"),
@@ -1700,9 +1890,10 @@ function normalizeModelArtifacts(data) {
 function renderCodeArtifact(artifact, options = {}) {
   const openAttr = options.open ? " open" : "";
   const meta = [
+    `syntax: ${modelArtifactKind(artifact)}`,
     artifact.path,
     artifact.status ? `status: ${artifact.status}` : "",
-    artifact.ok === true ? "tamarin ok" : artifact.ok === false ? "needs attention" : "",
+    artifact.ok === true ? "Tamarin accepted" : artifact.ok === false ? "needs attention" : "",
     artifact.accepted === true ? "accepted/current" : "",
     artifact.warning_count ? `${artifact.warning_count} warning(s)` : "",
     artifact.lint_issue_count ? `${artifact.lint_issue_count} lint issue(s)` : "",
@@ -1720,12 +1911,30 @@ function renderCodeArtifact(artifact, options = {}) {
 }
 
 function modelArtifactStatus(artifact) {
-  if (artifact.path === "final/model.spthy") return artifact.ok === true ? "current / clean" : "current";
+  if (artifact.path === "final/model.spthy") return artifact.ok === true ? "current / Tamarin accepted" : "current";
   if (artifact.accepted === true && artifact.ok === true) return "accepted / clean";
   if (artifact.accepted === true) return "accepted";
   if (artifact.ok === true) return "clean";
   if (artifact.ok === false) return "needs attention";
   return artifact.status || "generated";
+}
+
+function modelArtifactKind(artifact) {
+  const code = String(artifact && artifact.code || "");
+  const hasProcess = /^\s*process\s*:/m.test(code) || /^\s*let\s+[A-Za-z0-9_]+\s*\(/m.test(code);
+  const hasRule = /^\s*rule\s+[A-Za-z0-9_]+/m.test(code);
+  if (hasProcess) return "Sapic+ process model";
+  if (hasRule) return "Tamarin MSR rule model";
+  return "Tamarin theory";
+}
+
+function modelArtifactKindNote(artifact) {
+  if (modelArtifactKind(artifact) !== "Sapic+ process model") return "";
+  return `
+    <p class="field-note">
+      This artifact is a Sapic+ process-style Tamarin theory. Tamarin accepts it as input and translates the process internally to MSR rules, but this panel is not the expanded MSR rule listing.
+    </p>
+  `;
 }
 
 function renderDiagnosticLog(data) {
@@ -1796,10 +2005,36 @@ function renderRepairAttempts(attempts) {
 }
 
 function renderLemmaTable(data) {
+  if (!lemmaAlignmentRouteEnabled()) {
+    return renderLegacyLemmaTable(data);
+  }
   const states = data.lemma_actual_states || {};
   const expected = data.lemma_expected_states || {};
   const matches = data.lemma_matches || {};
-  const names = Object.keys(states);
+  const names = lemmaNamesForResult(data);
+  if (!names.length) return "";
+  const expectations = lemmaExpectationMap(data);
+  return `
+    <div class="result-section">
+      <h3>Lemmas</h3>
+      <div class="lemma-list">
+        ${names.map((name) => renderLemmaCard(name, {
+          actual: states[name] || "-",
+          expected: expected[name] || "-",
+          match: Boolean(matches[name]),
+          result: data.lemma_results && data.lemma_results[name] ? data.lemma_results[name] : "",
+          expectation: expectations.get(name) || {},
+        }, data)).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderLegacyLemmaTable(data) {
+  const states = data.lemma_actual_states || {};
+  const expected = data.lemma_expected_states || {};
+  const matches = data.lemma_matches || {};
+  const names = lemmaNamesForResult(data);
   if (!names.length) return "";
   return `
     <div class="result-section">
@@ -1810,15 +2045,530 @@ function renderLemmaTable(data) {
           ${names.map((name) => `
             <tr>
               <td>${escapeHtml(name)}</td>
-              <td>${escapeHtml(states[name] || "-")}</td>
+              <td>${escapeHtml(states[name] || data.lemma_results && data.lemma_results[name] || "-")}</td>
               <td>${escapeHtml(expected[name] || "-")}</td>
-              <td>${escapeHtml(matches[name] ? "yes" : "no")}</td>
+              <td>${escapeHtml(matchTextForLegacyLemma(name, data, matches))}</td>
             </tr>
           `).join("")}
         </tbody>
       </table>
     </div>
   `;
+}
+
+function matchTextForLegacyLemma(name, data, matches) {
+  if (Object.prototype.hasOwnProperty.call(matches || {}, name)) {
+    return matches[name] ? "yes" : "no";
+  }
+  return data.lemma_results && data.lemma_results[name] ? "result available" : "-";
+}
+
+function lemmaNamesForResult(data) {
+  const names = new Set();
+  Object.keys(data.lemma_actual_states || {}).forEach((name) => names.add(name));
+  Object.keys(data.lemma_expected_states || {}).forEach((name) => names.add(name));
+  Object.keys(data.lemma_results || {}).forEach((name) => names.add(name));
+  (Array.isArray(data.proof_expectations) ? data.proof_expectations : []).forEach((item) => {
+    if (item && item.name) names.add(String(item.name));
+  });
+  return [...names];
+}
+
+function lemmaExpectationMap(data) {
+  const map = new Map();
+  (Array.isArray(data.proof_expectations) ? data.proof_expectations : []).forEach((item) => {
+    if (item && item.name) map.set(String(item.name), item);
+  });
+  if (state.contract && Array.isArray(state.contract.proof_targets)) {
+    state.contract.proof_targets.forEach((target) => {
+      if (target && target.name) {
+        const name = String(target.name);
+        map.set(name, { ...(map.get(name) || {}), ...target });
+      }
+    });
+  }
+  return map;
+}
+
+function renderLemmaCard(name, lemma, proofData) {
+  const key = lemmaRepairKey(name);
+  const local = state.lemmaRepair[key] || {};
+  const recommendation = local.recommendation || null;
+  const feedback = local.feedback || "";
+  const openAttr = local.open || local.loading || recommendation || local.error ? " open" : "";
+  const currentTranslation = recommendation && recommendation.current_nl_translation
+    ? recommendation.current_nl_translation
+    : lemmaNlTranslation(name, lemma.expectation, proofData);
+  const intendedTranslation = recommendation && recommendation.intended_nl_translation
+    ? recommendation.intended_nl_translation
+    : "";
+  const canApply = Boolean(recommendation && recommendation.can_apply);
+  const validationIssues = recommendation && recommendation.validation && Array.isArray(recommendation.validation.issues)
+    ? recommendation.validation.issues
+    : [];
+  return `
+    <details class="lemma-card" data-lemma-card="${escapeHtml(name)}"${openAttr}>
+      <summary>
+        <span class="lemma-name">${escapeHtml(name)}</span>
+        <span class="lemma-status">
+          <span>${escapeHtml(lemma.actual)}</span>
+          <span class="${lemma.match ? "match-ok" : "match-bad"}">${escapeHtml(lemma.match ? "matches" : "mismatch")}</span>
+        </span>
+      </summary>
+      <div class="lemma-body">
+        <div class="lemma-metrics">
+          ${resultMetric("Actual", lemma.actual)}
+          ${resultMetric("Expected", lemma.expected)}
+          ${resultMetric("Tamarin result", lemma.result || "-")}
+          ${resultMetric("Goal type", lemma.expectation.goal_type || "-")}
+        </div>
+        <div class="lemma-translation">
+          <label>NL translation of this proved lemma</label>
+          <p>${escapeHtml(currentTranslation || "No natural-language translation is available for this lemma yet.")}</p>
+          ${intendedTranslation ? `
+            <label>LLM interpreted intended lemma</label>
+            <p>${escapeHtml(intendedTranslation)}</p>
+          ` : ""}
+        </div>
+        <label for="lemmaFeedback-${escapeHtml(key)}">User's NL feedback</label>
+        <div class="lemma-feedback-row">
+          <textarea id="lemmaFeedback-${escapeHtml(key)}" rows="3" data-lemma-feedback="${escapeHtml(name)}" placeholder="I want to prove ... instead of what is proved now.">${escapeHtml(feedback)}</textarea>
+          <button data-lemma-recommend="${escapeHtml(name)}">${escapeHtml(local.loading ? "Requesting..." : "Get Recommendation")}</button>
+        </div>
+        ${local.error ? `<p class="error-text">${escapeHtml(local.error)}</p>` : ""}
+        ${recommendation ? renderLemmaRecommendation(name, recommendation, { canApply, validationIssues }) : ""}
+        <div class="button-row compact lemma-actions">
+          <button class="primary" data-lemma-apply="${escapeHtml(name)}" ${canApply ? "" : "disabled"}>Repair Lemma</button>
+          <button data-lemma-repair-ir="${escapeHtml(name)}">Repair IR</button>
+          <button data-lemma-reject="${escapeHtml(name)}" ${recommendation ? "" : "disabled"}>Reject</button>
+        </div>
+      </div>
+    </details>
+  `;
+}
+
+function renderLemmaRecommendation(name, recommendation, options = {}) {
+  const patch = recommendation.lemma_patch && typeof recommendation.lemma_patch === "object" ? recommendation.lemma_patch : {};
+  const patches = Array.isArray(patch.patches) ? patch.patches : [];
+  const riskNotes = Array.isArray(patch.risk_notes) ? patch.risk_notes : [];
+  const issues = options.validationIssues || [];
+  return `
+    <div class="lemma-recommendation">
+      <div class="proposal-head">
+        <strong>LLM Recommendation</strong>
+        <span class="chip">${escapeHtml(recommendationLabel(recommendation.recommendation))}</span>
+        ${recommendation.confidence ? `<span class="chip">confidence: ${escapeHtml(recommendation.confidence)}</span>` : ""}
+      </div>
+      ${recommendation.reason ? `<p>${escapeHtml(recommendation.reason)}</p>` : ""}
+      ${patch.summary ? `<p><strong>Patch:</strong> ${escapeHtml(patch.summary)}</p>` : ""}
+      ${riskNotes.length ? `<label>Risk notes</label><ul>${riskNotes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>` : ""}
+      ${issues.length ? `<label>Validation issues</label><ul>${issues.map((issue) => `<li>${escapeHtml(issue)}</li>`).join("")}</ul>` : ""}
+      ${patches.length ? `
+        <details class="lemma-patch-preview">
+          <summary>Structured lemma patch (${escapeHtml(String(patches.length))})</summary>
+          <pre>${escapeHtml(JSON.stringify(patches, null, 2))}</pre>
+        </details>
+      ` : ""}
+    </div>
+  `;
+}
+
+function recommendationLabel(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "repair_lemma") return "choose: repair lemma";
+  if (normalized === "repair_ir") return "choose: repair IR";
+  if (normalized === "regenerate") return "choose: regenerate";
+  return normalized || "no recommendation";
+}
+
+function lemmaNlTranslation(name, expectation, proofData) {
+  const parts = [];
+  const intent = expectation && expectation.intent ? String(expectation.intent) : "";
+  const requiredEvents = Array.isArray(expectation && expectation.required_events) ? expectation.required_events : [];
+  const traceKind = expectation && expectation.trace_kind ? String(expectation.trace_kind) : "";
+  const expectedState = expectation && expectation.expected_state ? String(expectation.expected_state) : "";
+  const actualState = proofData && proofData.lemma_actual_states ? String(proofData.lemma_actual_states[name] || "") : "";
+  if (intent) parts.push(intent);
+  if (traceKind || expectedState) {
+    parts.push(`Target shape: ${traceKind || "unknown"}; expected state: ${expectedState || "unknown"}.`);
+  }
+  if (actualState) parts.push(`The model actually reached: ${actualState}.`);
+  if (requiredEvents.length) parts.push(`Relevant event obligations: ${requiredEvents.join(", ")}.`);
+  if (!parts.length) parts.push(`Lemma ${name} is a Tamarin proof target.`);
+  return parts.join(" ");
+}
+
+function bindLemmaRepairActions(root) {
+  root.querySelectorAll("[data-lemma-card]").forEach((card) => {
+    card.addEventListener("toggle", () => {
+      const name = card.dataset.lemmaCard || "";
+      const key = lemmaRepairKey(name);
+      const record = state.lemmaRepair[key] || {};
+      record.open = card.open;
+      state.lemmaRepair[key] = record;
+    });
+  });
+  root.querySelectorAll("[data-lemma-feedback]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const key = lemmaRepairKey(input.dataset.lemmaFeedback || "");
+      const record = state.lemmaRepair[key] || {};
+      record.feedback = input.value;
+      record.open = true;
+      state.lemmaRepair[key] = record;
+    });
+  });
+  root.querySelectorAll("[data-lemma-recommend]").forEach((button) => {
+    button.addEventListener("click", () => requestLemmaRecommendation(button.dataset.lemmaRecommend || ""));
+  });
+  root.querySelectorAll("[data-lemma-apply]").forEach((button) => {
+    button.addEventListener("click", () => applyLemmaRepair(button.dataset.lemmaApply || ""));
+  });
+  root.querySelectorAll("[data-lemma-reject]").forEach((button) => {
+    button.addEventListener("click", () => rejectLemmaRecommendation(button.dataset.lemmaReject || ""));
+  });
+  root.querySelectorAll("[data-lemma-repair-ir]").forEach((button) => {
+    button.addEventListener("click", () => startLemmaIrRepair(button.dataset.lemmaRepairIr || ""));
+  });
+}
+
+function bindProofTargetCandidateActions(root) {
+  root.querySelectorAll("[data-proof-target-card]").forEach((card) => {
+    card.addEventListener("toggle", () => {
+      const key = proofTargetCandidateKey(Number(card.dataset.proofTargetCard));
+      const record = state.lemmaCandidates[key] || {};
+      record.open = card.open;
+      state.lemmaCandidates[key] = record;
+    });
+  });
+  root.querySelectorAll("[data-lemma-candidate-hint]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const index = Number(input.dataset.lemmaCandidateHint);
+      const key = proofTargetCandidateKey(index);
+      const record = state.lemmaCandidates[key] || {};
+      record.hint = input.value;
+      record.open = true;
+      state.lemmaCandidates[key] = record;
+    });
+  });
+  root.querySelectorAll("[data-lemma-candidate-count]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const index = Number(input.dataset.lemmaCandidateCount);
+      const key = proofTargetCandidateKey(index);
+      const record = state.lemmaCandidates[key] || {};
+      record.count = normalizeLemmaCandidateCount(input.value);
+      record.open = true;
+      state.lemmaCandidates[key] = record;
+      const button = root.querySelector(`[data-lemma-candidates="${index}"]`);
+      if (button && !record.loading) button.textContent = "Generate Top K";
+    });
+  });
+  root.querySelectorAll("[data-lemma-candidates]").forEach((button) => {
+    button.addEventListener("click", () => requestLemmaCandidates(Number(button.dataset.lemmaCandidates)));
+  });
+  root.querySelectorAll("[data-lemma-candidate-apply]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const [rawTargetIndex, rawCandidateIndex] = String(button.dataset.lemmaCandidateApply || "").split(":");
+      applyLemmaCandidate(Number(rawTargetIndex), Number(rawCandidateIndex));
+    });
+  });
+}
+
+async function requestLemmaCandidates(proofTargetIndex) {
+  if (!state.contract) {
+    setStatus("No contract is available.", true);
+    return;
+  }
+  syncAllInputs();
+  const key = proofTargetCandidateKey(proofTargetIndex);
+  const input = document.querySelector(`[data-lemma-candidate-hint="${proofTargetIndex}"]`);
+  const countInput = document.querySelector(`[data-lemma-candidate-count="${proofTargetIndex}"]`);
+  const hint = String(input ? input.value : state.lemmaCandidates[key] && state.lemmaCandidates[key].hint || "").trim();
+  const candidateCount = normalizeLemmaCandidateCount(countInput ? countInput.value : state.lemmaCandidates[key] && state.lemmaCandidates[key].count || 3);
+  state.lemmaCandidates[key] = {
+    ...(state.lemmaCandidates[key] || {}),
+    hint,
+    count: candidateCount,
+    loading: true,
+    open: true,
+    error: "",
+  };
+  renderAll();
+  setStatus("Requesting lemma candidates...");
+  const { response, data } = await apiJson("/api/lemma_alignment/candidates", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contract: state.contract,
+      proof_target_index: proofTargetIndex,
+      user_goal_hint: hint,
+      candidate_count: candidateCount,
+    }),
+  });
+  const record = {
+    ...(state.lemmaCandidates[key] || {}),
+    hint,
+    count: candidateCount,
+    loading: false,
+    open: true,
+  };
+  if (!response.ok) {
+    record.error = data.error || "Lemma candidate generation failed.";
+    state.lemmaCandidates[key] = record;
+    renderAll();
+    setStatus(record.error, true);
+    return;
+  }
+  record.response = data;
+  record.error = "";
+  state.lemmaCandidates[key] = record;
+  renderAll();
+  setStatus("Lemma candidates are ready.", false, true);
+}
+
+async function applyLemmaCandidate(proofTargetIndex, candidateIndex) {
+  if (!state.contract) return;
+  const key = proofTargetCandidateKey(proofTargetIndex);
+  const record = state.lemmaCandidates[key] || {};
+  const response = record.response || {};
+  const candidates = Array.isArray(response.candidates) ? response.candidates : [];
+  const candidate = candidates[candidateIndex];
+  if (!candidate || !candidate.can_apply || !Array.isArray(candidate.patches) || !candidate.patches.length) {
+    setStatus("No applicable lemma candidate patch is available.", true);
+    return;
+  }
+  const target = state.contract.proof_targets && state.contract.proof_targets[proofTargetIndex];
+  const lemmaName = target && target.name ? String(target.name) : "";
+  if (!lemmaName) {
+    setStatus("Selected proof target does not have a lemma name.", true);
+    return;
+  }
+  syncAllInputs();
+  setStatus(`Applying lemma candidate for ${lemmaName}...`);
+  const { response: applyResponse, data } = await apiJson("/api/lemma_repair/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contract: state.contract,
+      lemma_name: lemmaName,
+      patches: candidate.patches,
+      feedback: `Selected pre-generation lemma candidate: ${candidate.label || `candidate_${candidateIndex + 1}`}`,
+    }),
+  });
+  if (!applyResponse.ok) {
+    record.error = data.error || "Lemma candidate apply failed.";
+    state.lemmaCandidates[key] = record;
+    renderAll();
+    setStatus(record.error, true);
+    return;
+  }
+  state.contract = data.contract;
+  state.lemmaCandidates[key] = {
+    ...record,
+    open: true,
+    appliedCandidateIndex: candidateIndex,
+    error: "",
+  };
+  renderAll();
+  setStatus(`Applied lemma candidate for ${lemmaName}. Save reviewed contract before generation.`, false, true);
+}
+
+async function requestLemmaRecommendation(name) {
+  if (!state.contract) {
+    setStatus("No contract is available.", true);
+    return;
+  }
+  const key = lemmaRepairKey(name);
+  const input = document.querySelector(`[data-lemma-feedback="${cssEscape(name)}"]`);
+  const feedback = String(input ? input.value : state.lemmaRepair[key] && state.lemmaRepair[key].feedback || "").trim();
+  if (!feedback) {
+    setStatus("Enter feedback for this lemma first.", true);
+    return;
+  }
+  syncAllInputs();
+  const lemma = lemmaPayloadForRecommendation(name);
+  state.lemmaRepair[key] = {
+    ...(state.lemmaRepair[key] || {}),
+    feedback,
+    loading: true,
+    open: true,
+    error: "",
+  };
+  renderTamarinSummary("proof", state.currentProofResult || {}, true);
+  setStatus(`Requesting LLM recommendation for ${name}...`);
+  const { response, data } = await apiJson("/api/lemma_repair/recommend", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contract: state.contract,
+      lemma,
+      feedback,
+      proof_result: compactProofResultForLemma(name),
+    }),
+  });
+  const record = {
+    ...(state.lemmaRepair[key] || {}),
+    feedback,
+    loading: false,
+    open: true,
+  };
+  if (!response.ok) {
+    record.error = formatIssue(data);
+    state.lemmaRepair[key] = record;
+    renderTamarinSummary("proof", state.currentProofResult || {}, true);
+    setStatus(data.error || "Lemma recommendation failed.", true);
+    return;
+  }
+  record.error = "";
+  record.recommendation = data;
+  state.lemmaRepair[key] = record;
+  renderTamarinSummary("proof", state.currentProofResult || {}, true);
+  const ok = data.can_apply;
+  setStatus(ok ? `Lemma repair recommendation ready for ${name}.` : `LLM recommends ${recommendationLabel(data.recommendation)} for ${name}.`, !ok, ok);
+}
+
+async function applyLemmaRepair(name) {
+  if (!state.contract) return;
+  const key = lemmaRepairKey(name);
+  const record = state.lemmaRepair[key] || {};
+  const recommendation = record.recommendation || {};
+  const patch = recommendation.lemma_patch && typeof recommendation.lemma_patch === "object" ? recommendation.lemma_patch : {};
+  const patches = Array.isArray(patch.patches) ? patch.patches : [];
+  if (!recommendation.can_apply || !patches.length) {
+    setStatus("No applicable lemma-only patch is available.", true);
+    return;
+  }
+  syncAllInputs();
+  setStatus(`Applying lemma patch for ${name}...`);
+  const { response, data } = await apiJson("/api/lemma_repair/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contract: state.contract,
+      lemma_name: name,
+      patches,
+      feedback: record.feedback || "",
+    }),
+  });
+  if (!response.ok) {
+    record.error = data.error || "Lemma patch apply failed.";
+    state.lemmaRepair[key] = record;
+    renderTamarinSummary("proof", state.currentProofResult || {}, true);
+    setStatus(record.error, true);
+    return;
+  }
+  state.contract = data.contract;
+  state.lemmaRepair[key] = {
+    ...record,
+    open: true,
+    applied: true,
+    error: "",
+  };
+  renderAll();
+  renderTamarinSummary("proof", state.currentProofResult || {}, true);
+  setStatus(`Applied lemma patch for ${name}. Save reviewed contract, then regenerate/prove when ready.`, false, true);
+}
+
+function rejectLemmaRecommendation(name) {
+  const key = lemmaRepairKey(name);
+  const record = state.lemmaRepair[key] || {};
+  state.lemmaRepair[key] = {
+    feedback: record.feedback || "",
+    open: true,
+  };
+  renderTamarinSummary("proof", state.currentProofResult || {}, true);
+  setStatus(`Rejected lemma repair recommendation for ${name}.`, false, true);
+}
+
+function startLemmaIrRepair(name) {
+  const index = proofTargetIndexByName(name);
+  if (index >= 0) {
+    scrollToSection("proof_targets");
+    setTimeout(() => scrollToField(`proof_targets.${index}.intent`), 250);
+  }
+  setStatus("Repair IR route is the next improvement path; this button currently jumps to the related proof target fields.", true);
+}
+
+function lemmaPayloadForRecommendation(name) {
+  const proofData = state.currentProofResult || {};
+  const expectations = lemmaExpectationMap(proofData);
+  const expectation = expectations.get(name) || {};
+  return {
+    name,
+    actual_state: proofData.lemma_actual_states ? proofData.lemma_actual_states[name] : "",
+    expected_state: proofData.lemma_expected_states ? proofData.lemma_expected_states[name] : "",
+    matches_expected: proofData.lemma_matches ? proofData.lemma_matches[name] : undefined,
+    lemma_result: proofData.lemma_results ? proofData.lemma_results[name] : "",
+    expectation,
+    tamarin_lemma: extractTamarinLemma(proofData.sapic_plus || "", name),
+    nl_translation: lemmaNlTranslation(name, expectation, proofData),
+  };
+}
+
+function compactProofResultForLemma(name) {
+  const proofData = state.currentProofResult || {};
+  return {
+    ok: proofData.ok,
+    status: proofData.status,
+    lemma_results: { [name]: proofData.lemma_results ? proofData.lemma_results[name] : "" },
+    lemma_expected_states: { [name]: proofData.lemma_expected_states ? proofData.lemma_expected_states[name] : "" },
+    lemma_actual_states: { [name]: proofData.lemma_actual_states ? proofData.lemma_actual_states[name] : "" },
+    lemma_matches: { [name]: proofData.lemma_matches ? proofData.lemma_matches[name] : false },
+    proof_expectations: (Array.isArray(proofData.proof_expectations) ? proofData.proof_expectations : []).filter((item) => item && item.name === name),
+    proof_lint_issues: proofData.proof_lint_issues || [],
+    missing_lemmas: proofData.missing_lemmas || [],
+  };
+}
+
+function extractTamarinLemma(text, name) {
+  const source = String(text || "");
+  if (!source || !name) return "";
+  const pattern = new RegExp(`(^|\\n)lemma\\s+${escapeRegExp(name)}\\s*:[\\s\\S]*?(?=\\nlemma\\s+|\\nrule\\s+|\\nrestriction\\s+|\\nend\\b|$)`, "m");
+  const match = source.match(pattern);
+  return match ? match[0].trim().slice(0, 2200) : "";
+}
+
+function proofTargetIndexByName(name) {
+  if (!state.contract || !Array.isArray(state.contract.proof_targets)) return -1;
+  return state.contract.proof_targets.findIndex((target) => target && String(target.name || "") === String(name || ""));
+}
+
+function lemmaRepairKey(name) {
+  return String(name || "").replace(/[^A-Za-z0-9_-]/g, "_") || "lemma";
+}
+
+function proofTargetCandidateKey(index) {
+  return `proof_target_${Number.isFinite(index) ? index : "unknown"}`;
+}
+
+function normalizeLemmaCandidateCount(value) {
+  const parsed = Number.parseInt(String(value ?? "3"), 10);
+  if (!Number.isFinite(parsed)) return 3;
+  return Math.max(1, Math.min(7, parsed));
+}
+
+function hydrateLemmaCandidateArtifacts(artifacts) {
+  const byTarget = artifacts && artifacts.proof_targets && typeof artifacts.proof_targets === "object"
+    ? artifacts.proof_targets
+    : {};
+  Object.entries(byTarget).forEach(([rawIndex, artifact]) => {
+    const index = Number(rawIndex);
+    if (!Number.isFinite(index)) return;
+    const response = artifact && artifact.response && typeof artifact.response === "object" ? artifact.response : null;
+    if (!response) return;
+    state.lemmaCandidates[proofTargetCandidateKey(index)] = {
+      ...(state.lemmaCandidates[proofTargetCandidateKey(index)] || {}),
+      response: deepClone(response),
+      count: normalizeLemmaCandidateCount(Array.isArray(response.candidates) ? response.candidates.length : 3),
+      artifactPath: artifact.path || "",
+      loading: false,
+      open: true,
+      error: "",
+    };
+  });
+}
+
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function renderOutputSnippet(title, text) {
@@ -1882,6 +2632,12 @@ function syncAbstractionHintToggle() {
 function abstractionHintsEnabled() {
   const toggle = document.getElementById("abstractionHintsToggle");
   return Boolean(toggle && toggle.checked);
+}
+
+function lemmaAlignmentRouteEnabled() {
+  if (inputMode === "c_code") return true;
+  const settings = state.workflow && state.workflow.settings ? state.workflow.settings : {};
+  return Boolean(settings.lemma_alignment_route_enabled);
 }
 
 function abstractionHintCount(hints) {
@@ -2083,6 +2839,9 @@ function formatGoalInput(goal) {
 
 function clearTransientOutputs() {
   state.pendingPatch = null;
+  state.lemmaRepair = {};
+  state.lemmaCandidates = {};
+  state.currentProofResult = null;
   ["patchSummary", "sapicResult", "tamarinResult"].forEach((id) => {
     const element = document.getElementById(id);
     if (element) element.innerHTML = "";

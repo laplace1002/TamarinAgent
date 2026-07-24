@@ -27,6 +27,8 @@ The screenshots below show the Sigfox prepared workflow loaded in the review UI.
 - `run_contract_review_ui.py`: local HTTP server and workflow API.
 - `contract_review_ui/`: browser UI.
 - `protocol_ir_pipeline/`: IR processing, modeling-contract generation, Sapic+ generation, repair, proof lint, and Tamarin helpers.
+- `protocol_ir_pipeline/c_to_ir.py`: staged C/C++ source to ProtocolIR extraction with embedded prompts.
+- `scripts/c_to_protocol_ir.py`: command-line entry point for the C/C++ extraction flow.
 - `config/`: default local lint/retrieval configuration.
 - `examples/ui_input_cases.json`: UI-ready benchmark inputs used for experiments.
 - `examples/ui_inputs.md`: copy-friendly benchmark inputs for manually filling the UI, grouped by difficulty.
@@ -82,6 +84,34 @@ Typical workflow:
 5. Compile and prove with Tamarin if `tamarin-prover` is installed.
 
 `Save Reviewed` does not require every review badge to be confirmed. Confirming fields is useful for review-progress tracking and for proof-critical generation hints, but saved edits are still used by generation.
+
+## C/C++ Source Extraction
+
+The extraction stages, JSON output contracts, and prompts are in `protocol_ir_pipeline/c_to_ir.py`.
+
+Run the staged extraction with an LLM:
+
+```bash
+python3 scripts/c_to_protocol_ir.py \
+  --source path/to/protocol.c \
+  --output-dir runs/c_to_ir_demo \
+  --name MyProtocol \
+  --provider deepseek
+```
+
+This repository includes a sanitized C-to-IR demo artifact of `tpm2-sessions.c`. The following command start the UI and open the demo:
+
+```bash
+python3 run_contract_review_ui.py \
+  --run-dir runs/local_demo \
+  --provider deepseek \
+  --host 127.0.0.1 \
+  --port 8765
+```
+
+```text
+http://127.0.0.1:8765/c-code-demo
+```
 
 ## Protocol IR Review
 

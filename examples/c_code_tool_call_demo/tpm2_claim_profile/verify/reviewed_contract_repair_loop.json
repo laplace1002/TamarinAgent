@@ -1,0 +1,189 @@
+{
+  "ok": false,
+  "status": "failed",
+  "returncode": 1,
+  "returncode_ok": false,
+  "has_warnings": false,
+  "warnings": [],
+  "lint_issues": [],
+  "command": [
+    "tamarin-prover",
+    "examples/c_code_tool_call_demo/tpm2_claim_profile/models/repaired_1.spthy",
+    "-m=msr",
+    "--derivcheck-timeout=0"
+  ],
+  "output_path": "examples/c_code_tool_call_demo/tpm2_claim_profile/models/repaired_1.spthy",
+  "elapsed_sec": 0.063,
+  "stdout_tail": "",
+  "stderr_tail": "maude tool: 'maude'\n checking version: 3.5.1. OK.\n checking installation: OK.\n\"examples/c_code_tool_call_demo/tpm2_claim_profile/models/repaired_1.spthy\" (line 38, column 44):\nunexpected \"(\"\nexpecting letter or digit, \".\", \":\", \"^\", \"*\" or \")\"\n",
+  "max_rounds": 3,
+  "accepted_round": 1,
+  "attempts": [
+    {
+      "round": 1,
+      "generation_round": 1,
+      "accepted": true,
+      "reason": "improved",
+      "ok": false,
+      "status": "failed",
+      "warning_count": 0,
+      "lint_issue_count": 0,
+      "repair_scope": "full_rewrite"
+    },
+    {
+      "round": 2,
+      "generation_round": 1,
+      "accepted": false,
+      "reason": "candidate_not_better",
+      "ok": false,
+      "status": "failed",
+      "warning_count": 0,
+      "lint_issue_count": 0,
+      "repair_scope": "local_patch"
+    },
+    {
+      "round": 3,
+      "generation_round": 1,
+      "accepted": false,
+      "reason": "candidate_not_better",
+      "ok": false,
+      "status": "failed",
+      "warning_count": 0,
+      "lint_issue_count": 0,
+      "repair_scope": "local_patch"
+    }
+  ],
+  "model_path": "examples/c_code_tool_call_demo/tpm2_claim_profile/final/model.spthy",
+  "generation_rounds_used": 1,
+  "abstraction_hints_enabled": true,
+  "abstraction_hints": {
+    "enabled": true,
+    "source_path": "./examples/protocol-abstraction-cases.json",
+    "retrieval_config_path": "./config/abstraction_retrieval.json",
+    "query_features": [
+      "agreement",
+      "authentication",
+      "compromise",
+      "difficulty:hard",
+      "diffie_hellman",
+      "expected_counterexample",
+      "key_schedule",
+      "mac",
+      "multi_message",
+      "property",
+      "public_key",
+      "secrecy",
+      "signing",
+      "symmetric"
+    ],
+    "selected": [
+      {
+        "id": "classic_tls_handshake",
+        "name": "TLS handshake abstraction",
+        "score": 16,
+        "matched_reasons": [
+          "agreement",
+          "authentication",
+          "compromise",
+          "key_schedule",
+          "public_key",
+          "secrecy",
+          "signing",
+          "symmetric"
+        ],
+        "protocol_family": "tls_handshake",
+        "features": [
+          "tls_like",
+          "public_key",
+          "symmetric",
+          "signing",
+          "hashing",
+          "key_schedule",
+          "transcript",
+          "agreement"
+        ],
+        "security_goal_family": [
+          "secrecy",
+          "agreement",
+          "compromise-aware authentication"
+        ],
+        "difficulty_band": "medium",
+        "abstraction_lessons": [
+          "Collapse concrete cipher-suite details into uninterpreted key schedule and transcript functions.",
+          "Keep transcript/check material in state facts so later Finished/authentication rules do not pattern-match huge histories.",
+          "Separate transport-key derivation events from terminal Commit events."
+        ],
+        "avoid_copying": "Do not import record-layer-specific names into unrelated handshakes; reuse the phase/key-schedule abstraction only."
+      },
+      {
+        "id": "wireguard_compact_dh",
+        "name": "WireGuard compact DH handshake",
+        "score": 9,
+        "matched_reasons": [
+          "agreement",
+          "compromise",
+          "difficulty_band=hard",
+          "diffie_hellman",
+          "key_schedule"
+        ],
+        "protocol_family": "wireguard_noise_dh",
+        "features": [
+          "diffie_hellman",
+          "hashing",
+          "transcript",
+          "key_schedule",
+          "identity_binding",
+          "compromise",
+          "transport_keys"
+        ],
+        "security_goal_family": [
+          "dh_key_exchange",
+          "agreement",
+          "transport_key_secrecy"
+        ],
+        "difficulty_band": "hard",
+        "abstraction_lessons": [
+          "Use transcript/chaining-key facts to summarize many prior messages instead of carrying full message tuples everywhere.",
+          "Place authentication events only after identity and transcript checks are represented in state.",
+          "Keep terminal secrecy/agreement lemmas focused on final transport keys and peer identity."
+        ],
+        "avoid_copying": "Do not copy WireGuard-specific Noise pattern names; reuse the transcript-summary and terminal-claim placement."
+      },
+      {
+        "id": "esorics23_bluetooth_ble",
+        "name": "Bluetooth LE pairing state-space control",
+        "score": 7,
+        "matched_reasons": [
+          "agreement",
+          "difficulty_band=hard",
+          "diffie_hellman",
+          "symmetric"
+        ],
+        "protocol_family": "bluetooth_le_pairing",
+        "features": [
+          "standard_protocol",
+          "diffie_hellman",
+          "symmetric",
+          "multi_variant",
+          "only_once",
+          "state_space_control",
+          "validity_restrictions",
+          "agreement"
+        ],
+        "security_goal_family": [
+          "standard_protocol",
+          "state_space_control",
+          "agreement"
+        ],
+        "difficulty_band": "hard",
+        "abstraction_lessons": [
+          "For hard standard cases, choose one representative method/variant before codegen instead of modeling every branch.",
+          "Add OnlyOnce-style restrictions only when the benchmark asks for bounded representative runs.",
+          "Use Valid/Invalid point restrictions or Eq/NotEq checks for cryptographic validation rather than expanding validation algorithms."
+        ],
+        "avoid_copying": "Do not inject Bluetooth-specific pairing variants into other protocols; transfer the variant-pruning and one-session-bounding discipline."
+      }
+    ],
+    "policy": "Use these examples only as proof-engineering and abstraction guidance. Do not copy protocol names, concrete message flows, lemma formulas, or benchmark-specific fixes."
+  }
+}

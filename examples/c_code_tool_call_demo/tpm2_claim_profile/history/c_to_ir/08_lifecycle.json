@@ -1,0 +1,420 @@
+{
+  "lifecycle": {
+    "states": [
+      {
+        "id": "uninitialized",
+        "summary": "Session subsystem not yet initialized; no auth structure allocated.",
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 1374,
+            "line_end": 1397,
+            "reason": "tpm2_sessions_init() creates null primary and allocates auth; before that, chip->auth is NULL."
+          }
+        ],
+        "confidence": "high",
+        "assumptions": [],
+        "open_questions": []
+      },
+      {
+        "id": "initialized_no_session",
+        "summary": "Session subsystem initialized (null primary exists, auth structure allocated) but no active authentication session.",
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 1374,
+            "line_end": 1397,
+            "reason": "After tpm2_sessions_init() returns 0, chip->auth is allocated but session handle is not yet set."
+          }
+        ],
+        "confidence": "high",
+        "assumptions": [],
+        "open_questions": []
+      },
+      {
+        "id": "session_started",
+        "summary": "Active HMAC authentication session established; session handle, nonces, salt, and session key are set.",
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 973,
+            "line_end": 1048,
+            "reason": "tpm2_start_auth_session() allocates auth, sends StartAuthSession, parses response, derives session key."
+          }
+        ],
+        "confidence": "high",
+        "assumptions": [],
+        "open_questions": []
+      },
+      {
+        "id": "command_in_progress",
+        "summary": "A command is being prepared with session HMAC; handles and names are being appended, session offset tracked.",
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 224,
+            "line_end": 310,
+            "reason": "tpm_buf_append_name() updates auth->session offset and stores handle/name."
+          },
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 338,
+            "line_end": 423,
+            "reason": "tpm_buf_append_hmac_session() appends session header with nonce and placeholder HMAC."
+          }
+        ],
+        "confidence": "high",
+        "assumptions": [],
+        "open_questions": []
+      },
+      {
+        "id": "command_finalized",
+        "summary": "Command buffer is complete; HMAC computed and inserted, parameters encrypted if DECRYPT attribute set.",
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 566,
+            "line_end": 728,
+            "reason": "tpm_buf_fill_hmac_session() computes cpHash, HMAC, and optionally encrypts parameters."
+          }
+        ],
+        "confidence": "high",
+        "assumptions": [],
+        "open_questions": []
+      },
+      {
+        "id": "response_verified",
+        "summary": "Response received and HMAC verified; parameters decrypted if ENCRYPT attribute set.",
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 731,
+            "line_end": 881,
+            "reason": "tpm_buf_check_hmac_response() verifies rpHash, HMAC, and optionally decrypts parameters."
+          }
+        ],
+        "confidence": "high",
+        "assumptions": [],
+        "open_questions": []
+      },
+      {
+        "id": "session_ended",
+        "summary": "Session terminated; session handle flushed, auth structure freed or reset.",
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 884,
+            "line_end": 904,
+            "reason": "tpm2_end_auth_session() flushes context and frees auth."
+          }
+        ],
+        "confidence": "high",
+        "assumptions": [],
+        "open_questions": []
+      },
+      {
+        "id": "error_state",
+        "summary": "An error occurred; session may be partially or fully cleaned up depending on error path.",
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 724,
+            "line_end": 728,
+            "reason": "tpm_buf_fill_hmac_session() error label calls tpm2_end_auth_session()."
+          },
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 306,
+            "line_end": 310,
+            "reason": "tpm_buf_append_name() error label calls tpm2_end_auth_session()."
+          }
+        ],
+        "confidence": "high",
+        "assumptions": [],
+        "open_questions": []
+      }
+    ],
+    "transitions": [
+      {
+        "trigger_function": "tpm2_sessions_init",
+        "from": "uninitialized",
+        "to": "initialized_no_session",
+        "guard": "return 0",
+        "events": [
+          "allocate auth structure",
+          "create null primary"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 1374,
+            "line_end": 1397,
+            "reason": "tpm2_sessions_init() calls tpm2_create_null_primary() and allocates chip->auth."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm2_start_auth_session",
+        "from": "initialized_no_session",
+        "to": "session_started",
+        "guard": "return 0",
+        "events": [
+          "generate salt via ECDH",
+          "send StartAuthSession command",
+          "parse response: handle, tpmNonce",
+          "derive sessionKey via KDFa"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 973,
+            "line_end": 1048,
+            "reason": "tpm2_start_auth_session() performs these steps and returns 0 on success."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm_buf_append_name",
+        "from": "session_started",
+        "to": "command_in_progress",
+        "guard": "auth != NULL and slot < AUTH_MAX_NAMES",
+        "events": [
+          "append handle to buffer",
+          "update auth->session offset",
+          "store handle and name in auth arrays"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 224,
+            "line_end": 310,
+            "reason": "tpm_buf_append_name() appends handle and updates auth state."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm_buf_append_hmac_session",
+        "from": "command_in_progress",
+        "to": "command_in_progress",
+        "guard": "auth != NULL",
+        "events": [
+          "generate hostNonce",
+          "append session header with nonce and placeholder HMAC",
+          "set auth->attrs and passphrase"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 338,
+            "line_end": 423,
+            "reason": "tpm_buf_append_hmac_session() appends session element."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm_buf_fill_hmac_session",
+        "from": "command_in_progress",
+        "to": "command_finalized",
+        "guard": "auth != NULL and command code found",
+        "events": [
+          "compute cpHash",
+          "compute HMAC and insert into buffer",
+          "optionally encrypt parameters (if DECRYPT attribute)"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 566,
+            "line_end": 728,
+            "reason": "tpm_buf_fill_hmac_session() finalizes HMAC and encryption."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm_buf_check_hmac_response",
+        "from": "command_finalized",
+        "to": "response_verified",
+        "guard": "auth != NULL and rc == 0 and tag == TPM2_ST_SESSIONS and HMAC matches",
+        "events": [
+          "compute rpHash",
+          "verify response HMAC",
+          "optionally decrypt parameters (if ENCRYPT attribute)"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 731,
+            "line_end": 881,
+            "reason": "tpm_buf_check_hmac_response() verifies HMAC and decrypts."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm_buf_check_hmac_response",
+        "from": "response_verified",
+        "to": "session_ended",
+        "guard": "(auth->attrs & TPM2_SA_CONTINUE_SESSION) == 0",
+        "events": [
+          "flush session context",
+          "free auth structure",
+          "set chip->auth = NULL"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 866,
+            "line_end": 881,
+            "reason": "Cleanup branch in tpm_buf_check_hmac_response() when CONTINUE_SESSION is not set."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm_buf_check_hmac_response",
+        "from": "response_verified",
+        "to": "session_started",
+        "guard": "(auth->attrs & TPM2_SA_CONTINUE_SESSION) != 0",
+        "events": [
+          "reset auth->session to TPM_HEADER_SIZE for next command"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 866,
+            "line_end": 881,
+            "reason": "Reset branch in tpm_buf_check_hmac_response() when CONTINUE_SESSION is set."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm2_end_auth_session",
+        "from": "session_started",
+        "to": "session_ended",
+        "guard": "none",
+        "events": [
+          "flush session context",
+          "free auth structure",
+          "set chip->auth = NULL"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 884,
+            "line_end": 904,
+            "reason": "tpm2_end_auth_session() performs cleanup unconditionally."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm_buf_append_name (error)",
+        "from": "command_in_progress",
+        "to": "error_state",
+        "guard": "slot >= AUTH_MAX_NAMES or session offset mismatch",
+        "events": [
+          "call tpm2_end_auth_session()"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 306,
+            "line_end": 310,
+            "reason": "Error label in tpm_buf_append_name() calls tpm2_end_auth_session()."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm_buf_fill_hmac_session (error)",
+        "from": "command_in_progress",
+        "to": "error_state",
+        "guard": "auth == NULL or command code not found",
+        "events": [
+          "call tpm2_end_auth_session()"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 724,
+            "line_end": 728,
+            "reason": "Error label in tpm_buf_fill_hmac_session() calls tpm2_end_auth_session()."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm_buf_check_hmac_response (error)",
+        "from": "command_finalized",
+        "to": "error_state",
+        "guard": "rc != 0 or tag mismatch or HMAC mismatch",
+        "events": [
+          "if CONTINUE_SESSION not set: flush and free auth",
+          "if CONTINUE_SESSION set: reset auth->session"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 866,
+            "line_end": 881,
+            "reason": "Error path in tpm_buf_check_hmac_response() also goes through cleanup branch."
+          }
+        ]
+      },
+      {
+        "trigger_function": "tpm2_start_auth_session (error)",
+        "from": "initialized_no_session",
+        "to": "initialized_no_session",
+        "guard": "return non-zero",
+        "events": [
+          "free auth structure (if allocated)",
+          "chip->auth remains NULL or freed"
+        ],
+        "evidence": [
+          {
+            "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+            "line_start": 1044,
+            "line_end": 1048,
+            "reason": "Error label in tpm2_start_auth_session() frees auth and returns error."
+          }
+        ]
+      }
+    ]
+  },
+  "open_questions": [
+    {
+      "id": "oq_lifecycle_1",
+      "question": "What is the exact state after tpm2_sessions_init() fails? Does chip->auth remain NULL or is it partially allocated?",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 1374,
+          "line_end": 1397,
+          "reason": "Error handling in tpm2_sessions_init() is not fully visible in the provided slices."
+        }
+      ]
+    },
+    {
+      "id": "oq_lifecycle_2",
+      "question": "How does the system transition from error_state back to initialized_no_session? Is there an explicit recovery path or is it only via tpm2_end_auth_session()?",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 884,
+          "line_end": 904,
+          "reason": "tpm2_end_auth_session() is called from error paths, but the state after that is not explicitly defined."
+        }
+      ]
+    },
+    {
+      "id": "oq_lifecycle_3",
+      "question": "Are there any transitions from session_ended back to session_started without going through initialized_no_session? The code suggests a new session must be started via tpm2_start_auth_session().",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 973,
+          "line_end": 1048,
+          "reason": "tpm2_start_auth_session() expects chip->auth to be NULL or freed; no reuse path is visible."
+        }
+      ]
+    }
+  ]
+}

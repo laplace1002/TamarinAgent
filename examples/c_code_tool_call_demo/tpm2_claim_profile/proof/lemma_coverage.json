@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "expected": [
+    "tpm2_session_command_authentication",
+    "tpm2_session_response_authentication",
+    "tpm2_session_command_payload_confidentiality",
+    "tpm2_session_response_payload_confidentiality",
+    "tpm2_session_key_secrecy",
+    "tpm2_session_salt_secrecy",
+    "tpm2_null_key_public_material_validation",
+    "tpm2_initial_create_primary_mitm_attack",
+    "tpm2_continued_session_state_reset",
+    "tpm2_session_termination_cleanup"
+  ],
+  "present": [
+    "tpm2_session_command_authentication",
+    "tpm2_session_response_authentication",
+    "tpm2_session_command_payload_confidentiality",
+    "tpm2_session_response_payload_confidentiality",
+    "tpm2_session_key_secrecy",
+    "tpm2_session_salt_secrecy",
+    "tpm2_null_key_public_material_validation",
+    "tpm2_initial_create_primary_mitm_attack",
+    "tpm2_continued_session_state_reset",
+    "tpm2_session_termination_cleanup"
+  ],
+  "missing": [],
+  "extra": []
+}

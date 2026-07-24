@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "errors": [],
+  "warnings": [
+    "Encrypted/message-authenticated terms lack obvious public tags: ['M3_TPM2_StartAuthSession_Request', 'M7_Generic_Command_with_HMAC_Session', 'M8_Generic_Response_with_HMAC_Session']."
+  ],
+  "checks": [
+    {
+      "name": "roles_present",
+      "result": "pass",
+      "detail": "roles are available"
+    },
+    {
+      "name": "messages_present",
+      "result": "pass",
+      "detail": "8 message declaration(s)"
+    },
+    {
+      "name": "message_labels_unique",
+      "result": "pass",
+      "detail": "message labels are unique"
+    },
+    {
+      "name": "target_claims_present",
+      "result": "pass",
+      "detail": "all proof_spec targets have claim records"
+    },
+    {
+      "name": "message_tags_present",
+      "result": "warn",
+      "detail": "untagged encrypted messages: ['M3_TPM2_StartAuthSession_Request', 'M7_Generic_Command_with_HMAC_Session', 'M8_Generic_Response_with_HMAC_Session']"
+    }
+  ],
+  "repair_target": "ProtocolIR"
+}

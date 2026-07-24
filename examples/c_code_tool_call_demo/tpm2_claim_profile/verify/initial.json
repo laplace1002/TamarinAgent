@@ -1,0 +1,17 @@
+{
+  "ok": false,
+  "status": "failed",
+  "lint_issues": [],
+  "returncode_ok": false,
+  "returncode": 1,
+  "has_warnings": false,
+  "warnings": [],
+  "command": [
+    "tamarin-prover",
+    "examples/c_code_tool_call_demo/tpm2_claim_profile/models/initial.spthy",
+    "-m=msr",
+    "--derivcheck-timeout=0"
+  ],
+  "output_path": "examples/c_code_tool_call_demo/tpm2_claim_profile/models/initial.spthy",
+  "elapsed_sec": 0.061
+}

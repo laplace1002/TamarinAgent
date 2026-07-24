@@ -1,0 +1,140 @@
+theory TPM2_Salted_HMAC_Session
+begin
+
+builtins: diffie-hellman, hashing, symmetric-encryption
+
+functions: kdf/2, hmac/2, verify/2
+
+let Host(hostId, tpmId, authPassphrase, nullKeyX, nullKeyY) =
+  new hostNonce;
+  new saltPrivateKey;
+  let hostSaltPublicX = 'g'^saltPrivateKey in
+  let ecdhSharedSecret = 'g'^(saltPrivateKey * nullKeyX) in
+  let sessionSalt = kdf(ecdhSharedSecret, <'SECRET', hostSaltPublicX, nullKeyX>) in
+  out(<'M3', hostId, tpmId, hostNonce, hostSaltPublicX>);
+  in(<'M4', rc_recv, authHandle_recv, tpmNonce_recv>);
+  let tpmNonce = tpmNonce_recv in
+  let sessionKey = kdf(sessionSalt, <'ATH', tpmNonce, hostNonce>) in
+  event SessionKeyDerived(authHandle_recv, tpmNonce, sessionKey);
+  event SaltDerived(ecdhSharedSecret, sessionSalt);
+  out(<'M5', hostId, tpmId>);
+  in(<'M6', rc2_recv, handle_recv, name_recv>);
+  let nullKeyX_recv = fst(name_recv) in
+  let nullKeyY_recv = snd(name_recv) in
+  if nullKeyX_recv = nullKeyX then
+  if nullKeyY_recv = nullKeyY then
+  event NullKeyPublicMaterialAccepted(handle_recv, nullKeyX, nullKeyY, name_recv);
+  new commandParameter;
+  let aesKeyAndIV = kdf(sessionKey, <'CFB', hostNonce, tpmNonce>) in
+  let encryptedCommandParameter = senc(commandParameter, aesKeyAndIV) in
+  let cpHash = h(hostNonce) in
+  let commandHMAC = hmac(sessionKey, <authPassphrase, cpHash, hostNonce, tpmNonce>) in
+  event CommandHmacComputed(cpHash, hostNonce, tpmNonce, commandHMAC);
+  event CommandParameterEncrypted(commandParameter, encryptedCommandParameter, aesKeyAndIV);
+  out(<'M7', hostId, tpmId, hostNonce, authHandle_recv, encryptedCommandParameter, commandHMAC>);
+  event CommandSent(hostId, tpmId, hostNonce, authHandle_recv, encryptedCommandParameter, commandHMAC);
+  in(<'M8', rc3_recv, tpmNonce2_recv, encryptedParameters_recv, hmac_recv>);
+  let aesDecKeyAndIV = kdf(sessionKey, <'CFB', tpmNonce, hostNonce>) in
+  let decryptedResponseParameter = adec(encryptedParameters_recv, aesDecKeyAndIV) in
+  let rpHash = h(tpmNonce) in
+  let expectedResponseHMAC = hmac(sessionKey, <authPassphrase, rpHash, tpmNonce, hostNonce>) in
+  if verify(expectedResponseHMAC, hmac_recv) = true then
+  event ResponseHmacVerified(rpHash, tpmNonce, hostNonce, expectedResponseHMAC, hmac_recv);
+  event ResponseParameterDecrypted(encryptedParameters_recv, decryptedResponseParameter, aesDecKeyAndIV);
+  event ResponseReceived(rc3_recv, tpmNonce2_recv, encryptedParameters_recv, hmac_recv);
+  event SessionContinued(authHandle_recv, sessionKey, tpmNonce, hostNonce);
+  event SessionTerminated(authHandle_recv)
+
+let TPM(tpmId, hostId, nullKeyX, nullKeyY) =
+  in(<'M3', hostId_recv, tpmId_recv, hostNonce_recv, hostSaltPublicX_recv>);
+  new tpmNonce;
+  out(<'M4', tpmId, hostId_recv, authHandle, tpmNonce>);
+  in(<'M5', hostId_recv2, tpmId_recv2>);
+  out(<'M6', tpmId, hostId_recv2, handle, <nullKeyX, nullKeyY>>);
+  in(<'M7', hostId_recv3, tpmId_recv3, hostNonce_recv2, authHandle_recv2, encryptedCommandParameter_recv, commandHMAC_recv>);
+  let sessionKey = kdf(kdf('g'^(nullKeyX * hostSaltPublicX_recv), <'SECRET', hostSaltPublicX_recv, nullKeyX>), <'ATH', tpmNonce, hostNonce_recv2>) in
+  let aesKeyAndIV = kdf(sessionKey, <'CFB', hostNonce_recv2, tpmNonce>) in
+  let commandParameter = snd(adec(encryptedCommandParameter_recv, aesKeyAndIV)) in
+  let cpHash = h(hostNonce_recv2) in
+  if verify(hmac(sessionKey, <authPassphrase, cpHash, hostNonce_recv2, tpmNonce>), commandHMAC_recv) = true then
+  event CommandHmacComputed(cpHash, hostNonce_recv2, tpmNonce, commandHMAC_recv);
+  new responseParameter;
+  let aesDecKeyAndIV = kdf(sessionKey, <'CFB', tpmNonce, hostNonce_recv2>) in
+  let encryptedResponseParameter = senc(responseParameter, aesDecKeyAndIV) in
+  let rpHash = h(tpmNonce) in
+  let responseHMAC = hmac(sessionKey, <authPassphrase, rpHash, tpmNonce, hostNonce_recv2>) in
+  out(<'M8', tpmId, hostId_recv3, tpmNonce, encryptedResponseParameter, responseHMAC>)
+
+let Attacker() =
+  new attackerKeyX;
+  new attackerKeyY;
+  in(<'M5', hostId_recv, tpmId_recv>);
+  event CreatePrimarySent(hostId_recv, tpmId_recv);
+  out(<'M6', attackerId, hostId_recv, attackerHandle, <attackerKeyX, attackerKeyY>>);
+  event AttackerModifiedResponse(attackerKeyX, attackerKeyY);
+  in(<'M7', hostId_recv2, tpmId_recv2, hostNonce_recv, authHandle_recv, encryptedCommandParameter_recv, commandHMAC_recv>);
+  out(<'M8', attackerId, hostId_recv2, attackerNonce, encryptedCommandParameter_recv, commandHMAC_recv>);
+  event CreatePrimaryResponseReceived(hostId_recv2, attackerHandle, <attackerKeyX, attackerKeyY>)
+
+process:
+  new nullKeyX;
+  new nullKeyY;
+  new authPassphrase;
+  (!Host(hostId, tpmId, authPassphrase, nullKeyX, nullKeyY) | !TPM(tpmId, hostId, nullKeyX, nullKeyY) | !Attacker())
+
+lemma tpm2_session_command_authentication:
+  "All cpHash hostNonce tpmNonce commandHMAC #i.
+    CommandHmacComputed(cpHash, hostNonce, tpmNonce, commandHMAC) @ #i
+    ==> (Ex hostId tpmId authHandle encryptedCommandParameter #j.
+          CommandSent(hostId, tpmId, hostNonce, authHandle, encryptedCommandParameter, commandHMAC) @ #j & #j < #i)"
+
+lemma tpm2_session_response_authentication:
+  "All rpHash tpmNonce hostNonce expectedHMAC receivedHMAC #i.
+    ResponseHmacVerified(rpHash, tpmNonce, hostNonce, expectedHMAC, receivedHMAC) @ #i
+    ==> (Ex rc encryptedParameters #j.
+          ResponseReceived(rc, tpmNonce, encryptedParameters, receivedHMAC) @ #j & #j < #i)"
+
+lemma tpm2_session_command_payload_confidentiality:
+  "All commandParameter encryptedParameter aesKeyAndIV #i.
+    CommandParameterEncrypted(commandParameter, encryptedParameter, aesKeyAndIV) @ #i
+    ==> not (Ex #j. K(commandParameter) @ #j)"
+
+lemma tpm2_session_response_payload_confidentiality:
+  "All encryptedParameter decryptedParameter aesDecKeyAndIV #i.
+    ResponseParameterDecrypted(encryptedParameter, decryptedParameter, aesDecKeyAndIV) @ #i
+    ==> not (Ex #j. K(decryptedParameter) @ #j)"
+
+lemma tpm2_session_key_secrecy:
+  "All authHandle tpmNonce sessionKey #i.
+    SessionKeyDerived(authHandle, tpmNonce, sessionKey) @ #i
+    ==> not (Ex #j. K(sessionKey) @ #j)"
+
+lemma tpm2_session_salt_secrecy:
+  "All ecdhSharedSecret sessionSalt #i.
+    SaltDerived(ecdhSharedSecret, sessionSalt) @ #i
+    ==> not (Ex #j. K(sessionSalt) @ #j)"
+
+lemma tpm2_null_key_public_material_validation:
+  "All keyhandle nullKeyX nullKeyY name #i.
+    NullKeyPublicMaterialAccepted(keyhandle, nullKeyX, nullKeyY, name) @ #i
+    ==> (Ex #j. K(name) @ #j)"
+
+lemma tpm2_initial_create_primary_mitm_attack:
+  exists-trace
+  "Ex hostId tpmId attackerKeyX attackerKeyY #i #j #k.
+    CreatePrimarySent(hostId, tpmId) @ #i
+    & AttackerModifiedResponse(attackerKeyX, attackerKeyY) @ #j
+    & CreatePrimaryResponseReceived(hostId, attackerHandle, <attackerKeyX, attackerKeyY>) @ #k
+    & #i < #j & #j < #k"
+
+lemma tpm2_continued_session_state_reset:
+  "All authHandle sessionKey tpmNonce hostNonce #i.
+    SessionContinued(authHandle, sessionKey, tpmNonce, hostNonce) @ #i
+    ==> (Ex #j. SessionKeyDerived(authHandle, tpmNonce, sessionKey) @ #j & #j < #i)"
+
+lemma tpm2_session_termination_cleanup:
+  "All authHandle #i.
+    SessionTerminated(authHandle) @ #i
+    ==> (Ex tpmNonce sessionKey #j. SessionKeyDerived(authHandle, tpmNonce, sessionKey) @ #j & #j < #i)"
+
+end

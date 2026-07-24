@@ -435,6 +435,9 @@ def build_proof_context(
                     "intent": expectation.intent or claim.get("intent", ""),
                     "required_events": required_events,
                     "witness": claim.get("witness", ""),
+                    "claim_category": claim.get("claim_category", ""),
+                    "preserved_values": claim.get("preserved_values", []),
+                    "anti_compression_note": claim.get("anti_compression_note", ""),
                     "claim_source": "proof_spec",
                 }
             )
@@ -460,6 +463,9 @@ def build_proof_context(
                     "intent": str(claim.get("intent") or ""),
                     "required_events": required_events,
                     "witness": str(claim.get("witness") or ""),
+                    "claim_category": claim.get("claim_category", ""),
+                    "preserved_values": claim.get("preserved_values", []),
+                    "anti_compression_note": claim.get("anti_compression_note", ""),
                     "claim_source": "protocol_ir",
                 }
             )
@@ -512,11 +518,10 @@ def build_field_reviews(
 ) -> list[dict[str, Any]]:
     """Build field-level confidence metadata for human review.
 
-    The planner may provide source quotes and LLM priority scores, but this
-    function normalizes them and adds deterministic consistency/impact signals.
-    `priority_score` is always the formula score
-    max(1 - evidence, 1 - consistency) * impact; the LLM-provided
-    `priority_llm` is recorded as an auxiliary signal only.
+    The planner may provide field-level source quotes and LLM confidence
+    scores. This function normalizes those signals and, when a child field is
+    missing explicit metadata, inherits scores from the nearest LM-scored IR
+    object before falling back to aggregate LM-scored evidence.
     """
 
     validation_payload = validation.to_dict() if isinstance(validation, IRValidationResult) else (validation or {})
@@ -533,10 +538,10 @@ def build_field_reviews(
         fallback_impact = _semantic_impact_for_path(path, protocol_ir, proof_context)
         fallback_evidence_confidence = _evidence_confidence(evidence)
         fallback_consistency_confidence = "low" if diagnostics else "high"
-        llm_scores = _llm_review_scores_for_path(protocol_ir, path)
-        evidence_score = llm_scores.get("evidence_confidence_score")
-        consistency_score = llm_scores.get("consistency_confidence_score")
-        impact_score = llm_scores.get("semantic_impact_score")
+        llm_metadata = _llm_review_metadata_for_path(protocol_ir, path)
+        evidence_score = llm_metadata.get("evidence_confidence_score")
+        consistency_score = llm_metadata.get("consistency_confidence_score")
+        impact_score = llm_metadata.get("semantic_impact_score")
         evidence_confidence = _score_label(evidence_score, fallback=fallback_evidence_confidence)
         consistency_confidence = _score_label(consistency_score, fallback=fallback_consistency_confidence)
         impact = _score_label(impact_score, fallback=fallback_impact)
@@ -548,7 +553,7 @@ def build_field_reviews(
             consistency_confidence_score=consistency_score,
             semantic_impact_score=impact_score,
         )
-        llm_priority = _llm_priority_for_path(protocol_ir, path)
+        llm_priority = llm_metadata.get("priority_llm")
         priority_score = formula_priority
         priority_source = "formula"
         priority_level = _priority_level(priority_score)
@@ -568,13 +573,20 @@ def build_field_reviews(
                 "value_snapshot": value,
                 "source_evidence": evidence,
                 "evidence_confidence": evidence_confidence,
-                "evidence_confidence_score": evidence_score if evidence_score is not None else _label_score(evidence_confidence),
+                "evidence_confidence_score": evidence_score,
+                "evidence_confidence_score_source": llm_metadata.get("evidence_confidence_score_source") or "not_provided",
+                "evidence_confidence_formula_score": _label_score(evidence_confidence),
                 "consistency_confidence": consistency_confidence,
-                "consistency_confidence_score": consistency_score if consistency_score is not None else _label_score(consistency_confidence),
+                "consistency_confidence_score": consistency_score,
+                "consistency_confidence_score_source": llm_metadata.get("consistency_confidence_score_source") or "not_provided",
+                "consistency_confidence_formula_score": _label_score(consistency_confidence),
                 "semantic_impact": impact,
-                "semantic_impact_score": impact_score if impact_score is not None else _label_score(impact),
-                "semantic_impact_source": "llm" if impact_score is not None else "fallback",
+                "semantic_impact_score": impact_score,
+                "semantic_impact_score_source": llm_metadata.get("semantic_impact_score_source") or "not_provided",
+                "semantic_impact_formula_score": _label_score(impact),
+                "semantic_impact_source": llm_metadata.get("semantic_impact_score_source") or "fallback",
                 "priority_llm": llm_priority,
+                "priority_llm_source": llm_metadata.get("priority_llm_source") or "not_provided",
                 "priority_formula": formula_priority,
                 "priority_score": priority_score,
                 "priority_source": priority_source,
@@ -913,7 +925,17 @@ def _ui_review_field_evidence_paths(protocol_ir: dict[str, Any]) -> set[str]:
         "messages": ("label", "from", "to", "protection", "term", "meaning"),
         "checks": ("role", "condition", "source_message", "action"),
         "events": ("name", "role", "when", "arguments"),
-        "claims": ("lemma_name", "goal_type", "trace_kind", "expected_state", "event_schema"),
+        "claims": (
+            "lemma_name",
+            "claim_category",
+            "goal_type",
+            "trace_kind",
+            "expected_state",
+            "required_events",
+            "event_schema",
+            "preserved_values",
+            "anti_compression_note",
+        ),
     }
     for section, keys in keys_by_section.items():
         for index, item in enumerate(_as_list(protocol_ir.get(section))):
@@ -1128,19 +1150,29 @@ def _normalize_claims(
         if not name:
             continue
         goal_type = _goal_type(item.get("goal_type") or item.get("kind") or item.get("type"), name)
-        event_schema = _as_string_list(item.get("event_schema") or item.get("required_events"))
+        required_events = _normalize_required_events(item.get("required_events") or item.get("event_schema"))
+        event_schema = _as_string_list(item.get("event_schema")) or [
+            event["name"] for event in required_events if event.get("name")
+        ]
         if not event_schema:
             event_schema = _required_events_for_goal(goal_type, candidate.get("roles") or plan.get("roles") or [])
         claims.append(
             {
                 "lemma_name": name,
+                "claim_category": str(item.get("claim_category") or item.get("category") or ""),
                 "goal_type": goal_type,
                 "expected_state": str(item.get("expected_state") or PROVED_SATISFYING),
                 "trace_kind": str(item.get("trace_kind") or "unknown"),
                 "intent": str(item.get("intent") or item.get("description") or ""),
+                "required_events": required_events,
                 "event_schema": event_schema,
+                "preserved_values": _as_string_list(item.get("preserved_values")),
+                "holds_under": _as_string_list(item.get("holds_under")),
+                "does_not_hold_under": _as_string_list(item.get("does_not_hold_under")),
+                "anti_compression_note": str(item.get("anti_compression_note") or ""),
                 "witness": str(item.get("witness") or ""),
                 "expected_raw": str(item.get("expected_raw") or ""),
+                "evidence": _as_list(item.get("evidence")),
             }
         )
 
@@ -1154,6 +1186,8 @@ def _normalize_claims(
                 by_name[expectation.name]["expected_raw"] = expectation.expected_raw
             if expectation.required_events and not by_name[expectation.name].get("event_schema"):
                 by_name[expectation.name]["event_schema"] = _as_string_list(expectation.required_events)
+            if expectation.required_events and not by_name[expectation.name].get("required_events"):
+                by_name[expectation.name]["required_events"] = _normalize_required_events(expectation.required_events)
             if expectation.intent and not by_name[expectation.name].get("intent"):
                 by_name[expectation.name]["intent"] = expectation.intent
             continue
@@ -1165,16 +1199,46 @@ def _normalize_claims(
         claims.append(
             {
                 "lemma_name": expectation.name,
+                "claim_category": "",
                 "goal_type": goal_type,
                 "expected_state": expectation.expected_state,
                 "trace_kind": expectation.trace_kind,
                 "intent": expectation.intent,
+                "required_events": _normalize_required_events(expectation.required_events),
                 "event_schema": event_schema,
+                "preserved_values": [],
+                "holds_under": [],
+                "does_not_hold_under": [],
+                "anti_compression_note": "",
                 "witness": "",
                 "expected_raw": expectation.expected_raw,
+                "evidence": [],
             }
         )
     return _dedupe_dicts(claims, key="lemma_name")
+
+
+def _normalize_required_events(value: Any) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    for item in _as_list(value):
+        if isinstance(item, dict):
+            name = str(item.get("name") or item.get("event") or item.get("fact") or "").strip()
+            if not name:
+                continue
+            events.append(
+                {
+                    "name": name,
+                    "role": str(item.get("role") or ""),
+                    "when": str(item.get("when") or ""),
+                    "arguments": _as_string_list(item.get("arguments") or item.get("args")),
+                    "source_boundary": str(item.get("source_boundary") or item.get("source") or ""),
+                }
+            )
+            continue
+        name = str(item or "").strip()
+        if name:
+            events.append({"name": name, "role": "", "when": "", "arguments": [], "source_boundary": ""})
+    return events
 
 
 def _normalize_compromise(candidate: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
@@ -1966,7 +2030,21 @@ def _reviewable_field_paths(
             if not isinstance(item, dict):
                 continue
             keys = {
-                "claims": ("lemma_name", "goal_type", "trace_kind", "expected_state", "event_schema", "intent", "witness"),
+                "claims": (
+                    "lemma_name",
+                    "claim_category",
+                    "goal_type",
+                    "trace_kind",
+                    "expected_state",
+                    "required_events",
+                    "event_schema",
+                    "preserved_values",
+                    "holds_under",
+                    "does_not_hold_under",
+                    "anti_compression_note",
+                    "intent",
+                    "witness",
+                ),
                 "events": ("name", "role", "when", "arguments", "proof_relevance"),
                 "checks": ("role", "condition", "source_message", "action"),
                 "messages": ("label", "from", "to", "term", "protection", "receiver_can_decrypt", "receiver_must_treat_as_opaque"),
@@ -2026,30 +2104,116 @@ def _formula_priority(
 
 
 def _llm_priority_for_path(protocol_ir: dict[str, Any], path: str) -> float | None:
-    for item in _as_list(protocol_ir.get("field_evidence")):
-        if not isinstance(item, dict):
-            continue
-        if _normalize_review_path(item.get("field_path") or item.get("path")) != path:
-            continue
-        priority = _score_or_none(item.get("priority_llm"))
-        if priority is not None:
-            return priority
-    return None
+    return _score_or_none(_llm_review_metadata_for_path(protocol_ir, path).get("priority_llm"))
 
 
 def _llm_review_scores_for_path(protocol_ir: dict[str, Any], path: str) -> dict[str, float]:
+    metadata = _llm_review_metadata_for_path(protocol_ir, path)
     scores: dict[str, float] = {}
+    for key in ("evidence_confidence_score", "consistency_confidence_score", "semantic_impact_score"):
+        score = _score_or_none(metadata.get(key))
+        if score is not None:
+            scores[key] = score
+    return scores
+
+
+def _llm_review_metadata_for_path(protocol_ir: dict[str, Any], path: str) -> dict[str, Any]:
+    normalized_path = _normalize_review_path(path)
+    if not normalized_path:
+        return {}
+
+    field_items: list[tuple[str, dict[str, Any]]] = []
     for item in _as_list(protocol_ir.get("field_evidence")):
         if not isinstance(item, dict):
             continue
-        if _normalize_review_path(item.get("field_path") or item.get("path")) != path:
+        item_path = _normalize_review_path(item.get("field_path") or item.get("path"))
+        if not item_path:
             continue
+        field_items.append((item_path, item))
+    if not field_items:
+        return {}
+
+    result: dict[str, Any] = {}
+
+    def fill_from(item: dict[str, Any], source: str) -> None:
         for key in ("evidence_confidence_score", "consistency_confidence_score", "semantic_impact_score"):
+            if result.get(key) is not None:
+                continue
             score = _score_or_none(item.get(key))
-            if score is not None:
-                scores[key] = score
-        break
-    return scores
+            if score is None:
+                continue
+            result[key] = score
+            result[f"{key}_source"] = source
+        if result.get("priority_llm") is None:
+            priority = _score_or_none(item.get("priority_llm"))
+            if priority is not None:
+                result["priority_llm"] = priority
+                result["priority_llm_source"] = source
+
+    for item_path, item in field_items:
+        if item_path == normalized_path:
+            fill_from(item, "llm")
+
+    preferred_path = _preferred_lm_score_path(normalized_path)
+    if preferred_path:
+        for item_path, item in field_items:
+            if item_path == preferred_path:
+                fill_from(item, "llm_inherited_row")
+
+    row_prefix = _review_row_prefix(normalized_path)
+    if row_prefix:
+        for item_path, item in field_items:
+            if _review_row_prefix(item_path) == row_prefix:
+                fill_from(item, "llm_inherited_row")
+
+    section = normalized_path.split(".", 1)[0]
+    for item_path, item in field_items:
+        if item_path.split(".", 1)[0] == section:
+            fill_from(item, "llm_inherited_section")
+
+    _fill_from_global_lm_scores(result, field_items)
+    return result
+
+
+def _preferred_lm_score_path(path: str) -> str:
+    parts = path.split(".")
+    if len(parts) < 2 or not parts[1].isdigit():
+        return ""
+    preferred_key = {
+        "messages": "term",
+        "checks": "condition",
+        "events": "name",
+        "claims": "lemma_name",
+        "fresh_terms": "name",
+        "long_term_keys": "name",
+    }.get(parts[0])
+    if not preferred_key:
+        return ""
+    return ".".join([parts[0], parts[1], preferred_key])
+
+
+def _review_row_prefix(path: str) -> str:
+    parts = path.split(".")
+    if len(parts) >= 2 and parts[1].isdigit():
+        return ".".join(parts[:2])
+    return parts[0] if parts else ""
+
+
+def _fill_from_global_lm_scores(result: dict[str, Any], field_items: list[tuple[str, dict[str, Any]]]) -> None:
+    for key in ("evidence_confidence_score", "consistency_confidence_score", "semantic_impact_score"):
+        if result.get(key) is not None:
+            continue
+        values = [_score_or_none(item.get(key)) for _path, item in field_items]
+        values = [value for value in values if value is not None]
+        if values:
+            result[key] = round(sum(values) / len(values), 3)
+            result[f"{key}_source"] = "llm_inherited_global"
+    if result.get("priority_llm") is None:
+        values = [_score_or_none(item.get("priority_llm")) for _path, item in field_items]
+        values = [value for value in values if value is not None]
+        if values:
+            result["priority_llm"] = round(sum(values) / len(values), 3)
+            result["priority_llm_source"] = "llm_inherited_global"
 
 
 def _score_label(score: float | None, *, fallback: str) -> str:

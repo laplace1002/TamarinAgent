@@ -2,9 +2,27 @@ __pycache__/
 *.py[cod]
 .DS_Store
 .env
+.env.*
+!.env.example
 .env.local
 .venv/
 venv/
 runs/
 *.log
 .idea/
+
+# Local research artifacts and one-off exports.
+backups/
+reports/
+skills/
+lemma_alignment_mismatch_evidence.md
+examples/lemma_alignment_mismatch_demos/
+examples/tpm2_sessions_case.json
+examples/tpm2_sessions_protocol.md
+examples/c_code_tool_call_demo/**/prompts/
+examples/c_code_tool_call_demo/**/*.raw.txt
+examples/c_code_tool_call_demo/**/llm_calls.jsonl
+
+# Keep only the generic public CLI under scripts/.
+scripts/*.py
+!scripts/c_to_protocol_ir.py

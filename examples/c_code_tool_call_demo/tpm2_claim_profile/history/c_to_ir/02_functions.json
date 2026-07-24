@@ -1,0 +1,388 @@
+{
+  "functions": [
+    {
+      "class": "local_helper",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 164,
+          "line_start": 143,
+          "reason": "Helper to determine name size from TPM algorithm identifier"
+        }
+      ],
+      "name": "name_size",
+      "needs_body_slice": false,
+      "protocol_relevance": "low",
+      "protocol_surface": [
+        "crypto"
+      ],
+      "why_relevant": "Used to parse name sizes in HMAC computation"
+    },
+    {
+      "class": "message_constructor",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 221,
+          "line_start": 166,
+          "reason": "Constructs TPM2_ReadPublic command and parses response to obtain name"
+        }
+      ],
+      "name": "tpm2_read_public",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "message",
+        "crypto"
+      ],
+      "why_relevant": "Retrieves public area name for session HMAC computation"
+    },
+    {
+      "class": "message_constructor",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 310,
+          "line_start": 224,
+          "reason": "Appends handle and name to command buffer for session HMAC"
+        }
+      ],
+      "name": "tpm_buf_append_name",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "message",
+        "crypto"
+      ],
+      "why_relevant": "Adds handle name to command buffer for HMAC calculation"
+    },
+    {
+      "class": "message_constructor",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 336,
+          "line_start": 313,
+          "reason": "Appends authorization structure to command buffer"
+        }
+      ],
+      "name": "tpm_buf_append_auth",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "message",
+        "crypto"
+      ],
+      "why_relevant": "Builds authorization area for session commands"
+    },
+    {
+      "class": "message_constructor",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 423,
+          "line_start": 338,
+          "reason": "Appends session structure with nonce and passphrase to command buffer"
+        }
+      ],
+      "name": "tpm_buf_append_hmac_session",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "message",
+        "crypto"
+      ],
+      "why_relevant": "Creates session element with nonce and optional passphrase"
+    },
+    {
+      "class": "crypto_derivation",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 457,
+          "line_start": 431,
+          "reason": "Implements TPM2 KDFa key derivation function using HMAC-SHA256"
+        }
+      ],
+      "name": "tpm2_KDFa",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "crypto"
+      ],
+      "why_relevant": "Derives session keys and HMAC keys"
+    },
+    {
+      "class": "crypto_derivation",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 487,
+          "line_start": 459,
+          "reason": "Implements TPM2 KDFe key derivation function using SHA256"
+        }
+      ],
+      "name": "tpm2_KDFe",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "crypto"
+      ],
+      "why_relevant": "Derives salt encryption key from ECDH shared secret"
+    },
+    {
+      "class": "message_constructor",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 564,
+          "line_start": 489,
+          "reason": "Generates ECDH salt and appends encrypted salt to command buffer"
+        }
+      ],
+      "name": "tpm_buf_append_salt",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "message",
+        "crypto"
+      ],
+      "why_relevant": "Adds encrypted salt for session key agreement"
+    },
+    {
+      "class": "message_constructor",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 728,
+          "line_start": 566,
+          "reason": "Finalizes session HMAC and encrypts parameters in command buffer"
+        }
+      ],
+      "name": "tpm_buf_fill_hmac_session",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "message",
+        "crypto",
+        "check"
+      ],
+      "why_relevant": "Computes and inserts HMAC, encrypts sensitive parameters"
+    },
+    {
+      "class": "message_parser_checker",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 881,
+          "line_start": 731,
+          "reason": "Verifies response HMAC and decrypts response parameters"
+        }
+      ],
+      "name": "tpm_buf_check_hmac_response",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "message",
+        "check",
+        "crypto"
+      ],
+      "why_relevant": "Validates session integrity and decrypts response"
+    },
+    {
+      "class": "lifecycle_transition",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 904,
+          "line_start": 884,
+          "reason": "Flushes session context and frees session resources"
+        }
+      ],
+      "name": "tpm2_end_auth_session",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "lifecycle"
+      ],
+      "why_relevant": "Terminates authentication session"
+    },
+    {
+      "class": "message_parser_checker",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 933,
+          "line_start": 907,
+          "reason": "Parses StartAuthSession response to extract session key and nonces"
+        }
+      ],
+      "name": "tpm2_parse_start_auth_session",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "message",
+        "crypto"
+      ],
+      "why_relevant": "Extracts session parameters from TPM response"
+    },
+    {
+      "class": "state_update",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 971,
+          "line_start": 935,
+          "reason": "Loads null key from context or creates it, updates chip state"
+        }
+      ],
+      "name": "tpm2_load_null",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "state",
+        "crypto"
+      ],
+      "why_relevant": "Loads null seed key for session creation"
+    },
+    {
+      "class": "protocol_entrypoint",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1048,
+          "line_start": 973,
+          "reason": "Creates HMAC authentication session with TPM"
+        }
+      ],
+      "name": "tpm2_start_auth_session",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "message",
+        "crypto",
+        "lifecycle"
+      ],
+      "why_relevant": "Initiates session with key agreement and nonce exchange"
+    },
+    {
+      "class": "message_parser_checker",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1234,
+          "line_start": 1065,
+          "reason": "Parses CreatePrimary response to extract handle and name"
+        }
+      ],
+      "name": "tpm2_parse_create_primary",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "message",
+        "check",
+        "crypto"
+      ],
+      "why_relevant": "Extracts primary key handle and name from TPM response"
+    },
+    {
+      "class": "message_constructor",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1353,
+          "line_start": 1236,
+          "reason": "Constructs and sends CreatePrimary command, parses response"
+        }
+      ],
+      "name": "tpm2_create_primary",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "message",
+        "crypto",
+        "lifecycle"
+      ],
+      "why_relevant": "Creates primary key under specified hierarchy"
+    },
+    {
+      "class": "lifecycle_transition",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1372,
+          "line_start": 1355,
+          "reason": "Creates null primary key and saves context"
+        }
+      ],
+      "name": "tpm2_create_null_primary",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "lifecycle",
+        "crypto"
+      ],
+      "why_relevant": "Creates null seed primary for session key agreement"
+    },
+    {
+      "class": "protocol_entrypoint",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1397,
+          "line_start": 1374,
+          "reason": "Initializes session subsystem, creates null primary"
+        }
+      ],
+      "name": "tpm2_sessions_init",
+      "needs_body_slice": true,
+      "protocol_relevance": "high",
+      "protocol_surface": [
+        "lifecycle",
+        "crypto"
+      ],
+      "why_relevant": "One-time initialization of session infrastructure"
+    }
+  ],
+  "open_questions": [
+    {
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1372,
+          "line_start": 1355,
+          "reason": "Function tpm2_create_null_primary is defined but its implementation is not fully shown in the slices."
+        }
+      ],
+      "id": "oq_1",
+      "question": "How exactly is the NULL seed primary key derived and used? The code references tpm2_create_null_primary and tpm2_load_null but details are not fully visible."
+    },
+    {
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 247,
+          "line_start": 224,
+          "reason": "Function comment for tpm_buf_append_name describes the name but not the exact byte layout."
+        }
+      ],
+      "id": "oq_2",
+      "question": "What is the exact format of the 'name' used for handles? The comment mentions it is a hash of the public area with algorithm id appended, but the precise encoding is not specified."
+    },
+    {
+      "confidence": "low",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 125,
+          "line_start": 116,
+          "reason": "Comment in struct tpm2_auth mentions session key and passphrase but not their lifecycle."
+        }
+      ],
+      "id": "oq_3",
+      "question": "How are session keys and passphrases managed across multiple commands? The comment mentions they are constant for the session but details are unclear."
+    }
+  ]
+}

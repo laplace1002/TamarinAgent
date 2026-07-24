@@ -1,0 +1,392 @@
+{
+  "crypto_operations": [
+    {
+      "id": "crypto_op_1",
+      "kind": "random",
+      "purpose": "Generate host nonce for session",
+      "inputs": [],
+      "output": "hostNonce",
+      "abstraction": "get_random_bytes is modeled as a fresh random generation",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 412,
+          "line_end": 413,
+          "reason": "get_random_bytes(nonce, sizeof(nonce)); memcpy(auth->our_nonce, nonce, sizeof(nonce));"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_append_hmac_session"
+      ],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_2",
+      "kind": "random",
+      "purpose": "Generate salt private key (ephemeral ECDH key)",
+      "inputs": [],
+      "output": "saltPrivateKey",
+      "abstraction": "crypto_kpp_set_secret with empty ecdh parameter generates random private key",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 531,
+          "line_end": 531,
+          "reason": "crypto_kpp_set_secret(kpp, encoded_key, buf_len); with p = {0} generates random private key"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_append_salt"
+      ],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_3",
+      "kind": "dh",
+      "purpose": "Compute ECDH shared secret between host ephemeral key and TPM null key",
+      "inputs": [
+        "saltPrivateKey",
+        "chip->null_ec_key_x",
+        "chip->null_ec_key_y"
+      ],
+      "output": "ecdhSharedSecret",
+      "abstraction": "crypto_kpp_compute_shared_secret computes ECDH shared secret; only x coordinate is used",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 549,
+          "line_end": 551,
+          "reason": "sg_set_buf(&s[0], chip->null_ec_key_x, EC_PT_SZ); sg_set_buf(&s[1], chip->null_ec_key_y, EC_PT_SZ); kpp_request_set_input(req, s, EC_PT_SZ*2); sg_init_one(d, auth->salt, EC_PT_SZ); kpp_request_set_output(req, d, EC_PT_SZ); crypto_kpp_compute_shared_secret(req);"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_append_salt"
+      ],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_4",
+      "kind": "kdf",
+      "purpose": "Derive session salt from ECDH shared secret using KDFe",
+      "inputs": [
+        "ecdhSharedSecret",
+        "label: \"SECRET\"",
+        "hostSaltPublicX",
+        "chip->null_ec_key_x"
+      ],
+      "output": "sessionSalt",
+      "abstraction": "tpm2_KDFe uses SHA256 with counter=1, secret, label, pt_u, pt_v; output is 32 bytes",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 559,
+          "line_end": 560,
+          "reason": "tpm2_KDFe(auth->salt, \"SECRET\", x, chip->null_ec_key_x, auth->salt);"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_append_salt"
+      ],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_5",
+      "kind": "kdf",
+      "purpose": "Derive session key from salt and nonces using KDFa",
+      "inputs": [
+        "sessionSalt",
+        "label: \"ATH\"",
+        "tpmNonce",
+        "hostNonce"
+      ],
+      "output": "sessionKey",
+      "abstraction": "tpm2_KDFa uses HMAC-SHA256 with counter=1, label, u, v, bits; output is 32 bytes",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 928,
+          "line_end": 928,
+          "reason": "tpm2_KDFa(auth->salt, sizeof(auth->salt), \"ATH\", auth->tpm_nonce, auth->our_nonce, sizeof(auth->session_key), auth->session_key);"
+        }
+      ],
+      "used_by_messages": [
+        "tpm2_parse_start_auth_session"
+      ],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_6",
+      "kind": "kdf",
+      "purpose": "Derive AES encryption key and IV for command encryption",
+      "inputs": [
+        "sessionKey",
+        "label: \"CFB\"",
+        "hostNonce",
+        "tpmNonce"
+      ],
+      "output": "aesKeyAndIV",
+      "abstraction": "tpm2_KDFa with label \"CFB\", nonce order hostNonce then tpmNonce; output is AES_KEY_BYTES + AES_BLOCK_SIZE bytes",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 675,
+          "line_end": 677,
+          "reason": "tpm2_KDFa(auth->session_key, sizeof(auth->session_key) + auth->passphrase_len, \"CFB\", auth->our_nonce, auth->tpm_nonce, AES_KEY_BYTES + AES_BLOCK_SIZE, auth->scratch);"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_fill_hmac_session"
+      ],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_7",
+      "kind": "encrypt",
+      "purpose": "Encrypt first command parameter using AES-CFB",
+      "inputs": [
+        "aesKeyAndIV",
+        "commandParameter"
+      ],
+      "output": "encryptedCommandParameter",
+      "abstraction": "aes_prepareenckey and aescfb_encrypt; key and IV from scratch buffer",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 680,
+          "line_end": 681,
+          "reason": "aes_prepareenckey(&auth->aes_key, auth->scratch, AES_KEY_BYTES); aescfb_encrypt(&auth->aes_key, &buf->data[offset_p], tpm_buf_length(buf) - offset_p, auth->scratch + AES_KEY_BYTES);"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_fill_hmac_session"
+      ],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_8",
+      "kind": "hash",
+      "purpose": "Compute cpHash (command parameter hash) for HMAC",
+      "inputs": [
+        "commandOrdinal",
+        "objectNamesArray",
+        "handleNamesArray",
+        "commandParameters"
+      ],
+      "output": "cpHash",
+      "abstraction": "SHA256 hash of ordinal, names, handles, and parameters",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 686,
+          "line_end": 712,
+          "reason": "sha256_update with ordinal, name[i], handle, and parameters; sha256_final to cphash"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_fill_hmac_session"
+      ],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_9",
+      "kind": "hmac",
+      "purpose": "Compute command HMAC for session integrity",
+      "inputs": [
+        "sessionKey",
+        "authPassphrase",
+        "cpHash",
+        "hostNonce",
+        "tpmNonce",
+        "sessionAttributes"
+      ],
+      "output": "commandHMAC",
+      "abstraction": "HMAC-SHA256 with key = sessionKey || passphrase (with trailing zeros stripped); inputs: cpHash, hostNonce, tpmNonce, attrs",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 712,
+          "line_end": 722,
+          "reason": "hmac_sha256_init_usingrawkey(&hctx, auth->session_key, sizeof(auth->session_key) + auth->passphrase_len); hmac_sha256_update(&hctx, cphash, sizeof(cphash)); hmac_sha256_update(&hctx, auth->our_nonce, sizeof(auth->our_nonce)); hmac_sha256_update(&hctx, auth->tpm_nonce, sizeof(auth->tpm_nonce)); hmac_sha256_update(&hctx, &auth->attrs, 1); hmac_sha256_final(&hctx, hmac);"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_fill_hmac_session"
+      ],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_10",
+      "kind": "hash",
+      "purpose": "Compute rpHash (response parameter hash) for HMAC verification",
+      "inputs": [
+        "returnCode",
+        "commandOrdinal",
+        "responseParameters"
+      ],
+      "output": "rpHash",
+      "abstraction": "SHA256 hash of return_code, ordinal, and response parameters",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 823,
+          "line_end": 834,
+          "reason": "sha256_update with return_code, ordinal, and parameters; sha256_final to rphash"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_check_hmac_response"
+      ],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_11",
+      "kind": "hmac",
+      "purpose": "Compute expected response HMAC for verification",
+      "inputs": [
+        "sessionKey",
+        "authPassphrase",
+        "rpHash",
+        "tpmNonce",
+        "hostNonce",
+        "sessionAttributes"
+      ],
+      "output": "expectedResponseHMAC",
+      "abstraction": "HMAC-SHA256 with key = sessionKey || passphrase; inputs: rpHash, tpmNonce, hostNonce, attrs (note nonce order reversed compared to command)",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 834,
+          "line_end": 845,
+          "reason": "hmac_sha256_init_usingrawkey(&hctx, auth->session_key, sizeof(auth->session_key) + auth->passphrase_len); hmac_sha256_update(&hctx, rphash, sizeof(rphash)); hmac_sha256_update(&hctx, auth->tpm_nonce, sizeof(auth->tpm_nonce)); hmac_sha256_update(&hctx, auth->our_nonce, sizeof(auth->our_nonce)); hmac_sha256_update(&hctx, &auth->attrs, 1); hmac_sha256_final(&hctx, rphash);"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_check_hmac_response"
+      ],
+      "used_by_checks": [
+        "crypto_op_12"
+      ]
+    },
+    {
+      "id": "crypto_op_12",
+      "kind": "verify",
+      "purpose": "Verify response HMAC against received HMAC",
+      "inputs": [
+        "expectedResponseHMAC",
+        "receivedResponseHMAC"
+      ],
+      "output": "verificationResult",
+      "abstraction": "crypto_memneq compares expected and received HMAC; if non-zero, verification fails",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 846,
+          "line_end": 846,
+          "reason": "if (crypto_memneq(rphash, &buf->data[offset_s], SHA256_DIGEST_SIZE)) { dev_err(...); }"
+        }
+      ],
+      "used_by_messages": [],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_13",
+      "kind": "kdf",
+      "purpose": "Derive AES decryption key and IV for response decryption",
+      "inputs": [
+        "sessionKey",
+        "label: \"CFB\"",
+        "tpmNonce",
+        "hostNonce"
+      ],
+      "output": "aesDecKeyAndIV",
+      "abstraction": "tpm2_KDFa with label \"CFB\", nonce order tpmNonce then hostNonce (reversed from command); output is AES_KEY_BYTES + AES_BLOCK_SIZE bytes",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 860,
+          "line_end": 862,
+          "reason": "tpm2_KDFa(auth->session_key, sizeof(auth->session_key) + auth->passphrase_len, \"CFB\", auth->tpm_nonce, auth->our_nonce, AES_KEY_BYTES + AES_BLOCK_SIZE, auth->scratch); aes_prepareenckey(&auth->aes_key, auth->scratch, AES_KEY_BYTES); aescfb_decrypt(&auth->aes_key, &buf->data[offset_p], parm_len, auth->scratch + AES_KEY_BYTES);"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_check_hmac_response"
+      ],
+      "used_by_checks": []
+    },
+    {
+      "id": "crypto_op_14",
+      "kind": "decrypt",
+      "purpose": "Decrypt response parameter using AES-CFB",
+      "inputs": [
+        "aesDecKeyAndIV",
+        "encryptedResponseParameter"
+      ],
+      "output": "decryptedResponseParameter",
+      "abstraction": "aes_prepareenckey and aescfb_decrypt; key and IV from scratch buffer",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 860,
+          "line_end": 862,
+          "reason": "aes_prepareenckey(&auth->aes_key, auth->scratch, AES_KEY_BYTES); aescfb_decrypt(&auth->aes_key, &buf->data[offset_p], parm_len, auth->scratch + AES_KEY_BYTES);"
+        }
+      ],
+      "used_by_messages": [
+        "tpm_buf_check_hmac_response"
+      ],
+      "used_by_checks": []
+    }
+  ],
+  "dropped_details": [
+    {
+      "detail": "Byte encoding details (e.g., endianness conversion, counter encoding) are abstracted away as they do not affect protocol-level semantics.",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 446,
+          "line_end": 450,
+          "reason": "cpu_to_be32 and sizeof operations are implementation details for byte ordering."
+        }
+      ]
+    },
+    {
+      "detail": "Scratch buffer reuse for KDF output and AES key/IV is abstracted; the derived key material is treated as separate symbolic values.",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 675,
+          "line_end": 677,
+          "reason": "auth->scratch is used for both KDF output and AES key/IV."
+        }
+      ]
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "oq_crypto_1",
+      "question": "How is the NULL seed primary key (chip->null_ec_key_x, chip->null_ec_key_y) derived and verified? Its provenance is not fully visible.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 549,
+          "line_end": 549,
+          "reason": "sg_set_buf(&s[1], chip->null_ec_key_y, EC_PT_SZ); — used in ECDH but origin not shown."
+        }
+      ]
+    },
+    {
+      "id": "oq_crypto_2",
+      "question": "What is the exact format of the 'name' field used in cpHash? The comment mentions it is a hash of the public area with algorithm id appended, but the precise encoding is not specified.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 224,
+          "line_end": 247,
+          "reason": "Function comment for tpm_buf_append_name describes the name but not the exact byte layout."
+        }
+      ]
+    }
+  ]
+}

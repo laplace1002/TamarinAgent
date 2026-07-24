@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>C Code to Tamarin Workflow</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-input-mode="c_code">
+  <div id="app">
+    <header class="topbar">
+      <div>
+        <h1>C Code to Tamarin Workflow</h1>
+        <div class="subtitle" id="runDir" aria-hidden="true"></div>
+      </div>
+      <div class="actions">
+        <a class="button-link" href="/" title="Open original NL workflow">NL Workflow</a>
+        <button id="workflowBtn" title="Refresh status">Refresh Status</button>
+        <button id="reloadBtn" title="Reload contract">Reload</button>
+        <button id="saveBtn" class="primary" title="Save reviewed contract">Save Reviewed</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="summary">
+          <div class="case-name" id="caseName">-</div>
+        </section>
+        <section class="review-legend-mini">
+          <h3>Review Status</h3>
+          <div class="legend-row"><span class="legend-dot status-high_confidence"></span><span>high confidence</span></div>
+          <div class="legend-row"><span class="legend-dot status-needs_review"></span><span>needs review</span></div>
+          <div class="legend-row"><span class="legend-dot status-must_review"></span><span>must review</span></div>
+          <div class="legend-row"><span class="legend-dot status-system_assumption"></span><span>system assumption</span></div>
+          <div class="legend-row"><span class="legend-dot status-user_confirmed"></span><span>user confirmed</span></div>
+        </section>
+        <nav id="sectionNav"></nav>
+      </aside>
+
+      <section class="workbench">
+        <div id="status" class="status"></div>
+
+        <section class="panel" data-section="nl_input">
+          <div class="panel-head">
+            <h2>C Code Input</h2>
+          </div>
+          <div class="nl-grid">
+            <div>
+              <label for="nlName">Protocol name</label>
+              <input id="nlName" placeholder="C-derived protocol">
+              <label for="nlDifficulty">Input type</label>
+              <select id="nlDifficulty">
+                <option value="">C/C++ source</option>
+                <option value="easy">easy</option>
+                <option value="medium">medium</option>
+                <option value="hard">hard</option>
+              </select>
+              <label for="cFileInput">Upload C source file</label>
+              <input id="cFileInput" type="file" accept=".c,.h,.cc,.cpp,.hpp,.txt">
+              <div id="cSourceSummary" class="field-note">Loading recorded C source metadata...</div>
+              <textarea id="nlDescription" rows="1" hidden></textarea>
+            </div>
+            <div>
+              <label for="nlAssumptions">Extraction assumptions</label>
+              <textarea id="nlAssumptions" rows="6" placeholder="Dolev-Yao network attacker. Crypto APIs modeled symbolically."></textarea>
+              <label for="nlGoals">Derived proof goals</label>
+              <textarea id="nlGoals" rows="6" placeholder="Derived authentication, secrecy, validation, lifecycle, and attack-witness lemmas."></textarea>
+              <div class="button-row">
+                <button id="startFromNlBtn" class="primary" disabled>C-derived IR / Contract loaded</button>
+              </div>
+              <details class="c-artifacts-details">
+                <summary>Extraction artifacts</summary>
+                <div id="cArtifactButtons" class="artifact-button-grid"></div>
+                <pre id="cArtifactViewer" class="codebox"></pre>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" data-section="workflow">
+          <div class="panel-head">
+            <h2>Prepared Workflow</h2>
+          </div>
+          <div class="import-grid">
+            <div>
+              <label for="workflowLibrarySelect">Prepared workflow</label>
+              <select id="workflowLibrarySelect">
+                <option value="">Loading prepared workflows...</option>
+              </select>
+              <div id="workflowLibraryMeta" class="field-note">Loading prepared workflows...</div>
+            </div>
+            <div class="button-row align-end">
+              <button id="loadWorkflowLibraryBtn">Refresh Library</button>
+              <button id="importWorkflowBtn" class="primary">Import Workflow</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" data-section="fresh">
+          <div class="panel-head">
+            <h2>Fresh Values</h2>
+            <button data-add-row="fresh">Add</button>
+          </div>
+          <div id="freshTable"></div>
+        </section>
+
+        <section class="panel" data-section="setup">
+          <div class="panel-head">
+            <h2>Setup / Long-Term State</h2>
+            <button data-add-row="setup">Add</button>
+          </div>
+          <div id="setupTable"></div>
+        </section>
+
+        <section class="panel" data-section="messages">
+          <div class="panel-head">
+            <h2>Messages</h2>
+          </div>
+          <div id="messagesList"></div>
+        </section>
+
+        <section class="panel" data-section="checks">
+          <div class="panel-head">
+            <h2>Checks</h2>
+            <button data-add-row="checks">Add</button>
+          </div>
+          <div id="checksTable"></div>
+        </section>
+
+        <section class="panel" data-section="events">
+          <div class="panel-head">
+            <h2>Events</h2>
+            <button data-add-row="events">Add</button>
+          </div>
+          <div id="eventsTable"></div>
+        </section>
+
+        <section class="panel" data-section="proof_targets">
+          <div class="panel-head">
+            <h2>Proof Targets</h2>
+            <button data-add-row="proof_targets">Add</button>
+          </div>
+          <div id="proofTargetsTable"></div>
+        </section>
+
+        <section class="panel" data-section="attack_surface">
+          <div class="panel-head">
+            <h2>Attack Surface</h2>
+            <button data-add-attack-surface>Add</button>
+          </div>
+          <div id="attackSurfaceList"></div>
+        </section>
+
+        <section class="panel" data-section="patch" hidden>
+          <div class="panel-head">
+            <h2>Natural Language Revision</h2>
+          </div>
+          <div class="patch-grid">
+            <div>
+              <label for="patchSection">Target section</label>
+              <select id="patchSection">
+                <option value="">Auto</option>
+                <option value="fresh">fresh</option>
+                <option value="setup">setup</option>
+                <option value="messages">messages</option>
+                <option value="checks">checks</option>
+                <option value="events">events</option>
+                <option value="proof_targets">proof targets</option>
+                <option value="expected_attack_surface">attack surface</option>
+                <option value="abstraction_boundary">abstraction boundary</option>
+              </select>
+              <label for="patchInstruction">Instruction</label>
+              <textarea id="patchInstruction" rows="7" placeholder="Example: preserve cpHash/rpHash transcript fields in the generated lemma."></textarea>
+              <div class="button-row">
+                <button id="proposePatchBtn">Propose Patch</button>
+                <button id="applyPatchBtn" class="primary" disabled>Apply Proposed Patch</button>
+              </div>
+            </div>
+            <div>
+              <h3>Proposed Diff</h3>
+              <pre id="patchSummary" class="codebox"></pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" data-section="sapic">
+          <div class="panel-head">
+            <h2>Tamarin Model Generation</h2>
+          </div>
+          <div class="sapic-options">
+            <label class="checkbox-control" for="abstractionHintsToggle">
+              <input id="abstractionHintsToggle" type="checkbox">
+              <span>Use abstraction hints</span>
+            </label>
+            <div class="field-explain">Adds retrieved proof-engineering hints to model generation and repair prompts.</div>
+          </div>
+          <div class="button-row">
+            <button id="generateSapicBtn" class="primary">Generate Tamarin model</button>
+            <button id="repairVerifyBtn" title="Runs the configured repair loop once, up to the server max rounds, and stops early after a clean compile.">Repair & Verify</button>
+            <button id="proveBtn">Prove</button>
+          </div>
+          <div id="sapicResult" class="result-panel"></div>
+        </section>
+
+        <section class="panel" data-section="tamarin">
+          <div class="panel-head">
+            <h2>Tamarin Results</h2>
+          </div>
+          <div id="tamarinResult" class="result-panel"></div>
+        </section>
+
+        <section class="panel" data-section="raw">
+          <details class="raw-contract-details">
+            <summary class="panel-head">
+              <h2>Raw Contract Diff</h2>
+              <small>Expand</small>
+            </summary>
+            <div class="raw-grid">
+              <div>
+                <h3>Original</h3>
+                <pre id="originalJson" class="codebox tall"></pre>
+              </div>
+              <div>
+                <h3>Current</h3>
+                <pre id="currentJson" class="codebox tall"></pre>
+              </div>
+            </div>
+          </details>
+        </section>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+  <script src="/c_code_demo.js"></script>
+</body>
+</html>
