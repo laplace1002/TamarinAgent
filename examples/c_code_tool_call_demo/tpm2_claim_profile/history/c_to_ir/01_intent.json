@@ -1,0 +1,319 @@
+{
+  "security_intent": [
+    {
+      "id": "intent_1",
+      "goal": "Ensure every TPM command is HMAC protected by a session to detect in-flight tampering.",
+      "kind": "integrity",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment states: 'The idea is to ensure that every TPM command is HMAC protected by a session, meaning in-flight tampering would be detected'"
+        }
+      ]
+    },
+    {
+      "id": "intent_2",
+      "goal": "Encrypt all sensitive inputs and responses using session keys.",
+      "kind": "secrecy",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment states: 'in addition all sensitive inputs and responses should be encrypted'"
+        }
+      ]
+    },
+    {
+      "id": "intent_3",
+      "goal": "Use salted sessions with a random secret encrypted to the public part of a known TPM key.",
+      "kind": "authentication",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment describes: 'use a TPM feature called salted sessions where a random secret used in session construction is encrypted to the public part of a known TPM key'"
+        }
+      ]
+    },
+    {
+      "id": "intent_4",
+      "goal": "Derive a primary Elliptic Curve key from the NULL seed for session construction.",
+      "kind": "freshness",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment states: 'initially a primary Elliptic Curve key is derived from the NULL seed'"
+        }
+      ]
+    },
+    {
+      "id": "intent_5",
+      "goal": "Provide proof after boot that the NULL key was not tampered with via certification.",
+      "kind": "authentication",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment mentions: 'after boot, userspace can get proof this has not happened by asking the TPM to certify the NULL key'"
+        }
+      ]
+    },
+    {
+      "id": "intent_6",
+      "goal": "Make the initial NULL seed public key name available in a sysfs file for verification.",
+      "kind": "availability",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment states: 'the initial NULL seed public key name is made available in a sysfs file'"
+        }
+      ]
+    }
+  ],
+  "trust_assumptions": [
+    {
+      "id": "trust_1",
+      "assumption": "The initial TPM2_CreatePrimary command is not session protected and is vulnerable to a Man-in-the-Middle attack that could return a public key controlled by the attacker.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment explicitly states: 'the initial TPM2_CreatePrimary is not (and cannot be) session protected, so a clever Man in the Middle could return a public key they control'"
+        }
+      ]
+    },
+    {
+      "id": "trust_2",
+      "assumption": "The kernel cannot mitigate the threat of a compromised NULL key during initial creation.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment states: 'The kernel cannot mitigate this threat'"
+        }
+      ]
+    },
+    {
+      "id": "trust_3",
+      "assumption": "Userspace can later verify the NULL key via certification chaining back to the TPM Endorsement Certificate.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment mentions: 'This certification would chain back to the TPM Endorsement Certificate and prove the NULL seed primary had not been tampered with'"
+        }
+      ]
+    }
+  ],
+  "known_attacks": [
+    {
+      "id": "attack_1",
+      "attack": "Man-in-the-Middle on TPM2_CreatePrimary: An attacker could return a public key they control, allowing interception and decoding of all subsequent session-based transactions.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment explicitly describes this attack scenario."
+        }
+      ]
+    }
+  ],
+  "protocol_phases": [
+    {
+      "id": "phase_1",
+      "phase": "Initialization: tpm2_sessions_init() generates the NULL seed primary key.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment states: 'an init function tpm2_sessions_init() that needs to be called once per TPM which generates the NULL seed primary key'"
+        }
+      ]
+    },
+    {
+      "id": "phase_2",
+      "phase": "Session creation: tpm2_start_auth_session() creates an HMAC authentication session.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 973,
+          "line_end": 1048,
+          "reason": "Function comment: 'tpm2_start_auth_session() - Create an a HMAC authentication session'"
+        }
+      ]
+    },
+    {
+      "id": "phase_3",
+      "phase": "Command preparation: tpm_buf_append_name() adds handles with names for HMAC calculation.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 224,
+          "line_end": 247,
+          "reason": "Function comment: 'tpm_buf_append_name() - add a handle area to the buffer' and 'In order to compute session HMACs, we need to know the names of the objects pointed to by the handles'"
+        }
+      ]
+    },
+    {
+      "id": "phase_4",
+      "phase": "Session appending: tpm_buf_append_hmac_session() appends the session element (except HMAC).",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 338,
+          "line_end": 363,
+          "reason": "Function comment: 'tpm_buf_append_hmac_session() - Append a TPM session element' and 'This fills in a session structure in the TPM command buffer, except for the HMAC'"
+        }
+      ]
+    },
+    {
+      "id": "phase_5",
+      "phase": "HMAC finalization: tpm_buf_fill_hmac_session() calculates and places the correct HMAC in the buffer.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 566,
+          "line_end": 728,
+          "reason": "Function comment: 'tpm_buf_fill_hmac_session() - finalize the session HMAC' and 'This calculates the correct hash and places it in the buffer'"
+        }
+      ]
+    },
+    {
+      "id": "phase_6",
+      "phase": "Response verification: tpm_buf_check_hmac_response() checks the session response HMAC.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 731,
+          "line_end": 881,
+          "reason": "Function comment: 'tpm_buf_check_hmac_response() - check the TPM return HMAC for correctness'"
+        }
+      ]
+    },
+    {
+      "id": "phase_7",
+      "phase": "Session termination: tpm2_end_auth_session() kills the session and frees resources.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 884,
+          "line_end": 904,
+          "reason": "Function comment: 'tpm2_end_auth_session() - kill the allocated auth session'"
+        }
+      ]
+    }
+  ],
+  "out_of_scope": [
+    {
+      "id": "oos_1",
+      "item": "Userspace certification of the NULL key is not implemented in this code; it is mentioned as a future or external capability.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment states: 'after boot, userspace can get proof this has not happened by asking the TPM to certify the NULL key' but no code for this is present."
+        }
+      ]
+    },
+    {
+      "id": "oos_2",
+      "item": "The sysfs file for the NULL seed public key name is mentioned but not implemented in the provided code slices.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 3,
+          "line_end": 64,
+          "reason": "Top comment mentions: 'the initial NULL seed public key name is made available in a sysfs file' but no sysfs creation code is visible."
+        }
+      ]
+    },
+    {
+      "id": "oos_3",
+      "item": "The code depends on external TPM hardware and kernel infrastructure (e.g., crypto API, TPM driver) which are not part of this file.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 65,
+          "line_end": 65,
+          "reason": "Missing include 'tpm.h' indicates dependency on external TPM header."
+        }
+      ]
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "oq_1",
+      "question": "How exactly is the NULL seed primary key derived and used? The code references tpm2_create_null_primary and tpm2_load_null but details are not fully visible.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 1355,
+          "line_end": 1372,
+          "reason": "Function tpm2_create_null_primary is defined but its implementation is not fully shown in the slices."
+        }
+      ]
+    },
+    {
+      "id": "oq_2",
+      "question": "What is the exact format of the 'name' used for handles? The comment mentions it is a hash of the public area with algorithm id appended, but the precise encoding is not specified.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 224,
+          "line_end": 247,
+          "reason": "Function comment for tpm_buf_append_name describes the name but not the exact byte layout."
+        }
+      ]
+    },
+    {
+      "id": "oq_3",
+      "question": "How are session keys and passphrases managed across multiple commands? The comment mentions they are constant for the session but details are unclear.",
+      "confidence": "low",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_start": 116,
+          "line_end": 125,
+          "reason": "Comment in struct tpm2_auth mentions session key and passphrase but not their lifecycle."
+        }
+      ]
+    }
+  ]
+}

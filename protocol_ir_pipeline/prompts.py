@@ -153,6 +153,7 @@ SAPIC_GENERATION_SOURCE_CONTRACT = """Sapic+ generation source contract:
 
 SAPIC_GENERATION_PROOF_TARGET_CONTRACT = """Sapic+ generation proof-target contract:
 - Preserve every reviewed target lemma name, trace kind, goal type, and reviewed expected outcome exactly.
+- Preserve fine-grained code-derived claim profiles. Do not collapse request/command authentication, response authentication, payload confidentiality, key secrecy, validation, lifecycle, and attack-witness targets into one generic integrity or secrecy lemma.
 - Do not add support lemmas unless proof_context explicitly marks them as reviewed target lemmas.
 - Do not add non-target source/helper lemmas or auxiliary source events. `requires_sources_lemma=false` disables only non-target helpers; it must not suppress reviewed target lemmas whose goal_type is source or typing.
 - For reviewed_expected_outcome=ProvedSatisfying, model enough checks, events, restrictions, and role state for the lemma to prove without becoming vacuous.
@@ -161,9 +162,11 @@ SAPIC_GENERATION_PROOF_TARGET_CONTRACT = """Sapic+ generation proof-target contr
 - Every target lemma must be backed by explicit events emitted in the relevant role processes.
 - Before writing a target lemma, resolve its event relation from proof_context.target_lemmas.required_events, proof_context.event_obligations, or protocol_ir.claims[].event_schema; do not fall back to a name-only lemma template when reviewed event schemas exist.
 - Authentication goals should use Running/Commit-style events or protocol-specific equivalents with matching actor, peer, and session parameters.
+- Generate separate request/command and response authentication lemmas when the reviewed claims distinguish the sender/receiver boundaries. Do not merge both directions into a single transcript-integrity lemma unless that merge is explicitly reviewed.
 - Injective authentication goals must include the reviewed partner correspondence evidence (`Running*`, `Server`, or equivalent) plus uniqueness. Never reduce injective agreement to duplicate-`Commit` uniqueness unless the reviewed contract explicitly asks for that.
 - Do not invent dummy, placeholder, wildcard, or existential-only values inside proof-event payloads. Event arguments must be values the role actually knows or has checked at that point, following the reviewed proof context.
 - Secrecy goals should emit Secret-style events at the point the role actually believes the value is secret.
+- Payload confidentiality goals must prove secrecy of the protected plaintext payload. Do not satisfy them by proving only session-key secrecy, ciphertext opacity, or secrecy of a public placeholder constant.
 - Keep event payload schemas uniform for the same proof value across roles. If a session key, nonce pair, or transcript is represented as `session` in Running/Commit, use the same shape in Secret and matching lemmas unless proof_context explicitly requires different facts.
 - Exists-trace goals must be reachable by the process and should reference meaningful completion or session events."""
 
@@ -209,6 +212,7 @@ Requirements:
 PROOF_GOAL_CONTRACT = """Proof-goal modeling contract:
 - Treat proof_spec expectations as target contracts, not just names.
 - Target lemma names are immutable. Do not split, rename, suffix, or replace a target lemma with per-message variants. If a source/typing lemma needs per-message obligations, keep one lemma with the exact target name and put separate guarded conjuncts inside its single quoted formula.
+- Code-derived fine-grained claim categories are also immutable unless the reviewed proof_spec explicitly changes them. Do not replace command authentication with generic integrity, response authentication with command authentication, payload confidentiality with key secrecy, or an attack witness with an over-constrained all-traces safety lemma.
 - For source/typing target lemmas, first read the target `intent`; if it contains `Source obligations: ...`, implement those exact `IN_* => OUT_* or KU/K` obligations as the lemma's guarded conjuncts.
 - For source/typing targets, preserve the reviewed `IN_*`/`OUT_*` action-fact schema from proof_context or preservation_boundary: keep fact names, arities, and payload roles stable unless the reviewed context explicitly permits abstraction.
 - Treat `IN_*` source facts as accepted-input facts, not raw receive markers: emit them only after the reviewed parse/decrypt/check boundary for the referenced value. If a reviewed compromise/reveal path lets the adversary forge a protected input, include the matching exception or limit the source obligation to uncompromised traces.
@@ -218,9 +222,11 @@ PROOF_GOAL_CONTRACT = """Proof-goal modeling contract:
 - For source/typing lemmas, use the canonical shape `lemma NAME [sources]: "(All ... #i. IN_X(...) @ i ==> ((Ex #j. OUT_Y(...) @ j & j < i) | (Ex #k. KU(v) @ k & k < i))) & (All ...)"`.
 - Each source/typing conjunct must have its own `All ... . IN_... @ #i ==> ...`, be parenthesized before the top-level `&`, and relate an input event to a matching prior output or adversary knowledge. Do not replace this with generic `Sent/Received` events, a disjunctive antecedent, or a well-sortedness claim.
 - Secrecy lemmas should reason about adversary knowledge with `K(secret) @ #j`, guarded by honest/reveal events when the protocol has long-term keys. Do not use process input facts `In(secret) @ #j` as a secrecy condition.
+- Payload confidentiality lemmas must quantify the plaintext payload introduced or accepted by the honest role. Session-key secrecy may be a separate target, but it does not satisfy payload confidentiality unless the reviewed target explicitly says so.
 - For secrecy reveal/compromise exceptions, preserve the reviewed timing policy. Do not add time-ordering constraints to exception clauses unless the reviewed contract requires them.
 - If a protected input can be forged after a long-term-key reveal, source/typing and secrecy lemmas need the matching reveal/compromise exception. Do not assert unqualified honest origin or secrecy across a compromised protection boundary.
 - Authentication lemmas should connect `Commit`/`Running` or protocol-specific completion events, include matching actor/peer/session parameters, and include compromise/reveal escape clauses when long-term keys can be revealed. Injective agreement must include this partner correspondence plus uniqueness; do not reduce it to duplicate-`Commit` uniqueness unless the reviewed contract explicitly asks for that property.
+- If proof_spec contains distinct command/request and response authentication targets, keep distinct Commit/Running event pairs for each direction at the reviewed send/accept boundaries.
 - For compromise/reveal/corruption actions used as lemma exceptions, emit the exception action fact before leaking the compromised secret. A process like `out(secret); event Reveal(id)` is wrong for lemmas guarded by that reveal/corruption fact; use `event Reveal(id); out(secret)` so adversary use of the leaked value is covered by the exception.
 - `exists-trace` lemmas should witness reachable protocol completion or secret/session events. They should not be empty reachability shells.
 - Every action fact referenced in a target lemma must be emitted by the process with the same fact name and arity. Keep event argument lists consistent across all emissions and lemma references.

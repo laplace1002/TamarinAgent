@@ -1,0 +1,134 @@
+{
+  "case": "TPM2_Salted_HMAC_Session_Code_Derived_Claim_Profile",
+  "mode": "reviewed_proof_targets",
+  "source": "reviewed_lemma_specification",
+  "expectations": [
+    {
+      "name": "tpm2_session_command_authentication",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Every TPM command sent with an HMAC session must be authenticated: the TPM must receive the same command parameters, handles, nonces, and attributes that the host intended, and the HMAC must be computed over the correct cpHash.",
+      "required_events": [
+        "command_hmac_computed",
+        "command_sent"
+      ]
+    },
+    {
+      "name": "tpm2_session_response_authentication",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Every TPM response received with an HMAC session must be authenticated: the host must verify that the response parameters, return code, nonces, and attributes match the HMAC computed by the TPM.",
+      "required_events": [
+        "response_hmac_verified",
+        "response_received"
+      ]
+    },
+    {
+      "name": "tpm2_session_command_payload_confidentiality",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "The first command parameter encrypted with AES-CFB under the session key must remain confidential from an attacker who observes the TPM transport.",
+      "required_events": [
+        "command_parameter_encrypted"
+      ]
+    },
+    {
+      "name": "tpm2_session_response_payload_confidentiality",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "The response parameter encrypted with AES-CFB under the session key must remain confidential from an attacker who observes the TPM transport.",
+      "required_events": [
+        "response_parameter_decrypted"
+      ]
+    },
+    {
+      "name": "tpm2_session_key_secrecy",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "The session key (sessionKey) derived from the salt and nonces must remain secret from an attacker who observes the TPM transport.",
+      "required_events": [
+        "session_key_derived"
+      ]
+    },
+    {
+      "name": "tpm2_session_salt_secrecy",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "secrecy",
+      "intent": "The session salt (sessionSalt) derived from the ECDH shared secret must remain secret from an attacker who observes the TPM transport.",
+      "required_events": [
+        "salt_derived"
+      ]
+    },
+    {
+      "name": "tpm2_null_key_public_material_validation",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "property",
+      "intent": "The host must validate that the public key material (x, y coordinates) returned by the TPM in the CreatePrimary response matches the expected template for a NULL key (ECC P-256, specific attributes).",
+      "required_events": [
+        "null_key_public_material_accepted"
+      ]
+    },
+    {
+      "name": "tpm2_initial_create_primary_mitm_attack",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "property",
+      "intent": "The initial TPM2_CreatePrimary command is not session protected, so an attacker can perform a Man-in-the-Middle attack to return a public key they control, allowing interception and decoding of all subsequent session-based transactions.",
+      "required_events": [
+        "create_primary_sent",
+        "create_primary_response_received",
+        "attacker_modified_response"
+      ]
+    },
+    {
+      "name": "tpm2_continued_session_state_reset",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "property",
+      "intent": "When a session is continued (TPM2_SA_CONTINUE_SESSION attribute set), the auth->session offset must be reset to TPM_HEADER_SIZE for the next command, and the session key and nonces must remain unchanged.",
+      "required_events": [
+        "session_continued"
+      ]
+    },
+    {
+      "name": "tpm2_session_termination_cleanup",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "property",
+      "intent": "When a session is terminated (TPM2_SA_CONTINUE_SESSION not set), the session context must be flushed and the auth structure must be freed to prevent resource leaks.",
+      "required_events": [
+        "session_terminated"
+      ]
+    }
+  ],
+  "notes": [
+    "Reconstructed from reviewed modeling contract."
+  ]
+}

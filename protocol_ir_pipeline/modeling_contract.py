@@ -427,12 +427,15 @@ def _proof_target_entry(target: dict[str, Any]) -> dict[str, Any]:
     preservation = _as_dict(target.get("preservation_contract"))
     return {
         "name": target.get("name"),
+        "claim_category": target.get("claim_category"),
         "goal_type": target.get("goal_type"),
         "trace_kind": target.get("trace_kind"),
         "expected_state": target.get("expected_state"),
         "expected_raw": target.get("expected_raw"),
         "intent": target.get("intent"),
         "required_events": target.get("required_events", []),
+        "preserved_values": target.get("preserved_values", []),
+        "anti_compression_note": target.get("anti_compression_note"),
         "preservation_policy": preservation.get("outcome_policy") or preservation.get("semantic_anchor"),
         "witness": target.get("witness"),
     }

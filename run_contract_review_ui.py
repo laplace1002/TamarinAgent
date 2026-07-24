@@ -8,12 +8,14 @@ import json
 import os
 import re
 import shutil
+import subprocess
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from time import perf_counter
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from protocol_ir_pipeline import PipelineConfig, ProtocolIRPipeline
 from protocol_ir_pipeline.artifacts import ArtifactStore
@@ -91,6 +93,24 @@ REVIEW_HIDDEN_MESSAGE_FRAGMENTS = (
     ".derived_fields_signature",
     ".derived_fields_status",
 )
+LEMMA_REPAIR_EDITABLE_FIELDS = {
+    "name",
+    "goal_type",
+    "trace_kind",
+    "expected_state",
+    "expected_raw",
+    "intent",
+    "required_events",
+    "preservation_policy",
+    "witness",
+}
+LEMMA_CANDIDATE_EDITABLE_FIELDS = {
+    "goal_type",
+    "trace_kind",
+    "intent",
+    "required_events",
+    "witness",
+}
 
 
 ACTIVE_WORKFLOW_ARCHIVE_PATTERNS = (
@@ -103,6 +123,8 @@ ACTIVE_WORKFLOW_ARCHIVE_PATTERNS = (
     "prompts/03_reviewed_contract_repair_round_*.txt",
     "prompts/04_proof_repair_round_*.txt",
     "prompts/review_patch_*.txt",
+    "prompts/lemma_candidates_*.txt",
+    "prompts/lemma_repair_*.txt",
     "history/01_plan*.json",
     "history/01_plan*.raw.txt",
     "history/02_sapic_generation*.json",
@@ -116,6 +138,12 @@ ACTIVE_WORKFLOW_ARCHIVE_PATTERNS = (
     "history/04_proof_repair_round_*.raw.txt",
     "history/review_patch_*.json",
     "history/review_patch_*.raw.txt",
+    "history/lemma_candidates_*.json",
+    "history/lemma_candidates_*.raw.txt",
+    "history/lemma_candidates_*.metadata.json",
+    "history/lemma_repair_*.json",
+    "history/lemma_repair_*.raw.txt",
+    "history/lemma_repair_*.metadata.json",
     "history/llm_calls.jsonl",
     "ir/*.json",
     "modeling_contract.json",
@@ -140,7 +168,42 @@ ACTIVE_WORKFLOW_ARCHIVE_PATTERNS = (
     "batch/*.json",
 )
 
-
+DEFAULT_C_CODE_DEMO_RUN = Path("examples/c_code_tool_call_demo/tpm2_claim_profile")
+CODE_DEMO_ARTIFACTS = {
+    "c_code_context": "input/c_code_context.json",
+    "source_files": "input/source_files.json",
+    "stage_01_intent": "history/c_to_ir/01_intent.json",
+    "stage_02_functions": "history/c_to_ir/02_functions.json",
+    "stage_03_state": "history/c_to_ir/03_state.json",
+    "stage_04_environment": "history/c_to_ir/04_environment.json",
+    "stage_05_crypto": "history/c_to_ir/05_crypto.json",
+    "stage_06_messages": "history/c_to_ir/06_messages.json",
+    "stage_07_checks_events": "history/c_to_ir/07_checks_events.json",
+    "stage_08_lifecycle": "history/c_to_ir/08_lifecycle.json",
+    "stage_09_claims": "history/c_to_ir/09_claims.json",
+    "stage_10_protocol_ir": "history/c_to_ir/10_protocol_ir.json",
+    "protocol_ir": "ir/protocol_ir.json",
+    "reviewed_ir": "ir/protocol_ir.reviewed.json",
+    "proof_context": "ir/proof_context.json",
+    "validation": "ir/validation.json",
+    "review_decisions": "ir/review_decisions.json",
+    "modeling_contract_json": "modeling_contract.json",
+    "modeling_contract_reviewed_json": "modeling_contract.reviewed.json",
+    "modeling_contract_reviewed_md": "modeling_contract.reviewed.md",
+    "initial_model": "models/initial.spthy",
+    "repaired_model_1": "models/repaired_1.spthy",
+    "repaired_model_2": "models/repaired_2.spthy",
+    "repaired_model_3": "models/repaired_3.spthy",
+    "msr_model": "final/model.msr.spthy",
+    "compile_initial": "verify/initial.json",
+    "repair_loop": "verify/reviewed_contract_repair_loop.json",
+    "proof_lint": "proof/lint.json",
+    "lemma_coverage": "proof/lemma_coverage.json",
+    "proof_spec": "proof/spec.json",
+    "proof_result": "proof/result.json",
+    "proof_result_repaired": "proof/result.repaired.json",
+    "summary": "summary.json",
+}
 WORKFLOW_IMPORT_PATTERNS = (
     "input/case.json",
     "proof/spec.initial.json",
@@ -149,6 +212,12 @@ WORKFLOW_IMPORT_PATTERNS = (
     "history/02_sapic_generation*.json",
     "history/03_repair_round_*.json",
     "history/04_proof_repair_round_*.json",
+    "history/lemma_candidates_*.json",
+    "history/lemma_candidates_*.raw.txt",
+    "history/lemma_candidates_*.metadata.json",
+    "history/lemma_repair_*.json",
+    "history/lemma_repair_*.raw.txt",
+    "history/lemma_repair_*.metadata.json",
     "history/llm_calls.jsonl",
     "history/stages.jsonl",
     "ir/protocol_ir.json",
@@ -257,6 +326,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--abstraction-hints-top-k", type=int, default=int(os.getenv("ABSTRACTION_HINTS_TOP_K", "3")))
     parser.add_argument("--full-proof", action="store_true")
     parser.add_argument(
+        "--lemma-alignment-route",
+        action="store_true",
+        default=os.getenv("LEMMA_ALIGNMENT_ROUTE", "").lower() in {"1", "true", "yes", "on"},
+        help=(
+            "Enable the proof-tab route for checking whether user-intended lemmas match "
+            "the lemmas actually proved, including lemma-only LLM repair recommendations."
+        ),
+    )
+    parser.add_argument(
         "--workflow-library-dir",
         type=Path,
         default=None,
@@ -297,6 +375,7 @@ def main() -> int:
         abstraction_retrieval_config_path=_resolve_path(args.abstraction_retrieval_config, Path.cwd()) if args.abstraction_retrieval_config else None,
         abstraction_hints_top_k=args.abstraction_hints_top_k,
         full_proof=args.full_proof,
+        lemma_alignment_route_enabled=args.lemma_alignment_route,
         workflow_library_dir=_resolve_path(args.workflow_library_dir, Path.cwd()) if args.workflow_library_dir else None,
     )
     state.ensure_contract()
@@ -335,6 +414,7 @@ class ReviewState:
         abstraction_retrieval_config_path: Path | None = None,
         abstraction_hints_top_k: int = 3,
         full_proof: bool = False,
+        lemma_alignment_route_enabled: bool = False,
         workflow_library_dir: Path | None = None,
         enable_open_question_resolution: bool = False,
         sapic_generation_mode: str = "protocol_ir_pipeline",
@@ -356,6 +436,7 @@ class ReviewState:
         self.abstraction_retrieval_config_path = abstraction_retrieval_config_path
         self.abstraction_hints_top_k = abstraction_hints_top_k
         self.full_proof = full_proof
+        self.lemma_alignment_route_enabled = lemma_alignment_route_enabled
         self.workflow_library_dir = workflow_library_dir or (Path(__file__).resolve().parent / "runs" / "ui_benchmark18_nl")
         self.enable_open_question_resolution = enable_open_question_resolution
         self.sapic_generation_mode = sapic_generation_mode
@@ -473,6 +554,7 @@ class ReviewState:
             "settings": {
                 "abstraction_hints_enabled": self.abstraction_hints_enabled,
                 "abstraction_hints_top_k": self.abstraction_hints_top_k,
+                "lemma_alignment_route_enabled": self.lemma_alignment_route_enabled,
             },
             "current_step": _read_json(self.current_step_path),
             "events": self.load_events(limit=80),
@@ -612,6 +694,8 @@ class ReviewState:
             "contract": self.load_contract(),
             "case_input": case,
             "workflow": self.workflow_status(),
+            "tamarin_result": _existing_tamarin_result(self.run_dir),
+            "lemma_candidate_artifacts": _existing_lemma_candidate_artifacts(self.run_dir, self.load_contract()),
         }
 
     def _workflow_source_for_case(self, case_id: str) -> Path | None:
@@ -951,6 +1035,182 @@ class ReviewState:
             validation_ok=not issues,
         )
         return response
+
+    def propose_lemma_repair(
+        self,
+        *,
+        contract: dict[str, Any],
+        lemma: dict[str, Any],
+        feedback: str,
+        proof_result: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if not self.lemma_alignment_route_enabled:
+            raise WorkflowError("Lemma alignment route is disabled. Start the UI with --lemma-alignment-route.", status=404)
+        lemma_name = str(lemma.get("name") or "").strip()
+        if not lemma_name:
+            raise WorkflowError("lemma.name is required", status=400)
+        proof_payload = _current_proof_result_payload(self.run_dir, proof_result)
+        lemma_index = _proof_target_index(contract, lemma_name)
+        prompt = lemma_repair_prompt(
+            contract=contract,
+            lemma=lemma,
+            proof_result=proof_payload,
+            feedback=feedback,
+            lemma_index=lemma_index,
+        )
+        llm = LLMClient(self.llm_config)
+        store = ArtifactStore(self.run_dir)
+        attempt_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        prompt_stem = f"lemma_repair_{attempt_id}_{_slug(lemma_name)}"
+        store.write_text(f"prompts/{prompt_stem}.txt", prompt)
+        self.log_event("lemma_repair", "llm_start", lemma=lemma_name, attempt=attempt_id)
+        response = self._complete_json_with_retries(
+            llm=llm,
+            system=LEMMA_REPAIR_SYSTEM,
+            prompt=prompt,
+            store=store,
+            prompt_stem=prompt_stem,
+            step="lemma_repair",
+            context={"lemma": lemma_name, "attempt": attempt_id},
+            max_retries=self.max_plan_retries,
+            retry_builder=lemma_repair_retry_prompt,
+        )
+        response = _normalize_lemma_repair_response(response, lemma_name=lemma_name, lemma_index=lemma_index)
+        patches = response.get("lemma_patch", {}).get("patches", [])
+        issues = validate_patch_list(patches)
+        issues.extend(_validate_lemma_patch_scope(patches, contract=contract, lemma_name=lemma_name, lemma_index=lemma_index))
+        recommendation = str(response.get("recommendation") or "").strip().lower()
+        if recommendation == "repair_lemma" and not patches:
+            issues.append("repair_lemma recommendation must include at least one patch")
+        if recommendation != "repair_lemma" and patches:
+            issues.append("non-lemma repair recommendations must not include lemma patches")
+        response["validation"] = {"ok": not issues, "issues": issues}
+        response["can_apply"] = recommendation == "repair_lemma" and not issues and bool(patches)
+        response["lemma"] = {
+            "name": lemma_name,
+            "proof_target_index": lemma_index,
+            "proof_target": _proof_target_for_lemma(contract, lemma_name),
+        }
+        store.write_json(f"history/{prompt_stem}.json", response)
+        self.log_event(
+            "lemma_repair",
+            "proposed",
+            lemma=lemma_name,
+            recommendation=recommendation,
+            patch_count=len(patches) if isinstance(patches, list) else 0,
+            validation_ok=not issues,
+        )
+        return response
+
+    def propose_lemma_candidates(
+        self,
+        *,
+        contract: dict[str, Any],
+        proof_target_index: int,
+        user_goal_hint: str = "",
+        candidate_count: int = 3,
+    ) -> dict[str, Any]:
+        targets = contract.get("proof_targets") if isinstance(contract, dict) else None
+        if not isinstance(targets, list) or proof_target_index < 0 or proof_target_index >= len(targets):
+            raise WorkflowError("proof_target_index is out of range", status=400)
+        proof_target = targets[proof_target_index]
+        if not isinstance(proof_target, dict):
+            raise WorkflowError("selected proof target must be an object", status=400)
+        lemma_name = str(proof_target.get("name") or "").strip()
+        if not lemma_name:
+            raise WorkflowError("selected proof target must have a name", status=400)
+        candidate_count = max(1, min(7, int(candidate_count or 3)))
+        prompt = lemma_candidates_prompt(
+            contract=contract,
+            proof_target=proof_target,
+            proof_target_index=proof_target_index,
+            user_goal_hint=user_goal_hint,
+            candidate_count=candidate_count,
+        )
+        llm = LLMClient(self.llm_config)
+        store = ArtifactStore(self.run_dir)
+        attempt_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        prompt_stem = f"lemma_candidates_{attempt_id}_{_slug(lemma_name)}"
+        store.write_text(f"prompts/{prompt_stem}.txt", prompt)
+        self.log_event(
+            "lemma_alignment_candidates",
+            "llm_start",
+            lemma=lemma_name,
+            proof_target_index=proof_target_index,
+            attempt=attempt_id,
+            candidate_count=candidate_count,
+        )
+        response = self._complete_json_with_retries(
+            llm=llm,
+            system=LEMMA_CANDIDATES_SYSTEM,
+            prompt=prompt,
+            store=store,
+            prompt_stem=prompt_stem,
+            step="lemma_alignment_candidates",
+            context={"lemma": lemma_name, "proof_target_index": proof_target_index, "attempt": attempt_id},
+            max_retries=self.max_plan_retries,
+            retry_builder=lemma_candidates_retry_prompt,
+        )
+        response = _normalize_lemma_candidates_response(
+            response,
+            contract=contract,
+            lemma_name=lemma_name,
+            proof_target_index=proof_target_index,
+            candidate_count=candidate_count,
+        )
+        store.write_json(f"history/{prompt_stem}.json", response)
+        self.log_event(
+            "lemma_alignment_candidates",
+            "proposed",
+            lemma=lemma_name,
+            proof_target_index=proof_target_index,
+            candidate_count=len(response.get("candidates", [])),
+            applicable_count=sum(1 for item in response.get("candidates", []) if isinstance(item, dict) and item.get("can_apply")),
+        )
+        return response
+
+    def apply_lemma_repair(
+        self,
+        *,
+        contract: dict[str, Any],
+        lemma_name: str,
+        patches: list[dict[str, Any]],
+        feedback: str = "",
+    ) -> dict[str, Any]:
+        lemma_name = str(lemma_name or "").strip()
+        if not lemma_name:
+            raise WorkflowError("lemma_name is required", status=400)
+        lemma_index = _proof_target_index(contract, lemma_name)
+        issues = validate_patch_list(patches)
+        issues.extend(_validate_lemma_patch_scope(patches, contract=contract, lemma_name=lemma_name, lemma_index=lemma_index))
+        if issues:
+            raise WorkflowError("invalid lemma repair patches", status=400, detail={"issues": issues})
+        patched = apply_json_patches(contract, patches)
+        _mark_lemma_repair_review_decisions(
+            patched,
+            patches,
+            lemma_name=lemma_name,
+            feedback=feedback,
+        )
+        review = patched.setdefault("review", {})
+        if isinstance(review, dict):
+            applied = review.setdefault("lemma_repairs", [])
+            if isinstance(applied, list):
+                applied.append(
+                    {
+                        "lemma": lemma_name,
+                        "feedback": feedback,
+                        "applied_at": datetime.now().isoformat(timespec="seconds"),
+                        "patches": copy.deepcopy(patches),
+                    }
+                )
+        self.log_event("lemma_repair", "applied", lemma=lemma_name, patch_count=len(patches))
+        return {
+            "contract": patched,
+            "lemma": lemma_name,
+            "proof_target_index": _proof_target_index(patched, lemma_name),
+            "patches": patches,
+        }
 
     def _propose_open_question_resolutions(
         self,
@@ -1535,6 +1795,14 @@ OPEN_QUESTION_RESOLUTION_SYSTEM = """You propose modeling-contract answers for o
 Return only JSON. Do not emit Sapic+ code."""
 
 
+LEMMA_REPAIR_SYSTEM = """You help align a Tamarin proof target lemma with the user's natural-language intent.
+Return only JSON. Do not emit Sapic+ code. Do not change ProtocolIR, messages, events, or attacker modeling."""
+
+
+LEMMA_CANDIDATES_SYSTEM = """You propose alternative proof-target lemma interpretations for a reviewed modeling contract.
+Return only JSON. Do not emit Sapic+ code. Do not regenerate or repair the model."""
+
+
 def open_question_resolution_prompt(
     case: ProtocolCase,
     contract: dict[str, Any],
@@ -1821,6 +2089,7 @@ Failure reason: {failure_reason}
 Attempt: {attempt} of {max_attempts}
 
 Return one complete valid JSON object only. Do not include Markdown.
+In updated_fields, use only goal_type, trace_kind, intent, required_events, and witness. Do not include name, expected_state, or expected_raw.
 
 Required shape:
 {{
@@ -1845,11 +2114,571 @@ Original patch task:
 """
 
 
+def lemma_repair_prompt(
+    *,
+    contract: dict[str, Any],
+    lemma: dict[str, Any],
+    proof_result: dict[str, Any],
+    feedback: str,
+    lemma_index: int | None,
+) -> str:
+    proof_target = _proof_target_for_lemma(contract, str(lemma.get("name") or ""))
+    lemma_results = proof_result.get("lemma_results") if isinstance(proof_result.get("lemma_results"), dict) else {}
+    actual_states = proof_result.get("lemma_actual_states") if isinstance(proof_result.get("lemma_actual_states"), dict) else {}
+    expected_states = proof_result.get("lemma_expected_states") if isinstance(proof_result.get("lemma_expected_states"), dict) else {}
+    matches = proof_result.get("lemma_matches") if isinstance(proof_result.get("lemma_matches"), dict) else {}
+    payload = {
+        "task": "repair lemma only; ProtocolIR and generated model process are clean",
+        "user_feedback": feedback,
+        "current_lemma": lemma,
+        "matching_contract_proof_target_index": lemma_index,
+        "matching_contract_proof_target": proof_target,
+        "current_proof_result": {
+            "status": proof_result.get("status"),
+            "ok": proof_result.get("ok"),
+            "lemma_result": lemma_results.get(str(lemma.get("name") or "")),
+            "actual_state": actual_states.get(str(lemma.get("name") or "")),
+            "expected_state": expected_states.get(str(lemma.get("name") or "")),
+            "matches_expected": matches.get(str(lemma.get("name") or "")),
+        },
+        "editable_fields": [
+            "proof_targets[index].goal_type",
+            "proof_targets[index].trace_kind",
+            "proof_targets[index].expected_state",
+            "proof_targets[index].expected_raw",
+            "proof_targets[index].intent",
+            "proof_targets[index].required_events",
+            "proof_targets[index].witness",
+        ],
+        "contract_context": {
+            "case": contract.get("case"),
+            "fresh": contract.get("fresh"),
+            "setup": contract.get("setup"),
+            "events": contract.get("events"),
+            "proof_targets": contract.get("proof_targets"),
+            "expected_attack_surface": contract.get("expected_attack_surface"),
+            "compromise": contract.get("compromise"),
+        },
+    }
+    return f"""The user says the proved lemma does not match the lemma they intended to prove.
+
+We are implementing the first repair route only:
+- Repair lemma when the reviewed IR and model process are clean, and only the lemma/proof target is wrong.
+- Do not regenerate Sapic+.
+- Do not edit ProtocolIR fields outside the selected contract proof target.
+- The human will accept or reject the proposed patch.
+
+Return this JSON object only:
+{{
+  "recommendation": "repair_lemma|repair_ir|regenerate",
+  "reason": "short reason grounded in the user's feedback and current lemma",
+  "current_nl_translation": "plain-English translation of the current proved lemma",
+  "intended_nl_translation": "plain-English statement of the user's intended lemma",
+  "confidence": "high|medium|low",
+  "lemma_patch": {{
+    "summary": "short summary of the lemma-only edit",
+    "target_lemma": "lemma name from input",
+    "proof_target_index": 0,
+    "updated_fields": {{
+      "goal_type": "secrecy|authentication|executability|reachability|property|source",
+      "trace_kind": "all-traces|exists-trace|unknown",
+      "expected_state": "ProvedSatisfying|CounterexampleFound|MissingProofResult|ProofTimeout|Unknown",
+      "expected_raw": "",
+      "intent": "new lemma intent",
+      "required_events": ["EventName(args)"],
+      "witness": ""
+    }},
+    "patches": [
+      {{"op": "replace", "path": "/proof_targets/0/intent", "value": "..."}}
+    ],
+    "risk_notes": ["..."]
+  }}
+}}
+
+Decision rules:
+- Use recommendation="repair_lemma" only if the feedback can be handled by changing the selected proof target's goal metadata, intent, required events, trace kind, expected state, or witness.
+- Use recommendation="repair_ir" if the feedback requires changing roles, messages, checks, events, attacker/compromise assumptions, or other IR semantics.
+- Use recommendation="regenerate" if the current model/process is inconsistent or too incomplete for a local lemma patch.
+- If recommendation is not repair_lemma, leave lemma_patch.patches empty and explain why.
+- If the existing proof target has an index, JSON patch paths must point only under /proof_targets/{{index}}.
+- Preserve the lemma name unless the user explicitly asks for a name-only correction.
+- Prefer replacing the whole /proof_targets/{{index}} object when multiple fields must stay consistent.
+
+Input:
+{json.dumps(payload, ensure_ascii=False, indent=2)}
+"""
+
+
+def lemma_repair_retry_prompt(
+    original_prompt: str,
+    raw_response: str,
+    failure_reason: str,
+    attempt: int,
+    max_attempts: int,
+) -> str:
+    raw = raw_response or ""
+    tail = raw[-1800:] if raw else ""
+    return f"""The previous lemma-repair response was not parseable JSON.
+Failure reason: {failure_reason}
+Attempt: {attempt} of {max_attempts}
+
+Return one complete valid JSON object only. Do not include Markdown.
+
+Required shape:
+{{
+  "recommendation": "repair_lemma|repair_ir|regenerate",
+  "reason": "...",
+  "current_nl_translation": "...",
+  "intended_nl_translation": "...",
+  "confidence": "high|medium|low",
+  "lemma_patch": {{
+    "summary": "...",
+    "target_lemma": "...",
+    "proof_target_index": 0,
+    "updated_fields": {{}},
+    "patches": [],
+    "risk_notes": []
+  }}
+}}
+
+Previous raw response tail:
+{tail}
+
+Original task:
+{original_prompt}
+"""
+
+
+def lemma_candidates_prompt(
+    *,
+    contract: dict[str, Any],
+    proof_target: dict[str, Any],
+    proof_target_index: int,
+    user_goal_hint: str,
+    candidate_count: int,
+) -> str:
+    payload = {
+        "task": "pre-generation lemma choice; generate candidate proof target interpretations only",
+        "candidate_count": candidate_count,
+        "user_goal_hint": user_goal_hint,
+        "proof_target_index": proof_target_index,
+        "current_proof_target": proof_target,
+        "contract_context": {
+            "case": contract.get("case"),
+            "fresh": contract.get("fresh"),
+            "setup": contract.get("setup"),
+            "messages": contract.get("messages"),
+            "checks": contract.get("checks"),
+            "events": contract.get("events"),
+            "proof_targets": contract.get("proof_targets"),
+            "expected_attack_surface": contract.get("expected_attack_surface"),
+            "compromise": contract.get("compromise"),
+            "abstraction_boundary": contract.get("abstraction_boundary"),
+        },
+    }
+    return f"""Propose up to {candidate_count} proof-target lemma candidates for the selected row.
+
+This is the pre-generation part of the lemma alignment route:
+- The goal is to help the user choose what they intend to prove before Sapic+ generation.
+- Do not generate Sapic+.
+- Do not repair or regenerate a model.
+- Do not change ProtocolIR, messages, checks, events, compromise assumptions, or attack surface.
+- Only propose semantic alternatives for the selected proof target row.
+- Do not change the proof target name.
+- Do not predict or change expected_state/expected_raw; those are evaluation outcomes, not the user's lemma intent.
+
+Return this JSON object only:
+{{
+  "recommended_index": 0,
+  "candidates": [
+    {{
+      "label": "current|stricter|compromise-aware|...",
+      "nl_translation": "Plain-English statement of the lemma this candidate asks Tamarin to establish or falsify.",
+      "reason": "Why this candidate may match the user's intent.",
+      "confidence": "high|medium|low",
+      "updated_fields": {{
+        "goal_type": "secrecy|authentication|executability|reachability|property|source",
+        "trace_kind": "all-traces|exists-trace|unknown",
+        "intent": "candidate proof target intent",
+        "required_events": ["EventName(args)"],
+        "witness": ""
+      }},
+      "risk_notes": ["..."]
+    }}
+  ],
+  "global_notes": ["..."]
+}}
+
+Candidate guidance:
+- Include the current interpretation as one candidate if it is plausible.
+- Include stricter or more explicit alternatives when ambiguity exists.
+- Include compromise/attack-surface-aware alternatives when the contract mentions compromise or expected attacks.
+- If a user_goal_hint is present, ground candidates in that hint.
+- Preserve the proof target name.
+- Preserve expected_state and expected_raw by omitting them from updated_fields.
+- Prioritize intent and required_events. Only change goal_type or trace_kind when the current value is semantically inconsistent with the candidate.
+- Return no more than {candidate_count} candidates.
+
+Input:
+{json.dumps(payload, ensure_ascii=False, indent=2)}
+"""
+
+
+def lemma_candidates_retry_prompt(
+    original_prompt: str,
+    raw_response: str,
+    failure_reason: str,
+    attempt: int,
+    max_attempts: int,
+) -> str:
+    raw = raw_response or ""
+    tail = raw[-1800:] if raw else ""
+    return f"""The previous lemma-candidates response was not parseable JSON.
+Failure reason: {failure_reason}
+Attempt: {attempt} of {max_attempts}
+
+Return one complete valid JSON object only. Do not include Markdown.
+
+Required shape:
+{{
+  "recommended_index": 0,
+  "candidates": [
+    {{
+      "label": "...",
+      "nl_translation": "...",
+      "reason": "...",
+      "confidence": "high|medium|low",
+      "updated_fields": {{}},
+      "risk_notes": []
+    }}
+  ],
+  "global_notes": []
+}}
+
+Previous raw response tail:
+{tail}
+
+Original task:
+{original_prompt}
+"""
+
+
 def _compact_text(text: str, *, limit: int) -> str:
     text = " ".join((text or "").split())
     if len(text) <= limit:
         return text
     return text[: limit - 3] + "..."
+
+
+def _code_demo_run_dir(state: ReviewState) -> Path:
+    if (state.run_dir / "input" / "c_code_context.json").exists():
+        return state.run_dir
+    return Path(__file__).resolve().parent / DEFAULT_C_CODE_DEMO_RUN
+
+
+def _read_text_limited(path: Path, *, limit: int = 120_000) -> str:
+    if not path.exists() or not path.is_file():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "\n\n/* truncated for UI preview */\n"
+
+
+def _coerce_output_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
+def _translate_tamarin_model_to_msr(
+    run_dir: Path,
+    *,
+    tamarin_bin: str,
+    timeout: int,
+) -> dict[str, Any]:
+    source_path = run_dir / "final" / "model.spthy"
+    translated_path = run_dir / "final" / "model.msr.spthy"
+    meta_path = run_dir / "final" / "model.msr.meta.json"
+    command = [tamarin_bin, str(source_path), "-m=msr"]
+    if translated_path.exists() and source_path.exists() and translated_path.stat().st_mtime >= source_path.stat().st_mtime:
+        content = _read_text_limited(translated_path)
+        return {
+            "ok": True,
+            "cached": True,
+            "command": command,
+            "elapsed_sec": 0.0,
+            "path": str(translated_path),
+            "content": content,
+            "stdout": content,
+            "stderr": "",
+            "bytes": translated_path.stat().st_size,
+        }
+    if not source_path.exists():
+        return {
+            "ok": False,
+            "cached": False,
+            "command": command,
+            "elapsed_sec": 0.0,
+            "path": str(translated_path),
+            "content": "/* Missing source model for MSR translation. */\n",
+            "stdout": "",
+            "stderr": f"Missing source model: {source_path}",
+            "bytes": 0,
+        }
+    start = perf_counter()
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        return {
+            "ok": False,
+            "cached": False,
+            "command": command,
+            "elapsed_sec": round(perf_counter() - start, 3),
+            "path": str(translated_path),
+            "content": "/* Tamarin compiler not found while translating to MSR. */\n",
+            "stdout": "",
+            "stderr": f"{tamarin_bin} not found: {exc}",
+            "bytes": 0,
+        }
+    except subprocess.TimeoutExpired as exc:
+        stdout = _coerce_output_text(exc.stdout)
+        stderr = _coerce_output_text(exc.stderr) or f"Timed out after {timeout} seconds."
+        return {
+            "ok": False,
+            "cached": False,
+            "command": command,
+            "elapsed_sec": round(perf_counter() - start, 3),
+            "path": str(translated_path),
+            "content": stdout or "/* MSR translation timed out. */\n",
+            "stdout": stdout,
+            "stderr": stderr,
+            "bytes": len(stdout.encode("utf-8")) if stdout else 0,
+        }
+    stdout = completed.stdout or ""
+    stderr = completed.stderr or ""
+    elapsed_sec = round(perf_counter() - start, 3)
+    ok = completed.returncode == 0 and bool(stdout.strip())
+    content = stdout if stdout.strip() else "/* MSR translation produced no output. */\n"
+    if ok:
+        translated_path.parent.mkdir(parents=True, exist_ok=True)
+        translated_path.write_text(stdout, encoding="utf-8")
+        meta_path.write_text(
+            json.dumps(
+                {
+                    "command": command,
+                    "returncode": completed.returncode,
+                    "elapsed_sec": elapsed_sec,
+                    "source_path": str(source_path),
+                    "translated_path": str(translated_path),
+                },
+                indent=2,
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+    return {
+        "ok": ok,
+        "cached": False,
+        "command": command,
+        "elapsed_sec": elapsed_sec,
+        "path": str(translated_path),
+        "content": content,
+        "stdout": stdout,
+        "stderr": stderr,
+        "bytes": len(stdout.encode("utf-8")) if stdout else 0,
+        "returncode": completed.returncode,
+    }
+
+
+def _json_file(path: Path) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _code_demo_payload(state: ReviewState) -> dict[str, Any]:
+    run_dir = _code_demo_run_dir(state)
+    c_context = _json_file(run_dir / "input" / "c_code_context.json")
+    case_input = _json_file(run_dir / "input" / "case.json")
+    proof_spec = _json_file(run_dir / "proof" / "spec.json")
+    proof_result = _json_file(run_dir / "proof" / "result.json")
+    validation = _json_file(run_dir / "ir" / "validation.json")
+    workflow = _json_file(run_dir / "workflow" / "current_step.json")
+
+    functions = c_context.get("function_index") if isinstance(c_context, dict) else []
+    if not isinstance(functions, list):
+        functions = []
+    category_priority = {"crypto": 0, "buffer": 1, "check": 2, "lifecycle": 3}
+    ranked_functions = sorted(
+        [item for item in functions if isinstance(item, dict)],
+        key=lambda item: (
+            min([category_priority.get(str(category), 9) for category in item.get("categories", [])] or [9]),
+            str(item.get("file") or ""),
+            int(item.get("line_start") or 0),
+        ),
+    )
+    key_functions = [
+        {
+            "name": str(item.get("name") or ""),
+            "lines": f"{item.get('line_start', '?')}-{item.get('line_end', '?')}",
+            "categories": item.get("categories") or [],
+            "calls": item.get("calls") or [],
+            "signature": str(item.get("signature") or ""),
+        }
+        for item in ranked_functions[:12]
+    ]
+
+    expectations = proof_spec.get("expectations") if isinstance(proof_spec, dict) else []
+    if not isinstance(expectations, list):
+        expectations = []
+    lemma_results = proof_result.get("lemma_results") if isinstance(proof_result, dict) else {}
+    if not isinstance(lemma_results, dict):
+        lemma_results = {}
+    lemmas = []
+    for item in expectations:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "")
+        lemmas.append(
+            {
+                "name": name,
+                "goal_type": str(item.get("goal_type") or ""),
+                "trace_kind": str(item.get("trace_kind") or ""),
+                "expected_state": str(item.get("expected_state") or ""),
+                "intent": str(item.get("intent") or ""),
+                "required_events": item.get("required_events") or [],
+                "result": str(lemma_results.get(name) or "not run"),
+            }
+        )
+
+    artifacts = []
+    for key, relative in CODE_DEMO_ARTIFACTS.items():
+        path = run_dir / relative
+        if key == "msr_model":
+            translation = _translate_tamarin_model_to_msr(
+                run_dir,
+                tamarin_bin=state.tamarin_bin,
+                timeout=state.tamarin_timeout,
+            )
+            path = Path(translation["path"])
+            exists = bool(translation.get("ok")) or path.exists()
+            bytes_size = path.stat().st_size if path.exists() and path.is_file() else int(translation.get("bytes") or 0)
+        else:
+            exists = path.exists()
+            bytes_size = path.stat().st_size if path.exists() and path.is_file() else 0
+        artifacts.append(
+            {
+                "key": key,
+                "label": key.replace("_", " "),
+                "path": relative,
+                "exists": exists,
+                "bytes": bytes_size,
+                "scope": "run",
+            }
+        )
+    source_files = _json_file(run_dir / "input" / "source_files.json")
+    if not isinstance(source_files, list):
+        source_files = []
+    case_name = "C-derived protocol"
+    if isinstance(case_input, dict) and case_input.get("name"):
+        case_name = str(case_input.get("name"))
+    has_stage_history = any((run_dir / CODE_DEMO_ARTIFACTS[key]).exists() for key in (
+        "stage_01_intent",
+        "stage_02_functions",
+        "stage_03_state",
+        "stage_04_environment",
+        "stage_05_crypto",
+        "stage_06_messages",
+        "stage_07_checks_events",
+        "stage_08_lifecycle",
+        "stage_09_claims",
+        "stage_10_protocol_ir",
+    ))
+    has_review = any((run_dir / relative).exists() for relative in (
+        "modeling_contract.reviewed.md",
+        "modeling_contract.reviewed.json",
+        "modeling_contract.md",
+        "modeling_contract.json",
+    ))
+    has_model = any((run_dir / relative).exists() for relative in (
+        "final/model.spthy",
+        "final/model.msr.spthy",
+        "models/initial.spthy",
+    ))
+    has_proof = bool(proof_result)
+    validation_ok = validation.get("ok") if isinstance(validation, dict) and validation else None
+    proof_ok = proof_result.get("ok") if isinstance(proof_result, dict) and proof_result else None
+    return {
+        "case": case_name,
+        "run_dir": str(run_dir),
+        "source_files": source_files,
+        "source_summary": {
+            "file_count": len(source_files),
+            "line_count": (c_context.get("files") or [{}])[0].get("line_count") if isinstance(c_context, dict) and isinstance(c_context.get("files"), list) and c_context.get("files") else None,
+            "function_count": len(functions),
+            "crypto_call_count": len(c_context.get("crypto_calls") or []) if isinstance(c_context, dict) and isinstance(c_context.get("crypto_calls"), list) else None,
+        },
+        "steps": [
+            {"id": "upload", "title": "Load C code", "status": "done" if source_files else "pending", "artifact": "input/source_files.json"},
+            {"id": "extract", "title": "Extract staged ProtocolIR facts", "status": "done" if has_stage_history else "pending", "artifact": "history/c_to_ir/*.json"},
+            {"id": "review", "title": "Review faithfulness contract", "status": "done" if has_review else "pending", "artifact": "modeling_contract.reviewed.md"},
+            {"id": "sapic", "title": "Generate Tamarin model", "status": "done" if has_model else "pending", "artifact": "final/model.msr.spthy"},
+            {"id": "prove", "title": "Run per-lemma Tamarin proofs", "status": "done" if proof_ok else "attention" if has_proof else "pending", "artifact": "proof/result.json"},
+        ],
+        "key_functions": key_functions,
+        "ir_ok": validation_ok,
+        "ir_errors": validation.get("errors", []) if isinstance(validation, dict) else [],
+        "ir_warnings": validation.get("warnings", []) if isinstance(validation, dict) else [],
+        "proof": {
+            "ok": proof_ok,
+            "status": str(proof_result.get("status") or "missing") if isinstance(proof_result, dict) else "missing",
+            "elapsed_sec": proof_result.get("elapsed_sec") if isinstance(proof_result, dict) else None,
+            "lemmas": lemmas,
+        },
+        "workflow": workflow,
+        "artifacts": artifacts,
+    }
+
+
+def _code_demo_artifact(state: ReviewState, key: str) -> dict[str, Any]:
+    run_dir = _code_demo_run_dir(state)
+    if key == "msr_model":
+        translation = _translate_tamarin_model_to_msr(
+            run_dir,
+            tamarin_bin=state.tamarin_bin,
+            timeout=state.tamarin_timeout,
+        )
+        if not translation.get("ok") and not translation.get("content"):
+            raise WorkflowError("MSR translation failed.", status=500, detail={"path": translation.get("path"), "stderr": translation.get("stderr", "")})
+        path = Path(translation["path"])
+        if translation.get("ok") and not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(str(translation.get("content") or ""), encoding="utf-8")
+        text = str(translation.get("content") or _read_text_limited(path))
+    elif key in CODE_DEMO_ARTIFACTS:
+        path = run_dir / CODE_DEMO_ARTIFACTS[key]
+        text = _read_text_limited(path)
+    else:
+        raise WorkflowError(f"Unknown C-code demo artifact: {key}", status=404)
+    if not path.exists() or not path.is_file():
+        raise WorkflowError(f"Artifact is missing: {key}", status=404, detail={"path": str(path)})
+    return {
+        "key": key,
+        "path": str(path),
+        "content": text,
+        "bytes": path.stat().st_size,
+        "truncated": len(text) < path.stat().st_size,
+    }
 
 
 def make_handler(state: ReviewState):
@@ -1861,27 +2690,48 @@ def make_handler(state: ReviewState):
             if parsed.path == "/api/workflow":
                 self._send_json(state.workflow_status())
                 return
+            if parsed.path == "/api/c_code_demo":
+                self._send_json(_code_demo_payload(state))
+                return
+            if parsed.path == "/api/c_code_demo/artifact":
+                query = parse_qs(parsed.query)
+                key = str((query.get("key") or [""])[0]).strip()
+                self._send_json(_code_demo_artifact(state, key))
+                return
             if parsed.path == "/api/workflow_library":
                 self._send_json(state.workflow_library())
                 return
             if parsed.path == "/api/contract":
+                display = str((parse_qs(parsed.query).get("display") or ["sapic"])[0]).strip().lower() or "sapic"
+                contract = state.load_contract()
                 self._send_json(
                     {
-                        "contract": state.load_contract(),
+                        "contract": contract,
                         "case_input": _read_json(state.run_dir / "input" / "case.json"),
                         "run_dir": str(state.run_dir),
                         "source_path": str(state.reviewed_path if state.reviewed_path.exists() else state.contract_path),
                         "reviewed_path": str(state.reviewed_path),
-                        "tamarin_result": _existing_tamarin_result(state.run_dir),
+                        "tamarin_result": _existing_tamarin_result(
+                            state.run_dir,
+                            display=display,
+                            tamarin_bin=state.tamarin_bin,
+                            tamarin_timeout=state.tamarin_timeout,
+                        ),
+                        "lemma_candidate_artifacts": _existing_lemma_candidate_artifacts(state.run_dir, contract),
                     }
                 )
                 return
             if parsed.path in {"/", "/index.html"}:
                 self._send_static("index.html", "text/html; charset=utf-8")
                 return
+            if parsed.path == "/c-code-demo":
+                self._send_static("c_code_demo.html", "text/html; charset=utf-8")
+                return
             static_name = parsed.path.lstrip("/")
-            if static_name in {"app.js", "styles.css"}:
+            if static_name in {"app.js", "styles.css", "c_code_demo.js", "c_code_demo.html"}:
                 content_type = "application/javascript; charset=utf-8" if static_name.endswith(".js") else "text/css; charset=utf-8"
+                if static_name.endswith(".html"):
+                    content_type = "text/html; charset=utf-8"
                 self._send_static(static_name, content_type)
                 return
             self._send_json({"error": "not found"}, status=404)
@@ -1915,6 +2765,60 @@ def make_handler(state: ReviewState):
                         self._send_json({"error": "contract and instruction are required"}, status=400)
                         return
                     self._send_json(state.propose_patch(contract=contract, instruction=instruction, section=section))
+                    return
+                if parsed.path == "/api/lemma_repair/recommend":
+                    contract = payload.get("contract")
+                    lemma = payload.get("lemma")
+                    feedback = str(payload.get("feedback") or "").strip()
+                    proof_result = payload.get("proof_result")
+                    if not isinstance(contract, dict) or not isinstance(lemma, dict) or not feedback:
+                        self._send_json({"error": "contract, lemma object, and feedback are required"}, status=400)
+                        return
+                    if proof_result is not None and not isinstance(proof_result, dict):
+                        self._send_json({"error": "proof_result must be an object"}, status=400)
+                        return
+                    self._send_json(
+                        state.propose_lemma_repair(
+                            contract=contract,
+                            lemma=lemma,
+                            feedback=feedback,
+                            proof_result=proof_result,
+                        )
+                    )
+                    return
+                if parsed.path == "/api/lemma_alignment/candidates":
+                    contract = payload.get("contract")
+                    raw_index = payload.get("proof_target_index")
+                    user_goal_hint = str(payload.get("user_goal_hint") or "").strip()
+                    candidate_count = int(payload.get("candidate_count") or 3)
+                    if not isinstance(contract, dict) or raw_index is None:
+                        self._send_json({"error": "contract object and proof_target_index are required"}, status=400)
+                        return
+                    self._send_json(
+                        state.propose_lemma_candidates(
+                            contract=contract,
+                            proof_target_index=int(raw_index),
+                            user_goal_hint=user_goal_hint,
+                            candidate_count=candidate_count,
+                        )
+                    )
+                    return
+                if parsed.path == "/api/lemma_repair/apply":
+                    contract = payload.get("contract")
+                    lemma_name = str(payload.get("lemma_name") or "").strip()
+                    patches = payload.get("patches")
+                    feedback = str(payload.get("feedback") or "").strip()
+                    if not isinstance(contract, dict) or not isinstance(patches, list) or not lemma_name:
+                        self._send_json({"error": "contract object, lemma_name, and patches array are required"}, status=400)
+                        return
+                    self._send_json(
+                        state.apply_lemma_repair(
+                            contract=contract,
+                            lemma_name=lemma_name,
+                            patches=patches,
+                            feedback=feedback,
+                        )
+                    )
                     return
                 if parsed.path == "/api/apply_patch":
                     contract = payload.get("contract")
@@ -2065,6 +2969,304 @@ def validate_patch_list(patches: Any) -> list[str]:
     return issues
 
 
+def _normalize_lemma_repair_response(
+    response: dict[str, Any],
+    *,
+    lemma_name: str,
+    lemma_index: int | None,
+) -> dict[str, Any]:
+    normalized = copy.deepcopy(response) if isinstance(response, dict) else {}
+    recommendation = str(normalized.get("recommendation") or "").strip().lower()
+    if recommendation not in {"repair_lemma", "repair_ir", "regenerate"}:
+        recommendation = "repair_ir"
+    normalized["recommendation"] = recommendation
+    patch = normalized.get("lemma_patch")
+    if not isinstance(patch, dict):
+        patch = {}
+    patch.setdefault("target_lemma", lemma_name)
+    patch.setdefault("proof_target_index", lemma_index)
+    patch.setdefault("summary", "")
+    patch.setdefault("updated_fields", {})
+    patch.setdefault("risk_notes", [])
+    patches = patch.get("patches")
+    if not isinstance(patches, list):
+        patches = []
+    if recommendation == "repair_lemma" and not patches and lemma_index is not None:
+        generated = _patches_from_lemma_updated_fields(patch.get("updated_fields"), lemma_index)
+        if generated:
+            patches = generated
+    patch["patches"] = patches
+    normalized["lemma_patch"] = patch
+    normalized.setdefault("reason", "")
+    normalized.setdefault("current_nl_translation", "")
+    normalized.setdefault("intended_nl_translation", "")
+    normalized.setdefault("confidence", "")
+    return normalized
+
+
+def _normalize_lemma_candidates_response(
+    response: dict[str, Any],
+    *,
+    contract: dict[str, Any],
+    lemma_name: str,
+    proof_target_index: int,
+    candidate_count: int,
+) -> dict[str, Any]:
+    normalized = copy.deepcopy(response) if isinstance(response, dict) else {}
+    raw_candidates = normalized.get("candidates")
+    if not isinstance(raw_candidates, list):
+        raw_candidates = []
+    candidates = []
+    for index, raw_candidate in enumerate(raw_candidates[:candidate_count]):
+        if not isinstance(raw_candidate, dict):
+            continue
+        candidate = {
+            "index": index,
+            "label": str(raw_candidate.get("label") or f"candidate_{index + 1}"),
+            "nl_translation": str(raw_candidate.get("nl_translation") or ""),
+            "reason": str(raw_candidate.get("reason") or ""),
+            "confidence": str(raw_candidate.get("confidence") or ""),
+            "updated_fields": _normalize_lemma_updated_fields(
+                raw_candidate.get("updated_fields"),
+                lemma_name=lemma_name,
+                allowed_fields=LEMMA_CANDIDATE_EDITABLE_FIELDS,
+            ),
+            "risk_notes": [
+                str(item)
+                for item in raw_candidate.get("risk_notes", [])
+                if item is not None and str(item)
+            ] if isinstance(raw_candidate.get("risk_notes"), list) else [],
+        }
+        patches = _patches_from_lemma_updated_fields(
+            candidate["updated_fields"],
+            proof_target_index,
+            allowed_fields=LEMMA_CANDIDATE_EDITABLE_FIELDS,
+        )
+        issues = validate_patch_list(patches)
+        issues.extend(
+            _validate_lemma_patch_scope(
+                patches,
+                contract=contract,
+                lemma_name=lemma_name,
+                lemma_index=proof_target_index,
+            )
+        )
+        candidate["patches"] = patches
+        candidate["validation"] = {"ok": not issues, "issues": issues}
+        candidate["can_apply"] = not issues and bool(patches)
+        candidates.append(candidate)
+    try:
+        recommended_index = int(normalized.get("recommended_index") or 0)
+    except (TypeError, ValueError):
+        recommended_index = 0
+    if candidates:
+        recommended_index = max(0, min(recommended_index, len(candidates) - 1))
+    else:
+        recommended_index = -1
+    return {
+        "recommendation": "choose_lemma_candidate",
+        "lemma": {
+            "name": lemma_name,
+            "proof_target_index": proof_target_index,
+            "proof_target": _proof_target_for_lemma(contract, lemma_name),
+        },
+        "recommended_index": recommended_index,
+        "candidates": candidates,
+        "global_notes": [
+            str(item)
+            for item in normalized.get("global_notes", [])
+            if item is not None and str(item)
+        ] if isinstance(normalized.get("global_notes"), list) else [],
+    }
+
+
+def _normalize_lemma_updated_fields(
+    updated_fields: Any,
+    *,
+    lemma_name: str,
+    allowed_fields: set[str] | None = None,
+) -> dict[str, Any]:
+    if not isinstance(updated_fields, dict):
+        return {}
+    allowed = allowed_fields or LEMMA_REPAIR_EDITABLE_FIELDS
+    normalized = {key: copy.deepcopy(value) for key, value in updated_fields.items() if key in allowed}
+    if "name" in normalized:
+        normalized["name"] = lemma_name
+    if "required_events" in normalized and not isinstance(normalized["required_events"], list):
+        normalized["required_events"] = _split_event_listish(normalized["required_events"])
+    return normalized
+
+
+def _patches_from_lemma_updated_fields(
+    updated_fields: Any,
+    lemma_index: int,
+    *,
+    allowed_fields: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    if not isinstance(updated_fields, dict):
+        return []
+    allowed = allowed_fields or LEMMA_REPAIR_EDITABLE_FIELDS
+    patches = []
+    for key, value in updated_fields.items():
+        if key not in allowed:
+            continue
+        if key == "required_events" and not isinstance(value, list):
+            value = _split_event_listish(value)
+        patches.append(
+            {
+                "op": "replace",
+                "path": f"/proof_targets/{lemma_index}/{_json_pointer_escape(key)}",
+                "value": value,
+            }
+        )
+    return patches
+
+
+def _validate_lemma_patch_scope(
+    patches: Any,
+    *,
+    contract: dict[str, Any],
+    lemma_name: str,
+    lemma_index: int | None,
+) -> list[str]:
+    issues: list[str] = []
+    if not isinstance(patches, list):
+        return ["patches must be an array"]
+    if lemma_index is None:
+        return [f"lemma {lemma_name!r} does not match any contract proof target"]
+    allowed_prefix = f"/proof_targets/{lemma_index}"
+    allowed_fields = {
+        "name",
+        "goal_type",
+        "trace_kind",
+        "expected_state",
+        "expected_raw",
+        "intent",
+        "required_events",
+        "preservation_policy",
+        "witness",
+    }
+    allowed_values = {
+        "trace_kind": {"all-traces", "exists-trace", "unknown"},
+        "expected_state": {"ProvedSatisfying", "CounterexampleFound", "MissingProofResult", "ProofTimeout", "Unknown"},
+    }
+    for index, patch in enumerate(patches):
+        if not isinstance(patch, dict):
+            continue
+        path = str(patch.get("path") or "")
+        if path != allowed_prefix and not path.startswith(f"{allowed_prefix}/"):
+            issues.append(f"patch {index} must stay under {allowed_prefix}")
+            continue
+        if path == allowed_prefix:
+            value = patch.get("value")
+            if patch.get("op") in {"add", "replace"} and isinstance(value, dict):
+                extra_fields = sorted(set(value) - allowed_fields)
+                if extra_fields:
+                    issues.append(f"patch {index} replacement includes non-lemma fields: {', '.join(extra_fields)}")
+                changed_name = str(value.get("name") or lemma_name)
+                if changed_name != lemma_name:
+                    issues.append(f"patch {index} changes lemma name from {lemma_name!r} to {changed_name!r}")
+                for field, allowed in allowed_values.items():
+                    if field in value and str(value.get(field) or "") not in allowed:
+                        issues.append(f"patch {index} has invalid {field}: {value.get(field)!r}")
+                if "required_events" in value and not isinstance(value.get("required_events"), list):
+                    issues.append(f"patch {index} required_events must be an array")
+            continue
+        parts = _parse_pointer(path)
+        field = parts[2] if len(parts) >= 3 else ""
+        if field not in allowed_fields:
+            issues.append(f"patch {index} field {field!r} is not allowed for lemma-only repair")
+            continue
+        if field in allowed_values and patch.get("op") in {"add", "replace"}:
+            value = str(patch.get("value") or "")
+            if value not in allowed_values[field]:
+                issues.append(f"patch {index} has invalid {field}: {patch.get('value')!r}")
+        if field == "required_events" and patch.get("op") in {"add", "replace"} and not isinstance(patch.get("value"), list):
+            issues.append(f"patch {index} required_events must be an array")
+    current_name = _proof_target_name_at(contract, lemma_index)
+    if current_name and current_name != lemma_name:
+        issues.append(f"proof target index {lemma_index} is {current_name!r}, not {lemma_name!r}")
+    return issues
+
+
+def _proof_target_index(contract: dict[str, Any], lemma_name: str) -> int | None:
+    targets = contract.get("proof_targets") if isinstance(contract, dict) else None
+    if not isinstance(targets, list):
+        return None
+    for index, target in enumerate(targets):
+        if isinstance(target, dict) and str(target.get("name") or "") == lemma_name:
+            return index
+    return None
+
+
+def _proof_target_for_lemma(contract: dict[str, Any], lemma_name: str) -> dict[str, Any]:
+    index = _proof_target_index(contract, lemma_name)
+    targets = contract.get("proof_targets") if isinstance(contract, dict) else None
+    if index is None or not isinstance(targets, list):
+        return {}
+    target = targets[index]
+    return copy.deepcopy(target) if isinstance(target, dict) else {}
+
+
+def _proof_target_name_at(contract: dict[str, Any], index: int | None) -> str:
+    targets = contract.get("proof_targets") if isinstance(contract, dict) else None
+    if index is None or not isinstance(targets, list) or index < 0 or index >= len(targets):
+        return ""
+    target = targets[index]
+    return str(target.get("name") or "") if isinstance(target, dict) else ""
+
+
+def _current_proof_result_payload(run_dir: Path, proof_result: dict[str, Any] | None) -> dict[str, Any]:
+    if isinstance(proof_result, dict) and proof_result:
+        return proof_result
+    payload = _read_json(run_dir / "proof" / "result.json")
+    return payload if isinstance(payload, dict) else {}
+
+
+def _mark_lemma_repair_review_decisions(
+    contract: dict[str, Any],
+    patches: list[dict[str, Any]],
+    *,
+    lemma_name: str,
+    feedback: str,
+) -> None:
+    reviews = contract.get("field_reviews")
+    if not isinstance(reviews, list):
+        return
+    now = datetime.now().isoformat(timespec="seconds")
+    touched_paths = []
+    for patch in patches:
+        if not isinstance(patch, dict):
+            continue
+        path = str(patch.get("path") or "")
+        parts = _parse_pointer(path)
+        if len(parts) >= 3 and parts[0] == "proof_targets":
+            touched_paths.append(f"proof_targets.{parts[1]}.{parts[2]}")
+        elif len(parts) == 2 and parts[0] == "proof_targets":
+            for field in REVIEW_FIELDS_BY_SECTION["proof_targets"]:
+                touched_paths.append(f"proof_targets.{parts[1]}.{field}")
+    note = f"Lemma repair accepted for {lemma_name}."
+    if feedback:
+        note = f"{note} User feedback: {feedback}"
+    for item in reviews:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("field_path") or "") not in touched_paths:
+            continue
+        item["review_status"] = "user_confirmed"
+        item["review_decision"] = "lemma_repair_accepted"
+        item["reviewed_at"] = now
+        diagnostics = item.get("diagnostics")
+        if not isinstance(diagnostics, list):
+            diagnostics = []
+        diagnostics.insert(0, note)
+        item["diagnostics"] = diagnostics
+
+
+def _json_pointer_escape(value: str) -> str:
+    return str(value).replace("~", "~0").replace("/", "~1")
+
+
 def apply_json_patches(contract: dict[str, Any], patches: list[dict[str, Any]]) -> dict[str, Any]:
     document = copy.deepcopy(contract)
     for patch in patches:
@@ -2182,16 +3384,55 @@ def _compile_repair_attempts(run_dir: Path) -> list[dict[str, Any]]:
     return attempts
 
 
-def _existing_tamarin_result(run_dir: Path) -> dict[str, Any]:
+def _model_text_for_display(
+    run_dir: Path,
+    *,
+    display: str,
+    tamarin_bin: str,
+    tamarin_timeout: int,
+) -> str:
+    if display == "msr":
+        return str(
+            _translate_tamarin_model_to_msr(
+                run_dir,
+                tamarin_bin=tamarin_bin,
+                timeout=tamarin_timeout,
+            ).get("content")
+            or ""
+        )
+    return _read_text_if_exists(run_dir / "final" / "model.spthy")
+
+
+def _existing_tamarin_result(
+    run_dir: Path,
+    *,
+    display: str = "sapic",
+    tamarin_bin: str = "tamarin-prover",
+    tamarin_timeout: int = 120,
+) -> dict[str, Any]:
+    display = "msr" if display == "msr" else "sapic"
     proof_payload = _read_json(run_dir / "proof" / "result.json")
     if proof_payload:
         return {
             "kind": "proof",
-            "data": _existing_proof_payload(run_dir, proof_payload),
+            "data": _existing_proof_payload(
+                run_dir,
+                proof_payload,
+                display=display,
+                tamarin_bin=tamarin_bin,
+                tamarin_timeout=tamarin_timeout,
+            ),
         }
     repair_payload = _read_json(run_dir / "verify" / "reviewed_contract_repair_loop.json")
     if repair_payload:
-        payload = _existing_verify_payload(run_dir, repair_payload, label="repaired")
+        payload = _existing_verify_payload(
+            run_dir,
+            repair_payload,
+            label="repaired",
+            display=display,
+            tamarin_bin=tamarin_bin,
+            tamarin_timeout=tamarin_timeout,
+        )
         payload["attempts"] = _compile_repair_attempts(run_dir)
         payload["max_rounds"] = repair_payload.get("max_rounds")
         payload["accepted_round"] = repair_payload.get("accepted_round")
@@ -2201,7 +3442,14 @@ def _existing_tamarin_result(run_dir: Path) -> dict[str, Any]:
     if verify_payload:
         return {
             "kind": "compile",
-            "data": _existing_verify_payload(run_dir, verify_payload, label=str(verify_payload.get("label") or "initial")),
+            "data": _existing_verify_payload(
+                run_dir,
+                verify_payload,
+                label=str(verify_payload.get("label") or "initial"),
+                display=display,
+                tamarin_bin=tamarin_bin,
+                tamarin_timeout=tamarin_timeout,
+            ),
         }
     if (run_dir / "final" / "model.spthy").exists():
         return {
@@ -2214,16 +3462,102 @@ def _existing_tamarin_result(run_dir: Path) -> dict[str, Any]:
                 "lint_issues": [],
                 "stdout_tail": "",
                 "stderr_tail": "",
-                "sapic_plus": (run_dir / "final" / "model.spthy").read_text(encoding="utf-8"),
-                "model_artifacts": _model_artifacts(run_dir),
+                "sapic_plus": _model_text_for_display(
+                    run_dir,
+                    display=display,
+                    tamarin_bin=tamarin_bin,
+                    tamarin_timeout=tamarin_timeout,
+                ),
+                "model_artifacts": _model_artifacts(
+                    run_dir,
+                    display=display,
+                    tamarin_bin=tamarin_bin,
+                    tamarin_timeout=tamarin_timeout,
+                ),
             },
         }
     return {}
 
 
-def _existing_proof_payload(run_dir: Path, proof_payload: dict[str, Any]) -> dict[str, Any]:
+def _existing_lemma_candidate_artifacts(run_dir: Path, contract: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(contract, dict):
+        return {}
+    latest_by_index: dict[int, dict[str, Any]] = {}
+    history_dir = run_dir / "history"
+    for path in sorted(history_dir.glob("lemma_candidates_*.json")):
+        payload = _read_json(path)
+        if not payload:
+            continue
+        lemma = payload.get("lemma") if isinstance(payload.get("lemma"), dict) else {}
+        try:
+            index = int(lemma.get("proof_target_index"))
+        except (TypeError, ValueError):
+            index = _proof_target_index(contract, str(lemma.get("name") or ""))
+            if index is None:
+                continue
+        current_name = _proof_target_name_at(contract, index)
+        lemma_name = str(lemma.get("name") or "")
+        if current_name and lemma_name and current_name != lemma_name:
+            continue
+        normalized_payload = _normalize_lemma_candidates_response(
+            payload,
+            contract=contract,
+            lemma_name=lemma_name or current_name,
+            proof_target_index=index,
+            candidate_count=5,
+        )
+        existing = latest_by_index.get(index)
+        mtime = path.stat().st_mtime
+        if existing is None or mtime >= existing["mtime"]:
+            latest_by_index[index] = {
+                "mtime": mtime,
+                "path": str(path),
+                "response": normalized_payload,
+            }
+    return {
+        "proof_targets": {
+            str(index): {
+                "path": item["path"],
+                "response": item["response"],
+            }
+            for index, item in sorted(latest_by_index.items())
+        }
+    }
+
+
+def _existing_proof_payload(
+    run_dir: Path,
+    proof_payload: dict[str, Any],
+    *,
+    display: str = "sapic",
+    tamarin_bin: str = "tamarin-prover",
+    tamarin_timeout: int = 120,
+) -> dict[str, Any]:
     stdout_tail = _read_tail(run_dir / "proof" / "stdout.txt")
     stderr_tail = _read_tail(run_dir / "proof" / "stderr.txt")
+    proof_expectations = proof_payload.get("proof_expectations", [])
+    if not proof_expectations:
+        spec = _read_json(run_dir / "proof" / "spec.json")
+        proof_expectations = spec.get("expectations", []) if isinstance(spec.get("expectations"), list) else []
+    expected_states = proof_payload.get("lemma_expected_states", {})
+    if not expected_states and isinstance(proof_expectations, list):
+        expected_states = {
+            str(item.get("name")): str(item.get("expected_state") or "")
+            for item in proof_expectations
+            if isinstance(item, dict) and item.get("name")
+        }
+    actual_states = proof_payload.get("lemma_actual_states", {})
+    if not actual_states and isinstance(proof_payload.get("lemma_results"), dict):
+        actual_states = {
+            str(name): _lemma_result_to_state(str(result))
+            for name, result in proof_payload.get("lemma_results", {}).items()
+        }
+    matches = proof_payload.get("lemma_matches", {})
+    if not matches and expected_states and actual_states:
+        matches = {
+            name: _lemma_state_matches(actual_states.get(name, ""), expected)
+            for name, expected in expected_states.items()
+        }
     return {
         "ok": proof_payload.get("ok"),
         "status": proof_payload.get("status") or "proof",
@@ -2231,9 +3565,9 @@ def _existing_proof_payload(run_dir: Path, proof_payload: dict[str, Any]) -> dic
         "warnings": proof_payload.get("warnings", []),
         "lemma_results": proof_payload.get("lemma_results", {}),
         "missing_results": proof_payload.get("missing_results", []),
-        "lemma_expected_states": proof_payload.get("lemma_expected_states", {}),
-        "lemma_actual_states": proof_payload.get("lemma_actual_states", {}),
-        "lemma_matches": proof_payload.get("lemma_matches", {}),
+        "lemma_expected_states": expected_states,
+        "lemma_actual_states": actual_states,
+        "lemma_matches": matches,
         "mismatched_results": proof_payload.get("mismatched_results", []),
         "command": proof_payload.get("command", []),
         "output_path": proof_payload.get("output_path", ""),
@@ -2243,12 +3577,52 @@ def _existing_proof_payload(run_dir: Path, proof_payload: dict[str, Any]) -> dic
         "lint_issues": _existing_lint_issues(run_dir),
         "proof_lint_issues": _read_json(run_dir / "proof" / "lint.json").get("issues", []),
         "missing_lemmas": _read_json(run_dir / "proof" / "lemma_coverage.json").get("missing", []),
-        "sapic_plus": _read_text_if_exists(run_dir / "final" / "model.spthy"),
-        "model_artifacts": _model_artifacts(run_dir),
+        "proof_expectations": proof_expectations,
+        "sapic_plus": _model_text_for_display(
+            run_dir,
+            display=display,
+            tamarin_bin=tamarin_bin,
+            tamarin_timeout=tamarin_timeout,
+        ),
+        "model_artifacts": _model_artifacts(
+            run_dir,
+            display=display,
+            tamarin_bin=tamarin_bin,
+            tamarin_timeout=tamarin_timeout,
+        ),
     }
 
 
-def _existing_verify_payload(run_dir: Path, verify_payload: dict[str, Any], *, label: str) -> dict[str, Any]:
+def _lemma_result_to_state(result: str) -> str:
+    text = str(result or "").lower()
+    if "verified" in text:
+        return "ProvedSatisfying"
+    if "falsified" in text or "counterexample" in text:
+        return "CounterexampleFound"
+    if "timeout" in text:
+        return "ProofTimeout"
+    return ""
+
+
+def _lemma_state_matches(actual: str, expected: str) -> bool:
+    if not actual or not expected:
+        return False
+    if actual == expected:
+        return True
+    if expected == "ProvedSatisfying" and str(actual).startswith("Proved"):
+        return True
+    return False
+
+
+def _existing_verify_payload(
+    run_dir: Path,
+    verify_payload: dict[str, Any],
+    *,
+    label: str,
+    display: str = "sapic",
+    tamarin_bin: str = "tamarin-prover",
+    tamarin_timeout: int = 120,
+) -> dict[str, Any]:
     payload = {
         "ok": verify_payload.get("ok"),
         "status": verify_payload.get("status") or "compile",
@@ -2262,8 +3636,18 @@ def _existing_verify_payload(run_dir: Path, verify_payload: dict[str, Any], *, l
         "elapsed_sec": verify_payload.get("elapsed_sec", 0.0),
         "stdout_tail": _read_tail(run_dir / "verify" / f"{label}.stdout.txt") or str(verify_payload.get("stdout_tail") or "")[-4000:],
         "stderr_tail": _read_tail(run_dir / "verify" / f"{label}.stderr.txt") or str(verify_payload.get("stderr_tail") or "")[-4000:],
-        "sapic_plus": _read_text_if_exists(run_dir / "final" / "model.spthy"),
-        "model_artifacts": _model_artifacts(run_dir),
+        "sapic_plus": _model_text_for_display(
+            run_dir,
+            display=display,
+            tamarin_bin=tamarin_bin,
+            tamarin_timeout=tamarin_timeout,
+        ),
+        "model_artifacts": _model_artifacts(
+            run_dir,
+            display=display,
+            tamarin_bin=tamarin_bin,
+            tamarin_timeout=tamarin_timeout,
+        ),
     }
     return payload
 
@@ -2310,7 +3694,35 @@ def _read_text_if_exists(path: Path) -> str:
         return ""
 
 
-def _model_artifacts(run_dir: Path) -> list[dict[str, Any]]:
+def _model_artifacts(
+    run_dir: Path,
+    *,
+    display: str = "sapic",
+    tamarin_bin: str = "tamarin-prover",
+    tamarin_timeout: int = 120,
+) -> list[dict[str, Any]]:
+    if display == "msr":
+        translation = _translate_tamarin_model_to_msr(
+            run_dir,
+            tamarin_bin=tamarin_bin,
+            timeout=tamarin_timeout,
+        )
+        return [
+            {
+                "label": "Translated Tamarin MSR model",
+                "path": "final/model.msr.spthy",
+                "code": str(translation.get("content") or ""),
+                "ok": bool(translation.get("ok")),
+                "status": "translated" if translation.get("ok") else "translation failed",
+                "accepted": bool(translation.get("ok")),
+                "warning_count": 0,
+                "lint_issue_count": 0,
+                "translation_mode": "msr",
+                "source_path": "final/model.spthy",
+                "command": translation.get("command") or [],
+                "stderr_tail": str(translation.get("stderr") or "")[-4000:],
+            }
+        ]
     artifacts: list[dict[str, Any]] = []
     seen: set[str] = set()
     for path in [
@@ -2914,6 +4326,7 @@ def _apply_reviewed_contract_to_ir_bundle(contract: dict[str, Any], ir_bundle: d
         skip_names={"assumption"},
     )
     _copy_reviewed_messages(contract, protocol_ir)
+    _sync_reviewed_roles_from_messages(protocol_ir)
     _copy_reviewed_rows(contract, protocol_ir, contract_key="checks", ir_key="checks", fields=("role", "condition", "source_message", "action"))
     _copy_reviewed_rows(contract, protocol_ir, contract_key="events", ir_key="events", fields=("name", "role", "when", "arguments", "proof_relevance"))
     _copy_reviewed_proof_targets(contract, protocol_ir, proof_context)
@@ -2923,6 +4336,24 @@ def _apply_reviewed_contract_to_ir_bundle(contract: dict[str, Any], ir_bundle: d
     ir_bundle["protocol_ir"] = protocol_ir
     ir_bundle["proof_context"] = proof_context
     ir_bundle["field_reviews"] = copy.deepcopy(contract.get("field_reviews", []))
+
+
+def _sync_reviewed_roles_from_messages(protocol_ir: dict[str, Any]) -> None:
+    raw_roles = protocol_ir.get("roles")
+    if isinstance(raw_roles, list):
+        role_values = raw_roles
+    elif raw_roles is None:
+        role_values = []
+    else:
+        role_values = [raw_roles]
+    roles = [str(role).strip() for role in role_values if str(role).strip()]
+    for message in _message_rows(protocol_ir):
+        for field_name in ("from", "to"):
+            role = str(message.get(field_name) or "").strip()
+            if role and role not in roles:
+                roles.append(role)
+    if roles:
+        protocol_ir["roles"] = roles
 
 
 def _copy_reviewed_messages(contract: dict[str, Any], protocol_ir: dict[str, Any]) -> None:
@@ -2983,11 +4414,16 @@ def _copy_reviewed_proof_targets(contract: dict[str, Any], protocol_ir: dict[str
         required_events = [str(event) for event in target.get("required_events", []) if event] if isinstance(target.get("required_events"), list) else _split_csvish(target.get("required_events"))
         claim = {
             "lemma_name": name,
+            "claim_category": str(target.get("claim_category") or ""),
             "goal_type": str(target.get("goal_type") or ""),
             "expected_state": str(target.get("expected_state") or "ProvedSatisfying"),
             "trace_kind": str(target.get("trace_kind") or "unknown"),
             "intent": str(target.get("intent") or ""),
             "event_schema": required_events,
+            "preserved_values": [str(value) for value in target.get("preserved_values", []) if value]
+            if isinstance(target.get("preserved_values"), list)
+            else _split_csvish(target.get("preserved_values")),
+            "anti_compression_note": str(target.get("anti_compression_note") or ""),
             "witness": str(target.get("witness") or ""),
         }
         claims.append(claim)
@@ -3072,6 +4508,15 @@ def _split_csvish(value: Any) -> list[str]:
     if not text:
         return []
     return [item.strip() for item in text.split(",") if item.strip()]
+
+
+def _split_event_listish(value: Any) -> list[str]:
+    text = str(value or "").strip()
+    if not text:
+        return []
+    if "\n" in text or ";" in text:
+        return [item.strip() for item in re.split(r"[;\n]+", text) if item.strip()]
+    return [text]
 
 
 def _parse_pointer(path: str) -> list[str]:
@@ -3351,7 +4796,7 @@ def _pipeline_summary_payload(
     return summary
 
 
-def _expectation_payload(item: LemmaExpectation) -> dict[str, str]:
+def _expectation_payload(item: LemmaExpectation) -> dict[str, Any]:
     return {
         "name": item.name,
         "trace_kind": item.trace_kind,
@@ -3360,6 +4805,7 @@ def _expectation_payload(item: LemmaExpectation) -> dict[str, str]:
         "source": item.source,
         "goal_type": item.goal_type,
         "intent": item.intent,
+        "required_events": item.required_events,
     }
 
 

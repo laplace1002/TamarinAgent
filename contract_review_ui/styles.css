@@ -69,6 +69,23 @@ button.primary:hover {
   background: var(--accent-dark);
 }
 
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.button-link:hover {
+  border-color: var(--accent);
+}
+
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -133,7 +150,19 @@ label {
   height: calc(100vh - 64px);
 }
 
+.code-demo-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  height: calc(100vh - 64px);
+}
+
 .sidebar {
+  border-right: 1px solid var(--border);
+  background: #eef2f6;
+  overflow: auto;
+}
+
+.code-demo-sidebar {
   border-right: 1px solid var(--border);
   background: #eef2f6;
   overflow: auto;
@@ -835,6 +864,259 @@ td.ops {
   overflow-wrap: anywhere;
 }
 
+.lemma-list {
+  display: grid;
+  gap: 8px;
+}
+
+.lemma-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+  overflow: hidden;
+}
+
+.lemma-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.lemma-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.lemma-name {
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.lemma-status {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.match-ok,
+.match-bad {
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-weight: 750;
+}
+
+.match-ok {
+  background: #e7f6ec;
+  color: var(--ok);
+}
+
+.match-bad {
+  background: #ffe9e9;
+  color: var(--danger);
+}
+
+.lemma-body {
+  border-top: 1px solid var(--border);
+  padding: 10px;
+}
+
+.lemma-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.lemma-translation {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f7f9fb;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.lemma-translation p,
+.lemma-recommendation p {
+  margin: 0 0 8px;
+  color: var(--text);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.lemma-translation p:last-child,
+.lemma-recommendation p:last-child {
+  margin-bottom: 0;
+}
+
+.lemma-feedback-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.lemma-feedback-row button {
+  min-width: 150px;
+}
+
+.lemma-candidate-controls {
+  display: grid;
+  grid-template-columns: 64px minmax(88px, 120px);
+  gap: 6px 8px;
+  align-items: end;
+}
+
+.lemma-candidate-controls label {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.lemma-candidate-controls button {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.lemma-recommendation {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f7f9fc;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+.lemma-recommendation ul {
+  margin: 6px 0 8px 18px;
+  padding: 0;
+}
+
+.lemma-patch-preview {
+  margin-top: 8px;
+}
+
+.lemma-patch-preview summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lemma-patch-preview pre {
+  margin: 8px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #111827;
+  color: #e5e7eb;
+  padding: 10px;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.lemma-actions {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.proof-target-align-list {
+  display: grid;
+  gap: 8px;
+}
+
+.proof-target-align-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+  overflow: hidden;
+}
+
+.proof-target-align-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.proof-target-align-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.proof-target-align-body {
+  border-top: 1px solid var(--border);
+  padding: 10px;
+}
+
+.proof-target-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+.proof-target-fields > div:nth-child(5),
+.proof-target-fields > div:nth-child(6) {
+  grid-column: span 2;
+}
+
+.lemma-candidate-request {
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.lemma-candidates {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f7f9fc;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+.lemma-candidate-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+.lemma-candidate-card.recommended {
+  border-left: 4px solid var(--accent);
+}
+
+.lemma-candidate-card p {
+  margin: 0 0 8px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.lemma-candidate-card ul {
+  margin: 6px 0 8px 18px;
+  padding: 0;
+}
+
+.candidate-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+
 .code-artifact-group h3 {
   margin-bottom: 8px;
 }
@@ -1097,6 +1379,225 @@ td.ops {
   outline-offset: 2px;
 }
 
+.code-demo-workbench {
+  overflow: auto;
+  padding: 18px;
+}
+
+.demo-mini-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.demo-mini-stats div {
+  min-height: 48px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+}
+
+.demo-mini-stats strong,
+.demo-mini-stats span {
+  display: block;
+}
+
+.demo-mini-stats span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.demo-step-nav {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.demo-step-nav button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+}
+
+.demo-step-nav small {
+  font-weight: 700;
+}
+
+.demo-two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.demo-codebox {
+  min-height: 220px;
+}
+
+.pipeline-steps {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pipeline-step {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+}
+
+.pipeline-step strong,
+.pipeline-step span {
+  display: block;
+}
+
+.pipeline-step span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.step-index {
+  color: var(--muted);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.artifact-summary {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.artifact-row {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+  word-break: break-word;
+}
+
+.artifact-button-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.artifact-map {
+  display: grid;
+  gap: 12px;
+}
+
+.artifact-map-group {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.artifact-map-group h3 {
+  margin-bottom: 4px;
+}
+
+.artifact-map-group p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.function-row {
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+}
+
+.function-row summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.function-row summary small {
+  color: var(--muted);
+}
+
+.function-row .field-note,
+.function-row .codebox {
+  margin: 0 10px 10px;
+}
+
+.codebox.compact {
+  min-height: auto;
+  max-height: 120px;
+}
+
+.metric-row,
+.proof-summary-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.metric-row {
+  justify-content: space-between;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+}
+
+.demo-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  background: white;
+}
+
+.demo-table th,
+.demo-table td {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  vertical-align: top;
+  text-align: left;
+}
+
+.demo-table th {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.lemma-intent {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.demo-ok {
+  color: var(--ok);
+}
+
+.demo-warn {
+  color: var(--warn);
+}
+
 @media (max-width: 1280px) {
   .message-head {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1109,17 +1610,25 @@ td.ops {
 
 @media (max-width: 900px) {
   .layout,
+  .code-demo-layout,
   .nl-grid,
   .patch-grid,
-  .raw-grid {
+  .raw-grid,
+  .demo-two-col {
     grid-template-columns: 1fr;
   }
 
-  .layout {
+  .layout,
+  .code-demo-layout {
     height: auto;
   }
 
   .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-demo-sidebar {
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
@@ -1130,5 +1639,31 @@ td.ops {
 
   .review-metadata {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .lemma-card summary,
+  .lemma-feedback-row,
+  .proof-target-align-card summary,
+  .proof-target-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .lemma-card summary,
+  .proof-target-align-card summary {
+    display: grid;
+    align-items: start;
+  }
+
+  .proof-target-fields > div:nth-child(5),
+  .proof-target-fields > div:nth-child(6) {
+    grid-column: auto;
+  }
+
+  .lemma-status {
+    justify-content: flex-start;
+  }
+
+  .lemma-feedback-row button {
+    width: 100%;
   }
 }

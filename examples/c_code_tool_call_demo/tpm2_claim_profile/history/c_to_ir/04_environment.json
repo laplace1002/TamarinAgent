@@ -1,0 +1,354 @@
+{
+  "external_interfaces": [
+    {
+      "name": "tpm_transport",
+      "classification": "adversarial_channel",
+      "members": [
+        "tpm_transmit_cmd",
+        "tpm_ret_to_err",
+        "tpm2_flush_context",
+        "tpm2_save_context",
+        "tpm2_load_context"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 221,
+          "line_start": 166,
+          "reason": "tpm_transmit_cmd is used to send commands to TPM and receive responses; tpm_ret_to_err converts TPM return codes; flush/save/load context manage TPM state."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "TPM transport is adversarial; attacker can observe and modify all messages.",
+      "open_question_if_unmodeled": ""
+    },
+    {
+      "name": "hmac_sha256",
+      "classification": "trusted_crypto_primitive",
+      "members": [
+        "hmac_sha256_init_usingrawkey",
+        "hmac_sha256_update",
+        "hmac_sha256_final"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 451,
+          "line_start": 445,
+          "reason": "Used in tpm2_KDFa and session HMAC computation; assumed to be correct and secret."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "HMAC-SHA256 is a secure MAC with key secrecy.",
+      "open_question_if_unmodeled": ""
+    },
+    {
+      "name": "sha256",
+      "classification": "trusted_crypto_primitive",
+      "members": [
+        "sha256_init",
+        "sha256_update",
+        "sha256_final",
+        "sha256"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 486,
+          "line_start": 477,
+          "reason": "Used in tpm2_KDFe and session HMAC computation; assumed to be collision-resistant."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "SHA-256 is a secure hash function.",
+      "open_question_if_unmodeled": ""
+    },
+    {
+      "name": "aes_cfb",
+      "classification": "trusted_crypto_primitive",
+      "members": [
+        "aes_prepareenckey",
+        "aescfb_encrypt",
+        "aescfb_decrypt",
+        "AES_KEY_BITS"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 681,
+          "line_start": 680,
+          "reason": "Used for parameter encryption/decryption in session; assumed to be secure."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "AES-CFB is a secure symmetric encryption scheme.",
+      "open_question_if_unmodeled": ""
+    },
+    {
+      "name": "ecdh_kpp",
+      "classification": "trusted_crypto_primitive",
+      "members": [
+        "crypto_alloc_kpp",
+        "crypto_ecdh_key_len",
+        "crypto_ecdh_encode_key",
+        "crypto_kpp_set_secret",
+        "crypto_kpp_generate_public_key",
+        "crypto_kpp_compute_shared_secret",
+        "crypto_free_kpp",
+        "kpp_request_alloc",
+        "kpp_request_free",
+        "kpp_request_set_input",
+        "kpp_request_set_output",
+        "sg_init_one",
+        "sg_init_table",
+        "sg_set_buf"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 551,
+          "line_start": 517,
+          "reason": "Used in tpm_buf_append_salt for ECDH key agreement; assumed to be correct."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "ECDH is a secure key agreement protocol.",
+      "open_question_if_unmodeled": ""
+    },
+    {
+      "name": "randomness_source",
+      "classification": "randomness_source",
+      "members": [
+        "get_random_bytes"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 413,
+          "line_start": 412,
+          "reason": "Used to generate nonces and salt; assumed to be cryptographically secure."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "get_random_bytes provides fresh, unpredictable random values.",
+      "open_question_if_unmodeled": ""
+    },
+    {
+      "name": "buffer_helpers",
+      "classification": "trusted_parser_marshaler",
+      "members": [
+        "be16_to_cpu",
+        "be32_to_cpu",
+        "cpu_to_be32",
+        "get_unaligned_be16",
+        "get_unaligned_be32",
+        "put_unaligned_be16",
+        "put_unaligned_be32",
+        "tpm_buf_read_u16",
+        "tpm_buf_read_u32"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 774,
+          "line_start": 768,
+          "reason": "Used for endian conversion and buffer parsing; assumed to be correct."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "Buffer helpers correctly convert between host and TPM byte order.",
+      "open_question_if_unmodeled": ""
+    },
+    {
+      "name": "memory_management",
+      "classification": "memory_resource_helper",
+      "members": [
+        "kfree_sensitive",
+        "kzalloc_obj",
+        "memcpy",
+        "memcmp",
+        "crypto_memneq"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 873,
+          "line_start": 873,
+          "reason": "Used for memory allocation, copying, and comparison; assumed to be correct."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "Memory operations are correct and do not leak secrets.",
+      "open_question_if_unmodeled": ""
+    },
+    {
+      "name": "tpm_buf_lifecycle",
+      "classification": "trusted_parser_marshaler",
+      "members": [
+        "tpm_buf_init",
+        "tpm_buf_destroy",
+        "tpm_buf_append",
+        "tpm_buf_append_u8",
+        "tpm_buf_append_u16",
+        "tpm_buf_append_u32",
+        "tpm_buf_append_handle",
+        "tpm_buf_append_empty_auth",
+        "tpm_buf_length",
+        "tpm_buf_init_sized"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1322,
+          "line_start": 1263,
+          "reason": "Used to construct and manage TPM command/response buffers; assumed to be correct."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "Buffer management functions correctly serialize/deserialize TPM data structures.",
+      "open_question_if_unmodeled": ""
+    },
+    {
+      "name": "kernel_logging",
+      "classification": "trusted_platform_api",
+      "members": [
+        "dev_err",
+        "dev_dbg_once",
+        "pr_warn",
+        "WARN"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 990,
+          "line_start": 990,
+          "reason": "Used for error logging and warnings; assumed to be non-interfering."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "Logging does not affect protocol behavior or security.",
+      "open_question_if_unmodeled": ""
+    },
+    {
+      "name": "export_symbols",
+      "classification": "trusted_platform_api",
+      "members": [
+        "EXPORT_SYMBOL",
+        "EXPORT_SYMBOL_GPL"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 729,
+          "line_start": 729,
+          "reason": "Used to export functions for kernel module use; assumed to be correct."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "Export macros correctly make functions available to other kernel modules.",
+      "open_question_if_unmodeled": ""
+    },
+    {
+      "name": "miscellaneous",
+      "classification": "unknown",
+      "members": [
+        "GENMASK",
+        "strlen",
+        "TPM2_OA_NULL_KEY"
+      ],
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 615,
+          "line_start": 615,
+          "reason": "Used for bitmask generation, string length, and constant definition; assumed to be correct."
+        }
+      ],
+      "modeled_as": "symbolic abstraction",
+      "protocol_assumption": "Miscellaneous helpers are correct and do not affect security.",
+      "open_question_if_unmodeled": ""
+    }
+  ],
+  "modeling_assumptions": [
+    {
+      "id": "ma_1",
+      "assumption": "The TPM is a trusted hardware device that correctly implements TPM2 commands and cryptographic operations.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 64,
+          "line_start": 3,
+          "reason": "The entire protocol relies on TPM being trustworthy for session establishment and key derivation."
+        }
+      ]
+    },
+    {
+      "id": "ma_2",
+      "assumption": "The kernel crypto API functions (HMAC, SHA, AES, ECDH) are correctly implemented and do not leak secrets.",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 681,
+          "line_start": 680,
+          "reason": "All cryptographic operations use kernel crypto API functions."
+        }
+      ]
+    },
+    {
+      "id": "ma_3",
+      "assumption": "The NULL seed primary key (chip->null_ec_key_x, chip->null_ec_key_y) is correctly derived and stored during initialization.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1372,
+          "line_start": 1355,
+          "reason": "tpm2_create_null_primary is called but its full implementation is not visible."
+        }
+      ]
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "oq_env_1",
+      "question": "How is the NULL seed primary key (chip->null_ec_key_x, chip->null_ec_key_y) exactly derived and stored? The function tpm2_create_null_primary is not fully visible.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 1372,
+          "line_start": 1355,
+          "reason": "Function definition is present but implementation details are not shown."
+        }
+      ]
+    },
+    {
+      "id": "oq_env_2",
+      "question": "What is the exact format of the 'name' field used for handles? The comment mentions it is a hash of the public area with algorithm id appended, but the precise encoding is not specified.",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 247,
+          "line_start": 224,
+          "reason": "Function comment for tpm_buf_append_name describes the name but not the exact byte layout."
+        }
+      ]
+    },
+    {
+      "id": "oq_env_3",
+      "question": "How are session keys and passphrases managed across multiple commands? The comment mentions they are constant for the session but details are unclear.",
+      "confidence": "low",
+      "evidence": [
+        {
+          "file": "linux/drivers/char/tpm/tpm2-sessions.c",
+          "line_end": 125,
+          "line_start": 116,
+          "reason": "Comment in struct tpm2_auth mentions session key and passphrase but not their lifecycle."
+        }
+      ]
+    }
+  ]
+}

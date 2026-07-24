@@ -1,0 +1,2268 @@
+{
+  "schema": "protocol_ir_pipeline_review_decisions_v1",
+  "case": "TPM2_Salted_HMAC_Session_Code_Derived_Claim_Profile",
+  "decisions": [
+    {
+      "field_path": "fresh.0.name",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "fresh.0.owner",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "fresh.0.purpose",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "fresh.1.name",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "fresh.1.owner",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "fresh.1.purpose",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "fresh.2.name",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "fresh.2.owner",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "fresh.2.purpose",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "setup.0.name",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "setup.0.owner",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "setup.0.policy",
+      "review_status": "needs_review",
+      "priority_score": 0.64,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.0.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.0.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.0.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.0.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.0.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.1.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.1.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.1.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.1.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.1.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.10.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.10.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.10.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.10.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.10.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.11.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.11.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.11.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.11.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.11.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.12.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.12.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.12.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.12.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.12.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.13.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.13.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.13.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.13.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.13.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.14.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.14.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.14.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.14.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.14.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.15.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.15.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.15.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.15.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.15.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.16.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.16.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.16.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.16.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.16.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.17.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.17.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.17.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.17.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.17.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.18.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.18.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.18.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.18.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.18.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.19.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.19.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.19.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.19.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.19.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.2.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.2.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.2.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.2.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.2.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.20.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.20.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.20.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.20.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.20.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.21.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.21.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.21.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.21.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.21.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.22.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.22.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.22.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.22.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.22.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.3.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.3.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.3.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.3.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.3.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.4.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.4.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.4.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.4.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.4.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.5.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.5.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.5.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.5.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.5.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.6.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.6.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.6.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.6.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.6.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.7.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.7.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.7.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.7.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.7.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.8.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.8.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.8.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.8.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.8.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.9.check_id",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.9.condition",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.9.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.9.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "checks.9.source_message",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.0.anti_compression_note",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.0.claim_category",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.0.does_not_hold_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.0.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": [
+        "Required proof event(s) not emitted with matching schema: ['command_hmac_computed', 'command_sent']."
+      ]
+    },
+    {
+      "field_path": "proof_targets.0.expected_state",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.0.goal_type",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.0.holds_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.0.intent",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.0.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.0.preserved_values",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.0.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.0.trace_kind",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.1.anti_compression_note",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.1.claim_category",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.1.does_not_hold_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.1.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": [
+        "Required proof event(s) not emitted with matching schema: ['response_hmac_verified', 'response_received']."
+      ]
+    },
+    {
+      "field_path": "proof_targets.1.expected_state",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.1.goal_type",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.1.holds_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.1.intent",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.1.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.1.preserved_values",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.1.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.1.trace_kind",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.2.anti_compression_note",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.2.claim_category",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.2.does_not_hold_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.2.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": [
+        "Required proof event(s) not emitted with matching schema: ['command_parameter_encrypted']."
+      ]
+    },
+    {
+      "field_path": "proof_targets.2.expected_state",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.2.goal_type",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.2.holds_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.2.intent",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.2.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.2.preserved_values",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.2.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.2.trace_kind",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.3.anti_compression_note",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.3.claim_category",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.3.does_not_hold_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.3.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": [
+        "Required proof event(s) not emitted with matching schema: ['response_parameter_decrypted']."
+      ]
+    },
+    {
+      "field_path": "proof_targets.3.expected_state",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.3.goal_type",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.3.holds_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.3.intent",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.3.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.3.preserved_values",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.3.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.3.trace_kind",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.anti_compression_note",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.claim_category",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.does_not_hold_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.expected_state",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.goal_type",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.holds_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.intent",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.preserved_values",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.4.trace_kind",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.5.anti_compression_note",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.5.claim_category",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.5.does_not_hold_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.5.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": [
+        "Required proof event(s) not emitted with matching schema: ['salt_derived']."
+      ]
+    },
+    {
+      "field_path": "proof_targets.5.expected_state",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.5.goal_type",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.5.holds_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.5.intent",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.5.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.5.preserved_values",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.5.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.5.trace_kind",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.anti_compression_note",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.claim_category",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.does_not_hold_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.expected_state",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.goal_type",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.holds_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.intent",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.preserved_values",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.6.trace_kind",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.7.anti_compression_note",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.7.claim_category",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.7.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": [
+        "Required proof event(s) not emitted with matching schema: ['create_primary_sent', 'create_primary_response_received', 'attacker_modified_response']."
+      ]
+    },
+    {
+      "field_path": "proof_targets.7.expected_state",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.7.goal_type",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.7.intent",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.7.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.7.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.7.trace_kind",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.8.anti_compression_note",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.8.claim_category",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.8.does_not_hold_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.8.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": [
+        "Required proof event(s) not emitted with matching schema: ['session_continued']."
+      ]
+    },
+    {
+      "field_path": "proof_targets.8.expected_state",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.8.goal_type",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.8.holds_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.8.intent",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.8.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.8.preserved_values",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.8.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.8.trace_kind",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.9.anti_compression_note",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.9.claim_category",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.9.does_not_hold_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.9.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": [
+        "Required proof event(s) not emitted with matching schema: ['session_terminated']."
+      ]
+    },
+    {
+      "field_path": "proof_targets.9.expected_state",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.9.goal_type",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.9.holds_under",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.9.intent",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.9.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.9.required_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "proof_targets.9.trace_kind",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "compromise.policy",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "compromise.reveal_events",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.0.arguments",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.0.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.0.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.0.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.0.when",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.1.arguments",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.1.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.1.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.1.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.1.when",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.2.arguments",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.2.name",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.2.proof_relevance",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.2.role",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "events.2.when",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.0.from",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.0.label",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.0.meaning",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.0.protection",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.0.sender_knows",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.0.step",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.0.term",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.0.to",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.1.from",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.1.label",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.1.meaning",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.1.protection",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.1.step",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.1.term",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.1.to",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.2.from",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.2.label",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.2.meaning",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.2.protection",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.2.sender_knows",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.2.step",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.2.term",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": [
+        "Encrypted/message-authenticated terms lack obvious public tags: ['M3_TPM2_StartAuthSession_Request', 'M7_Generic_Command_with_HMAC_Session', 'M8_Generic_Response_with_HMAC_Session']."
+      ]
+    },
+    {
+      "field_path": "messages.2.to",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.3.from",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.3.label",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.3.meaning",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.3.protection",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.3.step",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.3.term",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.3.to",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.4.from",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.4.label",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.4.meaning",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.4.protection",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.4.sender_knows",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.4.step",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.4.term",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.4.to",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.5.from",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.5.label",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.5.meaning",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.5.protection",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.5.step",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.5.term",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.5.to",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.6.from",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.6.label",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.6.meaning",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.6.protection",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.6.sender_knows",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.6.step",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.6.term",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": [
+        "Encrypted/message-authenticated terms lack obvious public tags: ['M3_TPM2_StartAuthSession_Request', 'M7_Generic_Command_with_HMAC_Session', 'M8_Generic_Response_with_HMAC_Session']."
+      ]
+    },
+    {
+      "field_path": "messages.6.to",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.7.from",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.7.label",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.7.meaning",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.7.protection",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.7.step",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    },
+    {
+      "field_path": "messages.7.term",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": [
+        "Encrypted/message-authenticated terms lack obvious public tags: ['M3_TPM2_StartAuthSession_Request', 'M7_Generic_Command_with_HMAC_Session', 'M8_Generic_Response_with_HMAC_Session']."
+      ]
+    },
+    {
+      "field_path": "messages.7.to",
+      "review_status": "high_confidence",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "diagnostics": []
+    }
+  ]
+}

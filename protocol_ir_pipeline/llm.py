@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 import os
 import socket
+import ssl
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -117,8 +120,6 @@ class LLMClient:
                 self.last_call_metadata["error"] = str(error)
 
     def _complete_openai_compatible(self, system: str, user: str) -> str:
-        from openai import OpenAI
-
         kwargs: dict[str, Any] = {}
         api_key = None
         if self.provider == "deepseek":
@@ -139,6 +140,10 @@ class LLMClient:
             kwargs["base_url"] = base_url
         if not api_key:
             raise RuntimeError(f"Missing API key for provider {self.provider}.")
+        try:
+            from openai import OpenAI
+        except ModuleNotFoundError:
+            return self._complete_openai_compatible_stdlib(system, user, api_key=api_key, base_url=kwargs.get("base_url"))
         client = OpenAI(api_key=api_key, timeout=self.config.timeout, **kwargs)
 
         api_mode = self.config.api_mode.lower()
@@ -197,6 +202,72 @@ class LLMClient:
         content = choice.message.content if choice and choice.message else ""
         if content:
             return content
+        raise EmptyLLMResponse(
+            self.provider,
+            self.model,
+            self._last_provider_response_metadata,
+        )
+
+    def _complete_openai_compatible_stdlib(self, system: str, user: str, *, api_key: str, base_url: str | None) -> str:
+        if self.provider == "openai" and self.config.api_mode.lower() == "responses":
+            raise RuntimeError("The OpenAI responses API requires the openai Python package.")
+        if not base_url:
+            if self.provider == "openai":
+                base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+            elif self.provider == "deepseek":
+                base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+            else:
+                base_url = os.getenv("LLAMA_BASE_URL")
+        if not base_url:
+            raise RuntimeError(f"Missing base URL for provider {self.provider}.")
+        endpoint = base_url.rstrip("/")
+        if not endpoint.endswith("/v1"):
+            endpoint = f"{endpoint}/v1"
+        endpoint = f"{endpoint}/chat/completions"
+        system_role = "developer" if self.provider == "openai" and _is_openai_reasoning_model(self.model) else "system"
+        request: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": system_role, "content": system},
+                {"role": "user", "content": user},
+            ],
+        }
+        if self.provider == "openai":
+            request["max_completion_tokens"] = self.config.max_tokens
+            if self.config.reasoning_effort and _is_openai_reasoning_model(self.model):
+                request["reasoning_effort"] = self.config.reasoning_effort
+            if not _is_openai_reasoning_model(self.model):
+                request["temperature"] = self.config.temperature
+        else:
+            request["temperature"] = self.config.temperature
+            request["max_tokens"] = self.config.max_tokens
+        body = json.dumps(request).encode("utf-8")
+        http_request = urllib.request.Request(
+            endpoint,
+            data=body,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        ssl_context = ssl._create_unverified_context() if os.getenv("LLM_INSECURE_SKIP_VERIFY") == "1" else None
+        try:
+            with urllib.request.urlopen(http_request, timeout=self.config.timeout, context=ssl_context) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"{self.provider} API request failed with HTTP {exc.code}: {detail}") from exc
+        choice = payload.get("choices", [{}])[0] if isinstance(payload.get("choices"), list) and payload.get("choices") else {}
+        self._last_provider_response_metadata = {
+            "finish_reason": choice.get("finish_reason"),
+            "usage": payload.get("usage"),
+            "response_id": payload.get("id"),
+        }
+        message = choice.get("message") if isinstance(choice.get("message"), dict) else {}
+        content = message.get("content") or ""
+        if content:
+            return str(content)
         raise EmptyLLMResponse(
             self.provider,
             self.model,
