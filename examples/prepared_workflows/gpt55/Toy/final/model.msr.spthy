@@ -1,0 +1,235 @@
+theory Toy
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: fst/1, h/1, kdf/2, pair/2, snd/1
+equations: fst(<x.1, x.2>) = x.1, snd(<x.1, x.2>) = x.2
+
+heuristic: p
+
+lemma successful_run:
+  exists-trace
+  "∃ sk #i #j.
+    (A_Done( 'A', 'B', sk ) @ #i) ∧ (B_Done( 'A', 'B', sk ) @ #j)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ sk #i #j.
+  (A_Done( 'A', 'B', sk ) @ #i) ∧ (B_Done( 'A', 'B', sk ) @ #j)"
+*/
+by sorry
+
+lemma sk_secret_a:
+  all-traces
+  "∀ sk #i. (A_Secret( 'A', 'B', sk ) @ #i) ⇒ (¬(∃ #j. K( sk ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ sk #i. (A_Secret( 'A', 'B', sk ) @ #i) ∧ ∃ #j. (K( sk ) @ #j)"
+*/
+by sorry
+
+lemma sk_secret_b:
+  all-traces
+  "∀ sk #i. (B_Secret( 'A', 'B', sk ) @ #i) ⇒ (¬(∃ #j. K( sk ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ sk #i. (B_Secret( 'A', 'B', sk ) @ #i) ∧ ∃ #j. (K( sk ) @ #j)"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="|", issapicrule,
+                     role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) p_0_[color=#ffffff, process="|", issapicrule,
+                     role='Process']:
+   [ State_( ) ] --> [ State_1( ), State_2( ) ]
+
+rule (modulo E) A_0_1[color=#ffffff, process="A()", issapicrule,
+                      role='Process']:
+   [ State_1( ) ] --> [ State_11( ), State_12( ) ]
+
+rule (modulo E) newaNonce_0_11[color=#804046, process="new aNonce.1;",
+                               issapicrule, role='A']:
+   [ State_11( ), Fr( aNonce.1 ) ] --> [ State_111( aNonce.1 ) ]
+
+rule (modulo E) eventOUTMaNonce_0_111[color=#804046,
+                                      process="event OUT_M1( aNonce.1 );", issapicrule, role='A']:
+   [ State_111( aNonce.1 ) ]
+  --[ OUT_M1( aNonce.1 ) ]->
+   [ State_1111( aNonce.1 ) ]
+
+rule (modulo E) outaNonce_0_1111[color=#804046, process="out(aNonce.1);",
+                                 issapicrule, role='A']:
+   [ State_1111( aNonce.1 ) ]
+  -->
+   [ State_11111( aNonce.1 ), Out( aNonce.1 ) ]
+
+rule (modulo E) inbNonce_0_11111[color=#804046, process="in(bNonce.1);",
+                                 issapicrule, role='A']:
+   [ State_11111( aNonce.1 ), In( bNonce.1 ) ]
+  -->
+   [ State_111111( aNonce.1, bNonce.1 ) ]
+
+rule (modulo E) eventINMbNonce_0_111111[color=#804046,
+                                        process="event IN_M2( bNonce.1 );", issapicrule, role='A']:
+   [ State_111111( aNonce.1, bNonce.1 ) ]
+  --[ IN_M2( bNonce.1 ) ]->
+   [ State_1111111( aNonce.1, bNonce.1 ) ]
+
+rule (modulo E) eventAInstallABkdfaNoncebNonceaNoncebNonce_0_1111111[color=#804046,
+                                                                     process="event A_Install( 'A', 'B', kdf(aNonce.1, bNonce.1), aNonce.1, bNonce.1 );",
+                                                                     issapicrule, role='A']:
+   [ State_1111111( aNonce.1, bNonce.1 ) ]
+  --[ A_Install( 'A', 'B', kdf(aNonce.1, bNonce.1), aNonce.1, bNonce.1 )
+  ]->
+   [ State_11111111( aNonce.1, bNonce.1 ) ]
+
+rule (modulo E) eventASecretABkdfaNoncebNonce_0_11111111[color=#804046,
+                                                         process="event A_Secret( 'A', 'B', kdf(aNonce.1, bNonce.1) );",
+                                                         issapicrule, role='A']:
+   [ State_11111111( aNonce.1, bNonce.1 ) ]
+  --[ A_Secret( 'A', 'B', kdf(aNonce.1, bNonce.1) ) ]->
+   [ State_111111111( aNonce.1, bNonce.1 ) ]
+
+rule (modulo E) eventOUTMACK_0_111111111[color=#804046,
+                                         process="event OUT_M3( 'ACK' );", issapicrule, role='A']:
+   [ State_111111111( aNonce.1, bNonce.1 ) ]
+  --[ OUT_M3( 'ACK' ) ]->
+   [ State_1111111111( aNonce.1, bNonce.1 ) ]
+
+rule (modulo E) outACK_0_1111111111[color=#804046, process="out('ACK');",
+                                    issapicrule, role='A']:
+   [ State_1111111111( aNonce.1, bNonce.1 ) ]
+  -->
+   [ State_11111111111( aNonce.1, bNonce.1 ), Out( 'ACK' ) ]
+
+rule (modulo E) eventADoneABkdfaNoncebNonce_0_11111111111[color=#804046,
+                                                          process="event A_Done( 'A', 'B', kdf(aNonce.1, bNonce.1) );",
+                                                          issapicrule, role='A']:
+   [ State_11111111111( aNonce.1, bNonce.1 ) ]
+  --[ A_Done( 'A', 'B', kdf(aNonce.1, bNonce.1) ) ]->
+   [ State_111111111111( aNonce.1, bNonce.1 ) ]
+
+rule (modulo E) p_0_111111111111[color=#804046, process="0", issapicrule,
+                                 role='A']:
+   [ State_111111111111( aNonce.1, bNonce.1 ) ] --> [ ]
+
+rule (modulo E) p_0_12[color=#ffffff, process="0", issapicrule,
+                       role='Process']:
+   [ State_12( ) ] --> [ ]
+
+rule (modulo E) B_0_2[color=#ffffff, process="B()", issapicrule,
+                      role='Process']:
+   [ State_2( ) ] --> [ State_21( ), State_22( ) ]
+
+rule (modulo E) inaNonce_0_21[color=#628040, process="in(aNonce.2);",
+                              issapicrule, role='B']:
+   [ State_21( ), In( aNonce.2 ) ] --> [ State_211( aNonce.2 ) ]
+
+rule (modulo E) eventINMaNonce_0_211[color=#628040,
+                                     process="event IN_M1( aNonce.2 );", issapicrule, role='B']:
+   [ State_211( aNonce.2 ) ]
+  --[ IN_M1( aNonce.2 ) ]->
+   [ State_2111( aNonce.2 ) ]
+
+rule (modulo E) newbNonce_0_2111[color=#628040, process="new bNonce.2;",
+                                 issapicrule, role='B']:
+   [ State_2111( aNonce.2 ), Fr( bNonce.2 ) ]
+  -->
+   [ State_21111( aNonce.2, bNonce.2 ) ]
+
+rule (modulo E) eventOUTMbNonce_0_21111[color=#628040,
+                                        process="event OUT_M2( bNonce.2 );", issapicrule, role='B']:
+   [ State_21111( aNonce.2, bNonce.2 ) ]
+  --[ OUT_M2( bNonce.2 ) ]->
+   [ State_211111( aNonce.2, bNonce.2 ) ]
+
+rule (modulo E) outbNonce_0_211111[color=#628040,
+                                   process="out(bNonce.2);", issapicrule, role='B']:
+   [ State_211111( aNonce.2, bNonce.2 ) ]
+  -->
+   [ State_2111111( aNonce.2, bNonce.2 ), Out( bNonce.2 ) ]
+
+rule (modulo E) inackrecv_0_2111111[color=#628040,
+                                    process="in(ack_recv.1);", issapicrule, role='B']:
+   [ State_2111111( aNonce.2, bNonce.2 ), In( ack_recv.1 ) ]
+  -->
+   [ State_21111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+
+rule (modulo E) ifackrecvACK_0_21111111[color=#628040,
+                                        process="if ack_recv.1='ACK'", issapicrule, role='B']:
+   [ State_21111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+  --[ Pred_Eq( ack_recv.1, 'ACK' ) ]->
+   [ State_211111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+
+rule (modulo E) ifackrecvACK_1_21111111[color=#628040,
+                                        process="if ack_recv.1='ACK'", issapicrule, role='B']:
+   [ State_21111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+  --[ Pred_Not_Eq( ack_recv.1, 'ACK' ) ]->
+   [ State_211111112( ack_recv.1, aNonce.2, bNonce.2 ) ]
+
+rule (modulo E) eventINMACK_0_211111111[color=#628040,
+                                        process="event IN_M3( 'ACK' );", issapicrule, role='B']:
+   [ State_211111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+  --[ IN_M3( 'ACK' ) ]->
+   [ State_2111111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+
+rule (modulo E) eventBInstallABkdfaNoncebNonceaNoncebNonce_0_2111111111[color=#628040,
+                                                                        process="event B_Install( 'A', 'B', kdf(aNonce.2, bNonce.2), aNonce.2, bNonce.2 );",
+                                                                        issapicrule, role='B']:
+   [ State_2111111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+  --[ B_Install( 'A', 'B', kdf(aNonce.2, bNonce.2), aNonce.2, bNonce.2 )
+  ]->
+   [ State_21111111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+
+rule (modulo E) eventBSecretABkdfaNoncebNonce_0_21111111111[color=#628040,
+                                                            process="event B_Secret( 'A', 'B', kdf(aNonce.2, bNonce.2) );",
+                                                            issapicrule, role='B']:
+   [ State_21111111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+  --[ B_Secret( 'A', 'B', kdf(aNonce.2, bNonce.2) ) ]->
+   [ State_211111111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+
+rule (modulo E) eventBDoneABkdfaNoncebNonce_0_211111111111[color=#628040,
+                                                           process="event B_Done( 'A', 'B', kdf(aNonce.2, bNonce.2) );",
+                                                           issapicrule, role='B']:
+   [ State_211111111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+  --[ B_Done( 'A', 'B', kdf(aNonce.2, bNonce.2) ) ]->
+   [ State_2111111111111( ack_recv.1, aNonce.2, bNonce.2 ) ]
+
+rule (modulo E) p_0_2111111111111[color=#628040, process="0",
+                                  issapicrule, role='B']:
+   [ State_2111111111111( ack_recv.1, aNonce.2, bNonce.2 ) ] --> [ ]
+
+rule (modulo E) p_0_211111112[color=#628040, process="0", issapicrule,
+                              role='B']:
+   [ State_211111112( ack_recv.1, aNonce.2, bNonce.2 ) ] --> [ ]
+
+rule (modulo E) p_0_22[color=#ffffff, process="0", issapicrule,
+                       role='Process']:
+   [ State_22( ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/* All wellformedness checks were successful. */
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

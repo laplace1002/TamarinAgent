@@ -1,0 +1,148 @@
+theory Neuman_Stubblebine
+begin
+builtins: symmetric-encryption
+
+let A_role(a_id, b_id, kas) =
+  new na1;
+  let m1 = <a_id, na1> in
+  event Start_A(a_id, b_id, na1);
+  event OUT_M1(m1);
+  out(m1);
+  in(m3);
+  let apart = fst(m3) in
+  let m3_tail = snd(m3) in
+  let ticket_b = fst(m3_tail) in
+  let nb_m3 = snd(m3_tail) in
+  let p3a = sdec(apart, kas) in
+  let b_from_s = fst(p3a) in
+  let p3a_tail1 = snd(p3a) in
+  let na_m3 = fst(p3a_tail1) in
+  let p3a_tail2 = snd(p3a_tail1) in
+  let kab = fst(p3a_tail2) in
+  let tb_m3 = snd(p3a_tail2) in
+  event CheckEq(b_from_s, b_id);
+  event CheckEq(na_m3, na1);
+  event IN_M3(m3);
+  event Running_A_initial(a_id, b_id, kab, na1, tb_m3, ticket_b);
+  let m4 = <ticket_b, senc(nb_m3, kab)> in
+  event Commit_A_initial(a_id, b_id, kab, na1, tb_m3);
+  event OUT_M4(m4);
+  out(m4);
+  new na2;
+  let m5 = <ticket_b, na2> in
+  event Reuse_Start_A(a_id, b_id, kab, na2, ticket_b);
+  event OUT_M5(m5);
+  out(m5);
+  in(m6);
+  let nb2_m6 = fst(m6) in
+  let enc_na2 = snd(m6) in
+  let na2_dec = sdec(enc_na2, kab) in
+  event CheckEq(na2_dec, na2);
+  event IN_M6(m6);
+  let m7 = senc(nb2_m6, kab) in
+  event Commit_A_reuse(a_id, b_id, kab, na2, nb2_m6);
+  event OUT_M7(m7);
+  out(m7)
+
+let B_role(b_id, kbs) =
+  in(m1);
+  let a_m1 = fst(m1) in
+  let na_m1 = snd(m1) in
+  event IN_M1(m1);
+  new nb1;
+  new tb;
+  event Running_B_initial(b_id, a_m1, na_m1, nb1, tb);
+  let req = senc(<a_m1, <na_m1, tb>>, kbs) in
+  let m2 = <b_id, <nb1, req>> in
+  event OUT_M2(m2);
+  out(m2);
+  in(m4);
+  let ticket_b = fst(m4) in
+  let enc_nb = snd(m4) in
+  let p4ticket = sdec(ticket_b, kbs) in
+  let a_ticket = fst(p4ticket) in
+  let p4tail = snd(p4ticket) in
+  let kab_ticket = fst(p4tail) in
+  let tb_ticket = snd(p4tail) in
+  event CheckEq(tb_ticket, tb);
+  event CheckEq(a_ticket, a_m1);
+  let nb_dec = sdec(enc_nb, kab_ticket) in
+  event CheckEq(nb_dec, nb1);
+  event IN_M4(m4);
+  event Commit_B_initial(b_id, a_ticket, kab_ticket, na_m1, nb1, tb_ticket);
+  in(m5);
+  let ticket_reuse = fst(m5) in
+  let na2_m5 = snd(m5) in
+  let p5ticket = sdec(ticket_reuse, kbs) in
+  let a_ticket2 = fst(p5ticket) in
+  let p5tail = snd(p5ticket) in
+  let kab_reuse = fst(p5tail) in
+  let tb_reuse = snd(p5tail) in
+  event IN_M5(m5);
+  new nb2;
+  event Reuse_Running_B(b_id, a_ticket2, kab_reuse, na2_m5, nb2, tb_reuse);
+  let m6 = <nb2, senc(na2_m5, kab_reuse)> in
+  event OUT_M6(m6);
+  out(m6);
+  in(m7);
+  let nb2_dec = sdec(m7, kab_reuse) in
+  event CheckEq(nb2_dec, nb2);
+  event IN_M7(m7);
+  event Commit_B_reuse(b_id, a_ticket2, kab_reuse, na2_m5, nb2, tb_reuse)
+
+let S_role(s_id, b_id, kas, kbs) =
+  in(m2);
+  let b_recv = fst(m2) in
+  let m2_tail = snd(m2) in
+  let nb_m2 = fst(m2_tail) in
+  let req = snd(m2_tail) in
+  event CheckEq(b_recv, b_id);
+  let p2 = sdec(req, kbs) in
+  let a_m1 = fst(p2) in
+  let p2_tail = snd(p2) in
+  let na_m1 = fst(p2_tail) in
+  let tb_m2 = snd(p2_tail) in
+  event IN_M2(m2);
+  new kab;
+  event Server_Issue(s_id, a_m1, b_id, kab, na_m1, nb_m2, tb_m2);
+  event Secret(a_m1, b_id, kab);
+  let apart = senc(<b_id, <na_m1, <kab, tb_m2>>>, kas) in
+  let ticket = senc(<a_m1, <kab, tb_m2>>, kbs) in
+  let m3 = <apart, <ticket, nb_m2>> in
+  event OUT_M3(m3);
+  out(m3)
+
+process:
+  new kas;
+  new kbs;
+  (
+    !A_role('A', 'B', kas)
+    | !B_role('B', kbs)
+    | !S_role('S', 'B', kas, kbs)
+  )
+
+restriction equality_checks:
+  "All x y #i. CheckEq(x,y) @ #i ==> x = y"
+
+lemma AUTO_typing [sources]:
+  "(All m #i. IN_M1(m) @ #i ==> ((Ex #j. OUT_M1(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i) | (Ex #l. K(m) @ #l & #l < #i))) & (All m #i. IN_M2(m) @ #i ==> ((Ex #j. OUT_M2(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i) | (Ex #l. K(m) @ #l & #l < #i))) & (All m #i. IN_M3(m) @ #i ==> ((Ex #j. OUT_M3(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i) | (Ex #l. K(m) @ #l & #l < #i))) & (All m #i. IN_M4(m) @ #i ==> ((Ex #j. OUT_M4(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i) | (Ex #l. K(m) @ #l & #l < #i))) & (All m #i. IN_M5(m) @ #i ==> ((Ex #j. OUT_M5(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i) | (Ex #l. K(m) @ #l & #l < #i))) & (All m #i. IN_M6(m) @ #i ==> ((Ex #j. OUT_M6(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i) | (Ex #l. K(m) @ #l & #l < #i))) & (All m #i. IN_M7(m) @ #i ==> ((Ex #j. OUT_M7(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i) | (Ex #l. K(m) @ #l & #l < #i)))"
+
+lemma executability:
+  exists-trace
+  "Ex a b s kab na nb tb na2 nb2 ticket #i1 #i2 #i3 #i4 #i5 #i6 #i7 #i8 #i9. Start_A(a,b,na) @ #i1 & Running_B_initial(b,a,na,nb,tb) @ #i2 & Server_Issue(s,a,b,kab,na,nb,tb) @ #i3 & Commit_A_initial(a,b,kab,na,tb) @ #i4 & Commit_B_initial(b,a,kab,na,nb,tb) @ #i5 & Reuse_Start_A(a,b,kab,na2,ticket) @ #i6 & Reuse_Running_B(b,a,kab,na2,nb2,tb) @ #i7 & Commit_A_reuse(a,b,kab,na2,nb2) @ #i8 & Commit_B_reuse(b,a,kab,na2,nb2,tb) @ #i9 & #i1 < #i2 & #i2 < #i3 & #i3 < #i4 & #i4 < #i5 & #i5 < #i6 & #i6 < #i7 & #i7 < #i8 & #i8 < #i9"
+
+lemma secrecy:
+  "All a b kab #i. Secret(a,b,kab) @ #i ==> not (Ex #j. K(kab) @ #j)"
+
+lemma noninjectiveagreement_B:
+  "All b a kab na nb tb #i. Commit_B_initial(b,a,kab,na,nb,tb) @ #i ==> (Ex s #j. Server_Issue(s,a,b,kab,na,nb,tb) @ #j & #j < #i)"
+
+lemma noninjectiveagreement_A:
+  "All a b kab na tb #i. Commit_A_initial(a,b,kab,na,tb) @ #i ==> (Ex nb srv #rb #ss #cb. Running_B_initial(b,a,na,nb,tb) @ #rb & Server_Issue(srv,a,b,kab,na,nb,tb) @ #ss & Commit_B_initial(b,a,kab,na,nb,tb) @ #cb & #rb < #ss & #ss < #i & #cb < #i & (All #i2. Commit_A_initial(a,b,kab,na,tb) @ #i2 ==> #i2 = #i))"
+
+lemma injectiveagreement_B:
+  "All b a kab na nb tb #i. Commit_B_initial(b,a,kab,na,nb,tb) @ #i ==> (Ex s #j. Server_Issue(s,a,b,kab,na,nb,tb) @ #j & #j < #i & (All s2 #k. Server_Issue(s2,a,b,kab,na,nb,tb) @ #k ==> #k = #j) & (All #l. Commit_B_initial(b,a,kab,na,nb,tb) @ #l ==> #l = #i))"
+
+lemma injectiveagreement_A:
+  "All a b kab na tb #i. Commit_A_initial(a,b,kab,na,tb) @ #i ==> (Ex nb srv #rb #ss #cb. Running_B_initial(b,a,na,nb,tb) @ #rb & Server_Issue(srv,a,b,kab,na,nb,tb) @ #ss & Commit_B_initial(b,a,kab,na,nb,tb) @ #cb & #rb < #ss & #ss < #i & #cb < #i & (All nb2 srv2 #rb2 #ss2. (Running_B_initial(b,a,na,nb2,tb) @ #rb2 & Server_Issue(srv2,a,b,kab,na,nb2,tb) @ #ss2) ==> (#rb2 = #rb & #ss2 = #ss)) & (All nb2 #cb2. Commit_B_initial(b,a,kab,na,nb2,tb) @ #cb2 ==> #cb2 = #cb) & (All #i2. Commit_A_initial(a,b,kab,na,tb) @ #i2 ==> #i2 = #i))"
+end

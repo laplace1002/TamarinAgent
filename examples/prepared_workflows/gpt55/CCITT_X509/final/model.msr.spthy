@@ -1,0 +1,526 @@
+theory CCITT_X509
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: adec/2, aenc/2, fst/1, h/1, pair/2, pk/1, sid/1, sign/2,
+           snd/1, true/0, verify/3
+equations:
+    adec(aenc(x.1, pk(x.2)), x.2) = x.1,
+    fst(<x.1, x.2>) = x.1,
+    snd(<x.1, x.2>) = x.2,
+    verify(sign(x.1, x.2), x.1, pk(x.2)) = true
+
+heuristic: p
+
+lemma Secrecy:
+  all-traces
+  "(∀ A B k #i. (Secret_A( A, B, k ) @ #i) ⇒ (¬(∃ #j. K( k ) @ #j))) ∧
+   (∀ A B k #i. (Secret_B( A, B, k ) @ #i) ⇒ (¬(∃ #j. K( k ) @ #j)))"
+/*
+guarded formula characterizing all counter-examples:
+"((∃ A B k #i. (Secret_A( A, B, k ) @ #i) ∧ ∃ #j. (K( k ) @ #j)) ∨
+  (∃ A B k #i. (Secret_B( A, B, k ) @ #i) ∧ ∃ #j. (K( k ) @ #j)))"
+*/
+by sorry
+
+lemma injectiveagreement_B:
+  all-traces
+  "∀ A B SID k #i.
+    (Commit_B( A, B, SID, k ) @ #i) ⇒
+    ((∃ #j. (Running_A( A, B, SID, k ) @ #j) ∧ (#j < #i)) ∧
+     (∀ #i1.1 #i2.1.
+       ((Commit_B( A, B, SID, k ) @ #i1.1) ∧
+        (Commit_B( A, B, SID, k ) @ #i2.1)) ⇒
+       (i1 = i2)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ A B SID k #i.
+  (Commit_B( A, B, SID, k ) @ #i)
+ ∧
+  ((∀ #j. (Running_A( A, B, SID, k ) @ #j) ⇒ ¬(#j < #i)) ∨
+   (∃ #i1.1 #i2.1.
+     (Commit_B( A, B, SID, k ) @ #i1.1) ∧ (Commit_B( A, B, SID, k ) @ #i2.1)
+    ∧
+     ¬(i1 = i2)))"
+*/
+by sorry
+
+lemma agreement_B:
+  all-traces
+  "∀ A B SID k #i.
+    (Commit_B( A, B, SID, k ) @ #i) ⇒
+    (∃ #j. (Running_A( A, B, SID, k ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ A B SID k #i.
+  (Commit_B( A, B, SID, k ) @ #i)
+ ∧
+  ∀ #j. (Running_A( A, B, SID, k ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma Session_key_honest_setup:
+  exists-trace
+  "∃ A B SID k #i #j.
+    (Running_A( A, B, SID, k ) @ #i) ∧ (Commit_B( A, B, SID, k ) @ #j)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ A B SID k #i #j.
+  (Running_A( A, B, SID, k ) @ #i) ∧ (Commit_B( A, B, SID, k ) @ #j)"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="new ~ltkA.1;", issapicrule,
+                     role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) newltkA_0_[color=#ffffff, process="new ~ltkA.1;",
+                           issapicrule, role='Process']:
+   [ State_( ), Fr( ~ltkA.1 ) ] --> [ State_1( ~ltkA.1 ) ]
+
+rule (modulo E) newltkB_0_1[color=#ffffff, process="new ~ltkB.1;",
+                            issapicrule, role='Process']:
+   [ State_1( ~ltkA.1 ), Fr( ~ltkB.1 ) ]
+  -->
+   [ State_11( ~ltkA.1, ~ltkB.1 ) ]
+
+rule (modulo E) newcertA_0_11[color=#ffffff, process="new ~certA.1;",
+                              issapicrule, role='Process']:
+   [ State_11( ~ltkA.1, ~ltkB.1 ), Fr( ~certA.1 ) ]
+  -->
+   [ State_111( ~certA.1, ~ltkA.1, ~ltkB.1 ) ]
+
+rule (modulo E) p_0_111[color=#ffffff, process="|", issapicrule,
+                        role='Process']:
+   [ State_111( ~certA.1, ~ltkA.1, ~ltkB.1 ) ]
+  -->
+   [
+   State_1111( ~certA.1, ~ltkA.1, ~ltkB.1 ),
+   State_1112( ~certA.1, ~ltkA.1, ~ltkB.1 )
+   ]
+
+rule (modulo E) AABltkApkltkBcertA_0_1111[color=#ffffff,
+                                          process="A('A', 'B', ~ltkA.1, pk(~ltkB.1), ~certA.1)", issapicrule,
+                                          role='Process']:
+   [ State_1111( ~certA.1, ~ltkA.1, ~ltkB.1 ) ]
+  -->
+   [
+   State_11111( ~certA.1, ~ltkA.1, ~ltkB.1 ),
+   State_11112( ~certA.1, ~ltkA.1, ~ltkB.1 )
+   ]
+
+rule (modulo E) newrA_0_11111[color=#804046, process="new ~rA.1;",
+                              issapicrule, role='A']:
+   [ State_11111( ~certA.1, ~ltkA.1, ~ltkB.1 ), Fr( ~rA.1 ) ]
+  -->
+   [ State_111111( ~certA.1, ~ltkA.1, ~ltkB.1, ~rA.1 ) ]
+
+rule (modulo E) newtA_0_111111[color=#804046, process="new ~tA.1;",
+                               issapicrule, role='A']:
+   [ State_111111( ~certA.1, ~ltkA.1, ~ltkB.1, ~rA.1 ), Fr( ~tA.1 ) ]
+  -->
+   [ State_1111111( ~certA.1, ~ltkA.1, ~ltkB.1, ~rA.1, ~tA.1 ) ]
+
+rule (modulo E) newkAB_0_1111111[color=#804046, process="new ~kAB.1;",
+                                 issapicrule, role='A']:
+   [ State_1111111( ~certA.1, ~ltkA.1, ~ltkB.1, ~rA.1, ~tA.1 ), Fr( ~kAB.1 )
+   ]
+  -->
+   [ State_11111111( ~certA.1, ~kAB.1, ~ltkA.1, ~ltkB.1, ~rA.1, ~tA.1 ) ]
+
+rule (modulo E) newsgnData_0_11111111[color=#804046,
+                                      process="new ~sgnData.1;", issapicrule, role='A']:
+   [
+   State_11111111( ~certA.1, ~kAB.1, ~ltkA.1, ~ltkB.1, ~rA.1, ~tA.1 ),
+   Fr( ~sgnData.1 )
+   ]
+  -->
+   [
+   State_111111111( ~certA.1, ~kAB.1, ~ltkA.1, ~ltkB.1, ~rA.1, ~sgnData.1,
+                    ~tA.1
+   )
+   ]
+
+rule (modulo E) eventRunningAABsidhtArABsgnDataaenckABpkltkBkAB_0_111111111[color=#804046,
+                                                                            process="event Running_A( 'A', 'B',
+           sid(h(<~tA.1, ~rA.1, 'B', ~sgnData.1, aenc(~kAB.1, pk(~ltkB.1))>)),
+           ~kAB.1
+);",
+                                                                            issapicrule, role='A']:
+   [
+   State_111111111( ~certA.1, ~kAB.1, ~ltkA.1, ~ltkB.1, ~rA.1, ~sgnData.1,
+                    ~tA.1
+   )
+   ]
+  --[
+  Running_A( 'A', 'B',
+             sid(h(<~tA.1, ~rA.1, 'B', ~sgnData.1, aenc(~kAB.1, pk(~ltkB.1))>)),
+             ~kAB.1
+  )
+  ]->
+   [
+   State_1111111111( ~certA.1, ~kAB.1, ~ltkA.1, ~ltkB.1, ~rA.1, ~sgnData.1,
+                     ~tA.1
+   )
+   ]
+
+rule (modulo E) eventSecretAABkAB_0_1111111111[color=#804046,
+                                               process="event Secret_A( 'A', 'B', ~kAB.1 );", issapicrule,
+                                               role='A']:
+   [
+   State_1111111111( ~certA.1, ~kAB.1, ~ltkA.1, ~ltkB.1, ~rA.1, ~sgnData.1,
+                     ~tA.1
+   )
+   ]
+  --[ Secret_A( 'A', 'B', ~kAB.1 ) ]->
+   [
+   State_11111111111( ~certA.1, ~kAB.1, ~ltkA.1, ~ltkB.1, ~rA.1, ~sgnData.1,
+                      ~tA.1
+   )
+   ]
+
+rule (modulo E) outcertAtArABsgnDataaenckABpkltkBsignhtArABsgnDataaenckABpkltkBltkA_0_11111111111[color=#804046,
+                                                                                                  process="out(<~certA.1, 
+ <~tA.1, ~rA.1, 'B', ~sgnData.1, aenc(~kAB.1, pk(~ltkB.1))>, 
+ sign(h(<~tA.1, ~rA.1, 'B', ~sgnData.1, aenc(~kAB.1, pk(~ltkB.1))>),
+      ~ltkA.1)
+>);",
+                                                                                                  issapicrule,
+                                                                                                  role='A']:
+   [
+   State_11111111111( ~certA.1, ~kAB.1, ~ltkA.1, ~ltkB.1, ~rA.1, ~sgnData.1,
+                      ~tA.1
+   )
+   ]
+  -->
+   [
+   State_111111111111( ~certA.1, ~kAB.1, ~ltkA.1, ~ltkB.1, ~rA.1,
+                       ~sgnData.1, ~tA.1
+   ),
+   Out( <~certA.1, 
+         <~tA.1, ~rA.1, 'B', ~sgnData.1, aenc(~kAB.1, pk(~ltkB.1))>, 
+         sign(h(<~tA.1, ~rA.1, 'B', ~sgnData.1, aenc(~kAB.1, pk(~ltkB.1))>),
+              ~ltkA.1)
+        >
+   )
+   ]
+
+rule (modulo E) p_0_111111111111[color=#804046, process="0", issapicrule,
+                                 role='A']:
+   [
+   State_111111111111( ~certA.1, ~kAB.1, ~ltkA.1, ~ltkB.1, ~rA.1,
+                       ~sgnData.1, ~tA.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11112[color=#ffffff, process="0", issapicrule,
+                          role='Process']:
+   [ State_11112( ~certA.1, ~ltkA.1, ~ltkB.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1112[color=#ffffff, process="!", issapicrule,
+                         role='Process']:
+   [ State_1112( ~certA.1, ~ltkA.1, ~ltkB.1 ) ]
+  -->
+   [ !Semistate_11121( ~certA.1, ~ltkA.1, ~ltkB.1 ) ]
+
+rule (modulo E) p_1_1112[color=#ffffff, process="!", issapicrule,
+                         role='Process']:
+   [ !Semistate_11121( ~certA.1, ~ltkA.1, ~ltkB.1 ) ]
+  -->
+   [ State_11121( ~certA.1, ~ltkA.1, ~ltkB.1 ) ]
+
+rule (modulo E) BBAltkBpkltkAcertA_0_11121[color=#ffffff,
+                                           process="B('B', 'A', ~ltkB.1, pk(~ltkA.1), ~certA.1)", issapicrule,
+                                           role='Process']:
+   [ State_11121( ~certA.1, ~ltkA.1, ~ltkB.1 ) ]
+  -->
+   [
+   State_111211( ~certA.1, ~ltkA.1, ~ltkB.1 ),
+   State_111212( ~certA.1, ~ltkA.1, ~ltkB.1 )
+   ]
+
+rule (modulo E) incertrecvtokrecv_0_111211[color=#628040,
+                                           process="in(<cert_recv.1, tok_recv.1>);", issapicrule, role='B']:
+   [
+   State_111211( ~certA.1, ~ltkA.1, ~ltkB.1 ),
+   In( <cert_recv.1, tok_recv.1> )
+   ]
+  -->
+   [ State_1112111( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, tok_recv.1 ) ]
+
+rule (modulo E) ifcertrecvcertA_0_1112111[color=#628040,
+                                          process="if cert_recv.1=~certA.1", issapicrule, role='B']:
+   [ State_1112111( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, tok_recv.1 ) ]
+  --[ Pred_Eq( cert_recv.1, ~certA.1 ) ]->
+   [ State_11121111( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, tok_recv.1 ) ]
+
+rule (modulo E) ifcertrecvcertA_1_1112111[color=#628040,
+                                          process="if cert_recv.1=~certA.1", issapicrule, role='B']:
+   [ State_1112111( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, tok_recv.1 ) ]
+  --[ Pred_Not_Eq( cert_recv.1, ~certA.1 ) ]->
+   [ State_11121112( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, tok_recv.1 ) ]
+
+rule (modulo E) letinforecvsigrecvtokrecv_0_11121111[color=#ffffff,
+                                                     process="let <info_recv.1, sig_recv.1>=tok_recv.1",
+                                                     issapicrule, role='Process']:
+   [ State_11121111( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, tok_recv.1 ) ]
+  -->
+   [
+   Let_111211111( tok_recv.1, ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1,
+                  tok_recv.1
+   )
+   ]
+
+rule (modulo E) letinforecvsigrecvtokrecv_1_11121111[color=#ffffff,
+                                                     process="let <info_recv.1, sig_recv.1>=tok_recv.1",
+                                                     issapicrule, role='Process']:
+   [
+   Let_111211111( <info_recv.1, sig_recv.1>, ~certA.1, ~ltkA.1, ~ltkB.1,
+                  cert_recv.1, tok_recv.1
+   )
+   ]
+  -->
+   [
+   State_111211111( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, info_recv.1,
+                    sig_recv.1, tok_recv.1
+   )
+   ]
+
+rule (modulo E) ifverifysigrecvhinforecvpkltkAtrue_0_111211111[color=#628040,
+                                                               process="if verify(sig_recv.1, h(info_recv.1), pk(~ltkA.1))=true",
+                                                               issapicrule, role='B']:
+   [
+   State_111211111( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, info_recv.1,
+                    sig_recv.1, tok_recv.1
+   )
+   ]
+  --[ Pred_Eq( verify(sig_recv.1, h(info_recv.1), pk(~ltkA.1)), true ) ]->
+   [
+   State_1112111111( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, info_recv.1,
+                     sig_recv.1, tok_recv.1
+   )
+   ]
+
+rule (modulo E) ifverifysigrecvhinforecvpkltkAtrue_1_111211111[color=#628040,
+                                                               process="if verify(sig_recv.1, h(info_recv.1), pk(~ltkA.1))=true",
+                                                               issapicrule, role='B']:
+   [
+   State_111211111( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, info_recv.1,
+                    sig_recv.1, tok_recv.1
+   )
+   ]
+  --[ Pred_Not_Eq( verify(sig_recv.1, h(info_recv.1), pk(~ltkA.1)), true )
+  ]->
+   [
+   State_1112111112( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, info_recv.1,
+                     sig_recv.1, tok_recv.1
+   )
+   ]
+
+rule (modulo E) lettArecvrArecvBrecvsgnDatarecvctrecvinforecv_0_1112111111[color=#ffffff,
+                                                                           process="let <tA_recv.1, rA_recv.1, B_recv.1, sgnData_recv.1, ct_recv.1>=info_recv.1",
+                                                                           issapicrule, role='Process']:
+   [
+   State_1112111111( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, info_recv.1,
+                     sig_recv.1, tok_recv.1
+   )
+   ]
+  -->
+   [
+   Let_11121111111( info_recv.1, ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1,
+                    info_recv.1, sig_recv.1, tok_recv.1
+   )
+   ]
+
+rule (modulo E) lettArecvrArecvBrecvsgnDatarecvctrecvinforecv_1_1112111111[color=#ffffff,
+                                                                           process="let <tA_recv.1, rA_recv.1, B_recv.1, sgnData_recv.1, ct_recv.1>=info_recv.1",
+                                                                           issapicrule, role='Process']:
+   [
+   Let_11121111111( <tA_recv.1, rA_recv.1, B_recv.1, sgnData_recv.1, 
+                     ct_recv.1>,
+                    ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, info_recv.1, sig_recv.1,
+                    tok_recv.1
+   )
+   ]
+  -->
+   [
+   State_11121111111( ~certA.1, ~ltkA.1, ~ltkB.1, B_recv.1, cert_recv.1,
+                      ct_recv.1, info_recv.1, rA_recv.1, sgnData_recv.1, sig_recv.1, tA_recv.1,
+                      tok_recv.1
+   )
+   ]
+
+rule (modulo E) ifBrecvB_0_11121111111[color=#628040,
+                                       process="if B_recv.1='B'", issapicrule, role='B']:
+   [
+   State_11121111111( ~certA.1, ~ltkA.1, ~ltkB.1, B_recv.1, cert_recv.1,
+                      ct_recv.1, info_recv.1, rA_recv.1, sgnData_recv.1, sig_recv.1, tA_recv.1,
+                      tok_recv.1
+   )
+   ]
+  --[ Pred_Eq( B_recv.1, 'B' ) ]->
+   [
+   State_111211111111( ~certA.1, ~ltkA.1, ~ltkB.1, B_recv.1, cert_recv.1,
+                       ct_recv.1, info_recv.1, rA_recv.1, sgnData_recv.1, sig_recv.1, tA_recv.1,
+                       tok_recv.1
+   )
+   ]
+
+rule (modulo E) ifBrecvB_1_11121111111[color=#628040,
+                                       process="if B_recv.1='B'", issapicrule, role='B']:
+   [
+   State_11121111111( ~certA.1, ~ltkA.1, ~ltkB.1, B_recv.1, cert_recv.1,
+                      ct_recv.1, info_recv.1, rA_recv.1, sgnData_recv.1, sig_recv.1, tA_recv.1,
+                      tok_recv.1
+   )
+   ]
+  --[ Pred_Not_Eq( B_recv.1, 'B' ) ]->
+   [
+   State_111211111112( ~certA.1, ~ltkA.1, ~ltkB.1, B_recv.1, cert_recv.1,
+                       ct_recv.1, info_recv.1, rA_recv.1, sgnData_recv.1, sig_recv.1, tA_recv.1,
+                       tok_recv.1
+   )
+   ]
+
+rule (modulo E) eventCommitBABsidhinforecvadecctrecvltkB_0_111211111111[color=#628040,
+                                                                        process="event Commit_B( 'A', 'B', sid(h(info_recv.1)), adec(ct_recv.1, ~ltkB.1) );",
+                                                                        issapicrule, role='B']:
+   [
+   State_111211111111( ~certA.1, ~ltkA.1, ~ltkB.1, B_recv.1, cert_recv.1,
+                       ct_recv.1, info_recv.1, rA_recv.1, sgnData_recv.1, sig_recv.1, tA_recv.1,
+                       tok_recv.1
+   )
+   ]
+  --[ Commit_B( 'A', 'B', sid(h(info_recv.1)), adec(ct_recv.1, ~ltkB.1) )
+  ]->
+   [
+   State_1112111111111( ~certA.1, ~ltkA.1, ~ltkB.1, B_recv.1, cert_recv.1,
+                        ct_recv.1, info_recv.1, rA_recv.1, sgnData_recv.1, sig_recv.1, tA_recv.1,
+                        tok_recv.1
+   )
+   ]
+
+rule (modulo E) eventSecretBABadecctrecvltkB_0_1112111111111[color=#628040,
+                                                             process="event Secret_B( 'A', 'B', adec(ct_recv.1, ~ltkB.1) );",
+                                                             issapicrule, role='B']:
+   [
+   State_1112111111111( ~certA.1, ~ltkA.1, ~ltkB.1, B_recv.1, cert_recv.1,
+                        ct_recv.1, info_recv.1, rA_recv.1, sgnData_recv.1, sig_recv.1, tA_recv.1,
+                        tok_recv.1
+   )
+   ]
+  --[ Secret_B( 'A', 'B', adec(ct_recv.1, ~ltkB.1) ) ]->
+   [
+   State_11121111111111( ~certA.1, ~ltkA.1, ~ltkB.1, B_recv.1, cert_recv.1,
+                         ct_recv.1, info_recv.1, rA_recv.1, sgnData_recv.1, sig_recv.1, tA_recv.1,
+                         tok_recv.1
+   )
+   ]
+
+rule (modulo E) p_0_11121111111111[color=#628040, process="0",
+                                   issapicrule, role='B']:
+   [
+   State_11121111111111( ~certA.1, ~ltkA.1, ~ltkB.1, B_recv.1, cert_recv.1,
+                         ct_recv.1, info_recv.1, rA_recv.1, sgnData_recv.1, sig_recv.1, tA_recv.1,
+                         tok_recv.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111211111112[color=#628040, process="0", issapicrule,
+                                 role='B']:
+   [
+   State_111211111112( ~certA.1, ~ltkA.1, ~ltkB.1, B_recv.1, cert_recv.1,
+                       ct_recv.1, info_recv.1, rA_recv.1, sgnData_recv.1, sig_recv.1, tA_recv.1,
+                       tok_recv.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11121111112[color=#628040, process="0", issapicrule,
+                                role='B']:
+   [
+   State_11121111112( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, info_recv.1,
+                      sig_recv.1, tok_recv.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1112111112[color=#628040, process="0", issapicrule,
+                               role='B']:
+   [
+   State_1112111112( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, info_recv.1,
+                     sig_recv.1, tok_recv.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111211112[color=#628040, process="0", issapicrule,
+                              role='B']:
+   [ State_111211112( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, tok_recv.1 )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11121112[color=#628040, process="0", issapicrule,
+                             role='B']:
+   [ State_11121112( ~certA.1, ~ltkA.1, ~ltkB.1, cert_recv.1, tok_recv.1 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111212[color=#ffffff, process="0", issapicrule,
+                           role='Process']:
+   [ State_111212( ~certA.1, ~ltkA.1, ~ltkB.1 ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/*
+WARNING: the following wellformedness checks failed!
+
+Facts occur in the left-hand-side but not in any right-hand-side 
+=================================================================
+
+  1. in rule "p_0_11121111112":  factName `State_11121111112' arity: 7 multiplicity: Linear. Perhaps you want to use the fact in rule "ifverifysigrecvhinforecvpkltkAtrue_0_111211111":  factName `State_1112111111' arity: 7 multiplicity: Linear
+  
+  2. in rule "p_0_111211112":  factName `State_111211112' arity: 5 multiplicity: Linear. Perhaps you want to use the fact in rule "ifcertrecvcertA_0_1112111":  factName `State_11121111' arity: 5 multiplicity: Linear
+
+Formula terms
+=============
+
+  Lemma `injectiveagreement_B' uses terms of the wrong form:
+    `Free i1', `Free i2'
+  
+  The only allowed terms are public constants and bound node and
+  message variables. If you encounter free message variables, then
+  you might have forgotten a #-prefix. Sort prefixes can only be
+  dropped where this is unambiguous. Moreover, reducible function
+  symbols are disallowed.
+*/
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

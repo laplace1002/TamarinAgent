@@ -1,0 +1,63 @@
+theory CCITT_X509
+begin
+
+builtins: asymmetric-encryption, signing, hashing
+
+functions: sid/1
+
+let A(me,peer,ltkA,pkB,certA) =
+  new ~rA;
+  new ~tA;
+  new ~kAB;
+  new ~sgnData;
+  let ct = aenc(~kAB,pkB) in
+  let info = <~tA,~rA,peer,~sgnData,ct> in
+  let h_info = h(info) in
+  let sig = sign(h_info,ltkA) in
+  let tok = <info,sig> in
+  let sid_val = sid(h_info) in
+  event Running_A(me,peer,sid_val,~kAB);
+  event Secret_A(me,peer,~kAB);
+  out(<certA,tok>)
+
+let B(me,peer,ltkB,pkA,certA) =
+  in(<cert_recv,tok_recv>);
+  if cert_recv = certA then
+  (
+    let <info_recv,sig_recv> = tok_recv in
+    let h_info_recv = h(info_recv) in
+    if verify(sig_recv,h_info_recv,pkA) = true then
+    (
+      let <tA_recv,rA_recv,B_recv,sgnData_recv,ct_recv> = info_recv in
+      if B_recv = me then
+      (
+        let kAB_recv = adec(ct_recv,ltkB) in
+        let sid_val = sid(h_info_recv) in
+        event Commit_B(peer,me,sid_val,kAB_recv);
+        event Secret_B(peer,me,kAB_recv)
+      )
+    )
+  )
+
+process:
+  new ~ltkA;
+  new ~ltkB;
+  new ~certA;
+  let pkA = pk(~ltkA) in
+  let pkB = pk(~ltkB) in
+  ( A('A','B',~ltkA,pkB,~certA) | !B('B','A',~ltkB,pkA,~certA) )
+
+lemma Secrecy:
+  "(All A B k #i. Secret_A(A,B,k)@i ==> not Ex #j. K(k)@j) & (All A B k #i. Secret_B(A,B,k)@i ==> not Ex #j. K(k)@j)"
+
+lemma injectiveagreement_B:
+  "All A B SID k #i. Commit_B(A,B,SID,k)@i ==> ((Ex #j. Running_A(A,B,SID,k)@j & j < i) & (All #i1 #i2. Commit_B(A,B,SID,k)@i1 & Commit_B(A,B,SID,k)@i2 ==> i1 = i2))"
+
+lemma agreement_B:
+  "All A B SID k #i. Commit_B(A,B,SID,k)@i ==> Ex #j. Running_A(A,B,SID,k)@j & j < i"
+
+lemma Session_key_honest_setup:
+  exists-trace
+  "Ex A B SID k #i #j. Running_A(A,B,SID,k)@i & Commit_B(A,B,SID,k)@j"
+
+end

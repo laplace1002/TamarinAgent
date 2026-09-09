@@ -1,0 +1,536 @@
+theory NSPK
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: adec/2, aenc/2, fst/1, pair/2, pk/1, snd/1
+equations:
+    adec(aenc(x.1, pk(x.2)), x.2) = x.1,
+    fst(<x.1, x.2>) = x.1,
+    snd(<x.1, x.2>) = x.2
+
+heuristic: p
+
+lemma AUTO_typing [sources]:
+  all-traces
+  "((∀ M #i.
+      (IN_M1( M ) @ #i) ⇒
+      ((∃ #j. (OUT_M1( M ) @ #j) ∧ (#j < #i)) ∨
+       (∃ #k. (!KU( M ) @ #k) ∧ (#k < #i)))) ∧
+    (∀ M #i.
+      (IN_M2( M ) @ #i) ⇒
+      ((∃ #j. (OUT_M2( M ) @ #j) ∧ (#j < #i)) ∨
+       (∃ #k. (!KU( M ) @ #k) ∧ (#k < #i))))) ∧
+   (∀ M #i.
+     (IN_M3( M ) @ #i) ⇒
+     ((∃ #j. (OUT_M3( M ) @ #j) ∧ (#j < #i)) ∨
+      (∃ #k. (!KU( M ) @ #k) ∧ (#k < #i))))"
+/*
+guarded formula characterizing all counter-examples:
+"((∃ M #i.
+    (IN_M1( M ) @ #i)
+   ∧
+    (∀ #j. (OUT_M1( M ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( M ) @ #k) ⇒ ¬(#k < #i))) ∨
+  (∃ M #i.
+    (IN_M2( M ) @ #i)
+   ∧
+    (∀ #j. (OUT_M2( M ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( M ) @ #k) ⇒ ¬(#k < #i))) ∨
+  (∃ M #i.
+    (IN_M3( M ) @ #i)
+   ∧
+    (∀ #j. (OUT_M3( M ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( M ) @ #k) ⇒ ¬(#k < #i))))"
+*/
+by sorry
+
+lemma nonce_secrecy:
+  all-traces
+  "∀ Actor Peer N #i.
+    (Secret( Actor, Peer, N ) @ #i) ⇒ (¬(∃ #j. K( N ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ Actor Peer N #i.
+  (Secret( Actor, Peer, N ) @ #i) ∧ ∃ #j. (K( N ) @ #j)"
+*/
+by sorry
+
+lemma injective_agree:
+  all-traces
+  "∀ Resp Init Na Nb #i.
+    (Commit_B( Resp, Init, Na, Nb ) @ #i) ⇒
+    ((((∃ #j. (Commit_A( Init, Resp, Na, Nb ) @ #j) ∧ (#j < #i)) ∧
+       (∃ #k. (Running_B( Resp, Init, Na, Nb ) @ #k) ∧ (#k < #i))) ∧
+      (∃ #l. (Start_A( Init, Resp, Na ) @ #l) ∧ (#l < #i))) ∧
+     (∀ #i2. (Commit_B( Resp, Init, Na, Nb ) @ #i2) ⇒ (#i2 = #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ Resp Init Na Nb #i.
+  (Commit_B( Resp, Init, Na, Nb ) @ #i)
+ ∧
+  ((∀ #j. (Commit_A( Init, Resp, Na, Nb ) @ #j) ⇒ ¬(#j < #i)) ∨
+   (∀ #k. (Running_B( Resp, Init, Na, Nb ) @ #k) ⇒ ¬(#k < #i)) ∨
+   (∀ #l. (Start_A( Init, Resp, Na ) @ #l) ⇒ ¬(#l < #i)) ∨
+   (∃ #i2. (Commit_B( Resp, Init, Na, Nb ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+by sorry
+
+lemma session_key_setup_possible:
+  exists-trace
+  "∃ Init Resp Na Nb #i #j.
+    ((Commit_A( Init, Resp, Na, Nb ) @ #i) ∧
+     (Commit_B( Resp, Init, Na, Nb ) @ #j)) ∧
+    (#i < #j)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ Init Resp Na Nb #i #j.
+  (Commit_A( Init, Resp, Na, Nb ) @ #i) ∧
+  (Commit_B( Resp, Init, Na, Nb ) @ #j)
+ ∧
+  #i < #j"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="new skA.1;", issapicrule,
+                     role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) newskA_0_[color=#ffffff, process="new skA.1;",
+                          issapicrule, role='Process']:
+   [ State_( ), Fr( skA.1 ) ] --> [ State_1( skA.1 ) ]
+
+rule (modulo E) newskB_0_1[color=#ffffff, process="new skB.1;",
+                           issapicrule, role='Process']:
+   [ State_1( skA.1 ), Fr( skB.1 ) ] --> [ State_11( skA.1, skB.1 ) ]
+
+rule (modulo E) newskC_0_11[color=#ffffff, process="new skC.1;",
+                            issapicrule, role='Process']:
+   [ State_11( skA.1, skB.1 ), Fr( skC.1 ) ]
+  -->
+   [ State_111( skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) outpkskA_0_111[color=#ffffff, process="out(pk(skA.1));",
+                               issapicrule, role='Process']:
+   [ State_111( skA.1, skB.1, skC.1 ) ]
+  -->
+   [ State_1111( skA.1, skB.1, skC.1 ), Out( pk(skA.1) ) ]
+
+rule (modulo E) outpkskB_0_1111[color=#ffffff, process="out(pk(skB.1));",
+                                issapicrule, role='Process']:
+   [ State_1111( skA.1, skB.1, skC.1 ) ]
+  -->
+   [ State_11111( skA.1, skB.1, skC.1 ), Out( pk(skB.1) ) ]
+
+rule (modulo E) outpkskC_0_11111[color=#ffffff,
+                                 process="out(pk(skC.1));", issapicrule, role='Process']:
+   [ State_11111( skA.1, skB.1, skC.1 ) ]
+  -->
+   [ State_111111( skA.1, skB.1, skC.1 ), Out( pk(skC.1) ) ]
+
+rule (modulo E) outskC_0_111111[color=#ffffff, process="out(skC.1);",
+                                issapicrule, role='Process']:
+   [ State_111111( skA.1, skB.1, skC.1 ) ]
+  -->
+   [ State_1111111( skA.1, skB.1, skC.1 ), Out( skC.1 ) ]
+
+rule (modulo E) p_0_1111111[color=#ffffff, process="|", issapicrule,
+                            role='Process']:
+   [ State_1111111( skA.1, skB.1, skC.1 ) ]
+  -->
+   [
+   State_11111111( skA.1, skB.1, skC.1 ),
+   State_11111112( skA.1, skB.1, skC.1 )
+   ]
+
+rule (modulo E) p_0_11111111[color=#ffffff, process="|", issapicrule,
+                             role='Process']:
+   [ State_11111111( skA.1, skB.1, skC.1 ) ]
+  -->
+   [
+   State_111111111( skA.1, skB.1, skC.1 ),
+   State_111111112( skA.1, skB.1, skC.1 )
+   ]
+
+rule (modulo E) AInitiatorABskApkskB_0_111111111[color=#ffffff,
+                                                 process="A_Initiator('A', 'B', skA.1, pk(skB.1))",
+                                                 issapicrule, role='Process']:
+   [ State_111111111( skA.1, skB.1, skC.1 ) ]
+  -->
+   [
+   State_1111111111( skA.1, skB.1, skC.1 ),
+   State_1111111112( skA.1, skB.1, skC.1 )
+   ]
+
+rule (modulo E) newna_0_1111111111[color=#808040, process="new na.1;",
+                                   issapicrule, role='A_Initiator']:
+   [ State_1111111111( skA.1, skB.1, skC.1 ), Fr( na.1 ) ]
+  -->
+   [ State_11111111111( na.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventStartAABna_0_11111111111[color=#808040,
+                                              process="event Start_A( 'A', 'B', na.1 );", issapicrule,
+                                              role='A_Initiator']:
+   [ State_11111111111( na.1, skA.1, skB.1, skC.1 ) ]
+  --[ Start_A( 'A', 'B', na.1 ) ]->
+   [ State_111111111111( na.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventSecretABna_0_111111111111[color=#808040,
+                                               process="event Secret( 'A', 'B', na.1 );", issapicrule,
+                                               role='A_Initiator']:
+   [ State_111111111111( na.1, skA.1, skB.1, skC.1 ) ]
+  --[ Secret( 'A', 'B', na.1 ) ]->
+   [ State_1111111111111( na.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventOUTMaencAnapkskB_0_1111111111111[color=#808040,
+                                                      process="event OUT_M1( aenc(<'A', na.1>, pk(skB.1)) );",
+                                                      issapicrule, role='A_Initiator']:
+   [ State_1111111111111( na.1, skA.1, skB.1, skC.1 ) ]
+  --[ OUT_M1( aenc(<'A', na.1>, pk(skB.1)) ) ]->
+   [ State_11111111111111( na.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) outaencAnapkskB_0_11111111111111[color=#808040,
+                                                 process="out(aenc(<'A', na.1>, pk(skB.1)));", issapicrule,
+                                                 role='A_Initiator']:
+   [ State_11111111111111( na.1, skA.1, skB.1, skC.1 ) ]
+  -->
+   [
+   State_111111111111111( na.1, skA.1, skB.1, skC.1 ),
+   Out( aenc(<'A', na.1>, pk(skB.1)) )
+   ]
+
+rule (modulo E) inc_0_111111111111111[color=#808040, process="in(c2.1);",
+                                      issapicrule, role='A_Initiator']:
+   [ State_111111111111111( na.1, skA.1, skB.1, skC.1 ), In( c2.1 ) ]
+  -->
+   [ State_1111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) iffstadeccskAna_0_1111111111111111[color=#808040,
+                                                   process="if fst(adec(c2.1, skA.1))=na.1", issapicrule,
+                                                   role='A_Initiator']:
+   [ State_1111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+  --[ Pred_Eq( fst(adec(c2.1, skA.1)), na.1 ) ]->
+   [ State_11111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) iffstadeccskAna_1_1111111111111111[color=#808040,
+                                                   process="if fst(adec(c2.1, skA.1))=na.1", issapicrule,
+                                                   role='A_Initiator']:
+   [ State_1111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+  --[ Pred_Not_Eq( fst(adec(c2.1, skA.1)), na.1 ) ]->
+   [ State_11111111111111112( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventINMc_0_11111111111111111[color=#808040,
+                                              process="event IN_M2( c2.1 );", issapicrule,
+                                              role='A_Initiator']:
+   [ State_11111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+  --[ IN_M2( c2.1 ) ]->
+   [ State_111111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventCommitAABnasndadeccskA_0_111111111111111111[color=#808040,
+                                                                 process="event Commit_A( 'A', 'B', na.1, snd(adec(c2.1, skA.1)) );",
+                                                                 issapicrule, role='A_Initiator']:
+   [ State_111111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+  --[ Commit_A( 'A', 'B', na.1, snd(adec(c2.1, skA.1)) ) ]->
+   [ State_1111111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventOUTMaencsndadeccskApkskB_0_1111111111111111111[color=#808040,
+                                                                    process="event OUT_M3( aenc(snd(adec(c2.1, skA.1)), pk(skB.1)) );",
+                                                                    issapicrule, role='A_Initiator']:
+   [ State_1111111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+  --[ OUT_M3( aenc(snd(adec(c2.1, skA.1)), pk(skB.1)) ) ]->
+   [ State_11111111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) outaencsndadeccskApkskB_0_11111111111111111111[color=#808040,
+                                                               process="out(aenc(snd(adec(c2.1, skA.1)), pk(skB.1)));",
+                                                               issapicrule, role='A_Initiator']:
+   [ State_11111111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+  -->
+   [
+   State_111111111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ),
+   Out( aenc(snd(adec(c2.1, skA.1)), pk(skB.1)) )
+   ]
+
+rule (modulo E) p_0_111111111111111111111[color=#808040, process="0",
+                                          issapicrule, role='A_Initiator']:
+   [ State_111111111111111111111( c2.1, na.1, skA.1, skB.1, skC.1 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111111111111112[color=#808040, process="0",
+                                      issapicrule, role='A_Initiator']:
+   [ State_11111111111111112( c2.1, na.1, skA.1, skB.1, skC.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1111111112[color=#ffffff, process="0", issapicrule,
+                               role='Process']:
+   [ State_1111111112( skA.1, skB.1, skC.1 ) ] --> [ ]
+
+rule (modulo E) AInitiatorACskApkskC_0_111111112[color=#ffffff,
+                                                 process="A_Initiator('A', 'C', skA.1, pk(skC.1))",
+                                                 issapicrule, role='Process']:
+   [ State_111111112( skA.1, skB.1, skC.1 ) ]
+  -->
+   [
+   State_1111111121( skA.1, skB.1, skC.1 ),
+   State_1111111122( skA.1, skB.1, skC.1 )
+   ]
+
+rule (modulo E) newna_0_1111111121[color=#808040, process="new na.2;",
+                                   issapicrule, role='A_Initiator']:
+   [ State_1111111121( skA.1, skB.1, skC.1 ), Fr( na.2 ) ]
+  -->
+   [ State_11111111211( skA.1, skB.1, skC.1, na.2 ) ]
+
+rule (modulo E) eventStartAACna_0_11111111211[color=#808040,
+                                              process="event Start_A( 'A', 'C', na.2 );", issapicrule,
+                                              role='A_Initiator']:
+   [ State_11111111211( skA.1, skB.1, skC.1, na.2 ) ]
+  --[ Start_A( 'A', 'C', na.2 ) ]->
+   [ State_111111112111( skA.1, skB.1, skC.1, na.2 ) ]
+
+rule (modulo E) eventSecretACna_0_111111112111[color=#808040,
+                                               process="event Secret( 'A', 'C', na.2 );", issapicrule,
+                                               role='A_Initiator']:
+   [ State_111111112111( skA.1, skB.1, skC.1, na.2 ) ]
+  --[ Secret( 'A', 'C', na.2 ) ]->
+   [ State_1111111121111( skA.1, skB.1, skC.1, na.2 ) ]
+
+rule (modulo E) eventOUTMaencAnapkskC_0_1111111121111[color=#808040,
+                                                      process="event OUT_M1( aenc(<'A', na.2>, pk(skC.1)) );",
+                                                      issapicrule, role='A_Initiator']:
+   [ State_1111111121111( skA.1, skB.1, skC.1, na.2 ) ]
+  --[ OUT_M1( aenc(<'A', na.2>, pk(skC.1)) ) ]->
+   [ State_11111111211111( skA.1, skB.1, skC.1, na.2 ) ]
+
+rule (modulo E) outaencAnapkskC_0_11111111211111[color=#808040,
+                                                 process="out(aenc(<'A', na.2>, pk(skC.1)));", issapicrule,
+                                                 role='A_Initiator']:
+   [ State_11111111211111( skA.1, skB.1, skC.1, na.2 ) ]
+  -->
+   [
+   State_111111112111111( skA.1, skB.1, skC.1, na.2 ),
+   Out( aenc(<'A', na.2>, pk(skC.1)) )
+   ]
+
+rule (modulo E) inc_0_111111112111111[color=#808040, process="in(c2.2);",
+                                      issapicrule, role='A_Initiator']:
+   [ State_111111112111111( skA.1, skB.1, skC.1, na.2 ), In( c2.2 ) ]
+  -->
+   [ State_1111111121111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+
+rule (modulo E) iffstadeccskAna_0_1111111121111111[color=#808040,
+                                                   process="if fst(adec(c2.2, skA.1))=na.2", issapicrule,
+                                                   role='A_Initiator']:
+   [ State_1111111121111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+  --[ Pred_Eq( fst(adec(c2.2, skA.1)), na.2 ) ]->
+   [ State_11111111211111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+
+rule (modulo E) iffstadeccskAna_1_1111111121111111[color=#808040,
+                                                   process="if fst(adec(c2.2, skA.1))=na.2", issapicrule,
+                                                   role='A_Initiator']:
+   [ State_1111111121111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+  --[ Pred_Not_Eq( fst(adec(c2.2, skA.1)), na.2 ) ]->
+   [ State_11111111211111112( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+
+rule (modulo E) eventINMc_0_11111111211111111[color=#808040,
+                                              process="event IN_M2( c2.2 );", issapicrule,
+                                              role='A_Initiator']:
+   [ State_11111111211111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+  --[ IN_M2( c2.2 ) ]->
+   [ State_111111112111111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+
+rule (modulo E) eventCommitAACnasndadeccskA_0_111111112111111111[color=#808040,
+                                                                 process="event Commit_A( 'A', 'C', na.2, snd(adec(c2.2, skA.1)) );",
+                                                                 issapicrule, role='A_Initiator']:
+   [ State_111111112111111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+  --[ Commit_A( 'A', 'C', na.2, snd(adec(c2.2, skA.1)) ) ]->
+   [ State_1111111121111111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+
+rule (modulo E) eventOUTMaencsndadeccskApkskC_0_1111111121111111111[color=#808040,
+                                                                    process="event OUT_M3( aenc(snd(adec(c2.2, skA.1)), pk(skC.1)) );",
+                                                                    issapicrule, role='A_Initiator']:
+   [ State_1111111121111111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+  --[ OUT_M3( aenc(snd(adec(c2.2, skA.1)), pk(skC.1)) ) ]->
+   [ State_11111111211111111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+
+rule (modulo E) outaencsndadeccskApkskC_0_11111111211111111111[color=#808040,
+                                                               process="out(aenc(snd(adec(c2.2, skA.1)), pk(skC.1)));",
+                                                               issapicrule, role='A_Initiator']:
+   [ State_11111111211111111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+  -->
+   [
+   State_111111112111111111111( skA.1, skB.1, skC.1, c2.2, na.2 ),
+   Out( aenc(snd(adec(c2.2, skA.1)), pk(skC.1)) )
+   ]
+
+rule (modulo E) p_0_111111112111111111111[color=#808040, process="0",
+                                          issapicrule, role='A_Initiator']:
+   [ State_111111112111111111111( skA.1, skB.1, skC.1, c2.2, na.2 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111111211111112[color=#808040, process="0",
+                                      issapicrule, role='A_Initiator']:
+   [ State_11111111211111112( skA.1, skB.1, skC.1, c2.2, na.2 ) ] --> [ ]
+
+rule (modulo E) p_0_1111111122[color=#ffffff, process="0", issapicrule,
+                               role='Process']:
+   [ State_1111111122( skA.1, skB.1, skC.1 ) ] --> [ ]
+
+rule (modulo E) BResponderBskBApkskA_0_11111112[color=#ffffff,
+                                                process="B_Responder('B', skB.1, 'A', pk(skA.1))",
+                                                issapicrule, role='Process']:
+   [ State_11111112( skA.1, skB.1, skC.1 ) ]
+  -->
+   [
+   State_111111121( skA.1, skB.1, skC.1 ),
+   State_111111122( skA.1, skB.1, skC.1 )
+   ]
+
+rule (modulo E) inc_0_111111121[color=#804640, process="in(c1.1);",
+                                issapicrule, role='B_Responder']:
+   [ State_111111121( skA.1, skB.1, skC.1 ), In( c1.1 ) ]
+  -->
+   [ State_1111111211( c1.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) iffstadeccskBA_0_1111111211[color=#804640,
+                                            process="if fst(adec(c1.1, skB.1))='A'", issapicrule,
+                                            role='B_Responder']:
+   [ State_1111111211( c1.1, skA.1, skB.1, skC.1 ) ]
+  --[ Pred_Eq( fst(adec(c1.1, skB.1)), 'A' ) ]->
+   [ State_11111112111( c1.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) iffstadeccskBA_1_1111111211[color=#804640,
+                                            process="if fst(adec(c1.1, skB.1))='A'", issapicrule,
+                                            role='B_Responder']:
+   [ State_1111111211( c1.1, skA.1, skB.1, skC.1 ) ]
+  --[ Pred_Not_Eq( fst(adec(c1.1, skB.1)), 'A' ) ]->
+   [ State_11111112112( c1.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) newnb_0_11111112111[color=#804640, process="new nb.1;",
+                                    issapicrule, role='B_Responder']:
+   [ State_11111112111( c1.1, skA.1, skB.1, skC.1 ), Fr( nb.1 ) ]
+  -->
+   [ State_111111121111( c1.1, nb.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventINMc_0_111111121111[color=#804640,
+                                         process="event IN_M1( c1.1 );", issapicrule, role='B_Responder']:
+   [ State_111111121111( c1.1, nb.1, skA.1, skB.1, skC.1 ) ]
+  --[ IN_M1( c1.1 ) ]->
+   [ State_1111111211111( c1.1, nb.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventRunningBBfstadeccskBsndadeccskBnb_0_1111111211111[color=#804640,
+                                                                       process="event Running_B( 'B', fst(adec(c1.1, skB.1)), snd(adec(c1.1, skB.1)),
+           nb.1
+);",
+                                                                       issapicrule, role='B_Responder']:
+   [ State_1111111211111( c1.1, nb.1, skA.1, skB.1, skC.1 ) ]
+  --[
+  Running_B( 'B', fst(adec(c1.1, skB.1)), snd(adec(c1.1, skB.1)), nb.1 )
+  ]->
+   [ State_11111112111111( c1.1, nb.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventSecretBfstadeccskBnb_0_11111112111111[color=#804640,
+                                                           process="event Secret( 'B', fst(adec(c1.1, skB.1)), nb.1 );",
+                                                           issapicrule, role='B_Responder']:
+   [ State_11111112111111( c1.1, nb.1, skA.1, skB.1, skC.1 ) ]
+  --[ Secret( 'B', fst(adec(c1.1, skB.1)), nb.1 ) ]->
+   [ State_111111121111111( c1.1, nb.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventOUTMaencsndadeccskBnbpkskA_0_111111121111111[color=#804640,
+                                                                  process="event OUT_M2( aenc(<snd(adec(c1.1, skB.1)), nb.1>, pk(skA.1)) );",
+                                                                  issapicrule, role='B_Responder']:
+   [ State_111111121111111( c1.1, nb.1, skA.1, skB.1, skC.1 ) ]
+  --[ OUT_M2( aenc(<snd(adec(c1.1, skB.1)), nb.1>, pk(skA.1)) ) ]->
+   [ State_1111111211111111( c1.1, nb.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) outaencsndadeccskBnbpkskA_0_1111111211111111[color=#804640,
+                                                             process="out(aenc(<snd(adec(c1.1, skB.1)), nb.1>, pk(skA.1)));",
+                                                             issapicrule, role='B_Responder']:
+   [ State_1111111211111111( c1.1, nb.1, skA.1, skB.1, skC.1 ) ]
+  -->
+   [
+   State_11111112111111111( c1.1, nb.1, skA.1, skB.1, skC.1 ),
+   Out( aenc(<snd(adec(c1.1, skB.1)), nb.1>, pk(skA.1)) )
+   ]
+
+rule (modulo E) inc_0_11111112111111111[color=#804640,
+                                        process="in(c3.1);", issapicrule, role='B_Responder']:
+   [ State_11111112111111111( c1.1, nb.1, skA.1, skB.1, skC.1 ), In( c3.1 )
+   ]
+  -->
+   [ State_111111121111111111( c1.1, c3.1, nb.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) ifadeccskBnb_0_111111121111111111[color=#804640,
+                                                  process="if adec(c3.1, skB.1)=nb.1", issapicrule,
+                                                  role='B_Responder']:
+   [ State_111111121111111111( c1.1, c3.1, nb.1, skA.1, skB.1, skC.1 ) ]
+  --[ Pred_Eq( adec(c3.1, skB.1), nb.1 ) ]->
+   [ State_1111111211111111111( c1.1, c3.1, nb.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) ifadeccskBnb_1_111111121111111111[color=#804640,
+                                                  process="if adec(c3.1, skB.1)=nb.1", issapicrule,
+                                                  role='B_Responder']:
+   [ State_111111121111111111( c1.1, c3.1, nb.1, skA.1, skB.1, skC.1 ) ]
+  --[ Pred_Not_Eq( adec(c3.1, skB.1), nb.1 ) ]->
+   [ State_1111111211111111112( c1.1, c3.1, nb.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventINMc_0_1111111211111111111[color=#804640,
+                                                process="event IN_M3( c3.1 );", issapicrule,
+                                                role='B_Responder']:
+   [ State_1111111211111111111( c1.1, c3.1, nb.1, skA.1, skB.1, skC.1 ) ]
+  --[ IN_M3( c3.1 ) ]->
+   [ State_11111112111111111111( c1.1, c3.1, nb.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) eventCommitBBfstadeccskBsndadeccskBnb_0_11111112111111111111[color=#804640,
+                                                                             process="event Commit_B( 'B', fst(adec(c1.1, skB.1)), snd(adec(c1.1, skB.1)), nb.1
+);",
+                                                                             issapicrule, role='B_Responder']:
+   [ State_11111112111111111111( c1.1, c3.1, nb.1, skA.1, skB.1, skC.1 ) ]
+  --[ Commit_B( 'B', fst(adec(c1.1, skB.1)), snd(adec(c1.1, skB.1)), nb.1 )
+  ]->
+   [ State_111111121111111111111( c1.1, c3.1, nb.1, skA.1, skB.1, skC.1 ) ]
+
+rule (modulo E) p_0_111111121111111111111[color=#804640, process="0",
+                                          issapicrule, role='B_Responder']:
+   [ State_111111121111111111111( c1.1, c3.1, nb.1, skA.1, skB.1, skC.1 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111111211111111112[color=#804640, process="0",
+                                        issapicrule, role='B_Responder']:
+   [ State_1111111211111111112( c1.1, c3.1, nb.1, skA.1, skB.1, skC.1 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111112112[color=#804640, process="0", issapicrule,
+                                role='B_Responder']:
+   [ State_11111112112( c1.1, skA.1, skB.1, skC.1 ) ] --> [ ]
+
+rule (modulo E) p_0_111111122[color=#ffffff, process="0", issapicrule,
+                              role='Process']:
+   [ State_111111122( skA.1, skB.1, skC.1 ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/* All wellformedness checks were successful. */
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

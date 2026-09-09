@@ -1,0 +1,80 @@
+theory NSPK
+begin
+
+builtins: asymmetric-encryption
+
+let A_Initiator(actor, peer, sk_actor, pk_peer) =
+  new na;
+  let m1 = aenc(<actor, na>, pk_peer) in
+  event Start_A(actor, peer, na);
+  event Secret(actor, peer, na);
+  event OUT_M1(m1);
+  out(m1);
+  in(c2);
+  let p2 = adec(c2, sk_actor) in
+  let na_m2 = fst(p2) in
+  let nb_m2 = snd(p2) in
+  if na_m2 = na then (
+    let m3 = aenc(nb_m2, pk_peer) in
+    event IN_M2(c2);
+    event Commit_A(actor, peer, na, nb_m2);
+    event OUT_M3(m3);
+    out(m3)
+  )
+
+let B_Responder(responder, sk_resp, peer_expected, pk_peer) =
+  in(c1);
+  let p1 = adec(c1, sk_resp) in
+  let peer_recv = fst(p1) in
+  let na_recv = snd(p1) in
+  if peer_recv = peer_expected then (
+    new nb;
+    let m2 = aenc(<na_recv, nb>, pk_peer) in
+    event IN_M1(c1);
+    event Running_B(responder, peer_recv, na_recv, nb);
+    event Secret(responder, peer_recv, nb);
+    event OUT_M2(m2);
+    out(m2);
+    in(c3);
+    let nb_recv = adec(c3, sk_resp) in
+    if nb_recv = nb then (
+      event IN_M3(c3);
+      event Commit_B(responder, peer_recv, na_recv, nb)
+    )
+  )
+
+process:
+  new skA;
+  new skB;
+  new skC;
+  let pkA = pk(skA) in
+  let pkB = pk(skB) in
+  let pkC = pk(skC) in
+  out(pkA);
+  out(pkB);
+  out(pkC);
+  out(skC);
+  (
+    A_Initiator('A', 'B', skA, pkB)
+    |
+    A_Initiator('A', 'C', skA, pkC)
+    |
+    B_Responder('B', skB, 'A', pkA)
+  )
+
+lemma AUTO_typing [sources]:
+  "(All M #i. IN_M1(M) @ #i ==> ((Ex #j. OUT_M1(M) @ #j & #j < #i) | (Ex #k. KU(M) @ #k & #k < #i))) &
+   (All M #i. IN_M2(M) @ #i ==> ((Ex #j. OUT_M2(M) @ #j & #j < #i) | (Ex #k. KU(M) @ #k & #k < #i))) &
+   (All M #i. IN_M3(M) @ #i ==> ((Ex #j. OUT_M3(M) @ #j & #j < #i) | (Ex #k. KU(M) @ #k & #k < #i)))"
+
+lemma nonce_secrecy:
+  "All Actor Peer N #i. Secret(Actor, Peer, N) @ #i ==> not (Ex #j. K(N) @ #j)"
+
+lemma injective_agree:
+  "All Resp Init Na Nb #i. Commit_B(Resp, Init, Na, Nb) @ #i ==> ((Ex #j. Commit_A(Init, Resp, Na, Nb) @ #j & #j < #i) & (Ex #k. Running_B(Resp, Init, Na, Nb) @ #k & #k < #i) & (Ex #l. Start_A(Init, Resp, Na) @ #l & #l < #i) & (All #i2. Commit_B(Resp, Init, Na, Nb) @ #i2 ==> #i2 = #i))"
+
+lemma session_key_setup_possible:
+  exists-trace
+  "Ex Init Resp Na Nb #i #j. Commit_A(Init, Resp, Na, Nb) @ #i & Commit_B(Resp, Init, Na, Nb) @ #j & #i < #j"
+
+end

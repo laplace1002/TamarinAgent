@@ -1,0 +1,139 @@
+theory Kao_Chow
+begin
+
+builtins: symmetric-encryption
+
+let Initiator(aid,bid,kas) =
+  new na;
+  let m1 = <aid,bid,na> in
+  event Start_A(aid,bid,na);
+  event OUT_M1(m1);
+  out(m1);
+  in(m3_recv);
+  let cred_a_recv = fst(m3_recv) in
+  let m3_tail = snd(m3_recv) in
+  let enc_na_recv = fst(m3_tail) in
+  let nb_recv = snd(m3_tail) in
+  let expected_m3 = <cred_a_recv,enc_na_recv,nb_recv> in
+  if m3_recv = expected_m3 then
+    (
+      let plain_a = sdec(cred_a_recv, kas) in
+      let a_cred = fst(plain_a) in
+      let plain_a_tail1 = snd(plain_a) in
+      let b_cred = fst(plain_a_tail1) in
+      let plain_a_tail2 = snd(plain_a_tail1) in
+      let na_cred = fst(plain_a_tail2) in
+      let kab = snd(plain_a_tail2) in
+      let expected_plain_a = <a_cred,b_cred,na_cred,kab> in
+      if plain_a = expected_plain_a then
+        (
+          let na_check = sdec(enc_na_recv, kab) in
+          if a_cred = aid then
+            (
+              if b_cred = bid then
+                (
+                  if na_cred = na then
+                    (
+                      if na_check = na then
+                        (
+                          event IN_M3(m3_recv);
+                          event Commit_A(aid,bid,na,nb_recv,kab);
+                          event Running_A(aid,bid,na,nb_recv,kab);
+                          let m4 = senc(nb_recv,kab) in
+                          event OUT_M4(m4);
+                          out(m4)
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+let Server(sid,kas,kbs) =
+  in(<a_req,b_req,na_req>);
+  let m1 = <a_req,b_req,na_req> in
+  event IN_M1(m1);
+  new kab;
+  let payload = <a_req,b_req,na_req,kab> in
+  let cred_a = senc(payload,kas) in
+  let cred_b = senc(payload,kbs) in
+  let m2 = <cred_a,cred_b> in
+  event Server_Issue(sid,a_req,b_req,na_req,kab);
+  event Secret(a_req,b_req,kab);
+  event OUT_M2(m2);
+  out(m2)
+
+let Responder(bid,kbs) =
+  in(m2_recv);
+  let cred_a_recv = fst(m2_recv) in
+  let cred_b_recv = snd(m2_recv) in
+  let expected_m2 = <cred_a_recv,cred_b_recv> in
+  if m2_recv = expected_m2 then
+    (
+      let plain_b = sdec(cred_b_recv,kbs) in
+      let a_cred = fst(plain_b) in
+      let plain_b_tail1 = snd(plain_b) in
+      let b_cred = fst(plain_b_tail1) in
+      let plain_b_tail2 = snd(plain_b_tail1) in
+      let na_recv = fst(plain_b_tail2) in
+      let kab = snd(plain_b_tail2) in
+      let expected_plain_b = <a_cred,b_cred,na_recv,kab> in
+      if plain_b = expected_plain_b then
+        (
+          if b_cred = bid then
+            (
+              event IN_M2(m2_recv);
+              new nb;
+              let enc_na = senc(na_recv,kab) in
+              let m3 = <cred_a_recv, enc_na, nb> in
+              event Running_B(a_cred,bid,na_recv,nb,kab);
+              event OUT_M3(m3);
+              out(m3);
+              in(m4_recv);
+              let nb_check = sdec(m4_recv,kab) in
+              if nb_check = nb then
+                (
+                  event IN_M4(m4_recv);
+                  event Commit_B(a_cred,bid,na_recv,nb,kab)
+                )
+            )
+        )
+    )
+
+process:
+  new kas;
+  new kbs;
+  let aid = 'A' in
+  let bid = 'B' in
+  let sid = 'S' in
+  (
+    Initiator(aid,bid,kas)
+    |
+    Server(sid,kas,kbs)
+    |
+    Responder(bid,kbs)
+  )
+
+lemma AUTO_typing [sources]:
+  "(All m #i. IN_M1(m) @ #i ==> ((Ex #j. OUT_M1(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) & (All m #i. IN_M2(m) @ #i ==> ((Ex #j. OUT_M2(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) & (All m #i. IN_M3(m) @ #i ==> ((Ex #j. OUT_M3(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) & (All m #i. IN_M4(m) @ #i ==> ((Ex #j. OUT_M4(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i)))"
+
+lemma executability:
+  exists-trace
+  "Ex na nb kab #i #j #k #l #m #n. Start_A('A','B',na) @ #i & Server_Issue('S','A','B',na,kab) @ #j & Running_B('A','B',na,nb,kab) @ #k & Commit_A('A','B',na,nb,kab) @ #l & Running_A('A','B',na,nb,kab) @ #m & Commit_B('A','B',na,nb,kab) @ #n & #i < #j & #j < #k & #k < #l & #k < #m & #l < #n & #m < #n"
+
+lemma secrecy:
+  "All a b kab #i. Secret(a,b,kab) @ #i ==> not (Ex #j. K(kab) @ #j)"
+
+lemma noninjectiveagreement_B:
+  "All a b na nb kab #i. Commit_B(a,b,na,nb,kab) @ #i ==> (Ex #j. Running_A(a,b,na,nb,kab) @ #j & #j < #i)"
+
+lemma noninjectiveagreement_A:
+  "All a b na nb kab #i. Commit_A(a,b,na,nb,kab) @ #i ==> (Ex #j. Running_B(a,b,na,nb,kab) @ #j & #j < #i)"
+
+lemma injectiveagreement_B:
+  "All a b na nb kab #i. Commit_B(a,b,na,nb,kab) @ #i ==> (Ex #j. Running_A(a,b,na,nb,kab) @ #j & #j < #i & (All #j2. Running_A(a,b,na,nb,kab) @ #j2 ==> #j2 = #j) & (All #i2. Commit_B(a,b,na,nb,kab) @ #i2 ==> #i2 = #i))"
+
+lemma injectiveagreement_A:
+  "All a b na nb kab #i. Commit_A(a,b,na,nb,kab) @ #i ==> (Ex #j. Running_B(a,b,na,nb,kab) @ #j & #j < #i & (All #j2. Running_B(a,b,na,nb,kab) @ #j2 ==> #j2 = #j) & (All #i2. Commit_A(a,b,na,nb,kab) @ #i2 ==> #i2 = #i))"
+
+end

@@ -1,0 +1,139 @@
+theory Otway_Rees
+begin
+builtins: symmetric-encryption
+
+let InitiatorA(a, b, s, kas) =
+  new sid;
+  new na;
+  let reqA = <na, sid, a, b> in
+  let ticketA = senc(reqA, kas) in
+  let m1 = <sid, a, b, ticketA> in
+  event A_Start(a, b, sid, na);
+  event Running_A(a, b, sid, na);
+  event OUT_Message(m1);
+  event OUT_M1(m1);
+  out(m1);
+  in(<sid4_recv, respA_recv>);
+  if sid4_recv = sid then (
+    let plainA = sdec(respA_recv, kas) in
+    let na_resp = fst(plainA) in
+    let kab = snd(plainA) in
+    if na_resp = na then (
+      let m4_recv = <sid, respA_recv> in
+      event IN_Message(m4_recv);
+      event IN_M4(m4_recv);
+      event A_Accept(a, b, s, sid, na, kab);
+      event Commit_A(a, b, s, sid, na, kab)
+    )
+  )
+
+let ResponderB(b, s, kbs) =
+  in(<sid_recv, a_recv, b_recv, ticketA_recv>);
+  if b_recv = b then (
+    let m1_recv = <sid_recv, a_recv, b, ticketA_recv> in
+    event IN_Message(m1_recv);
+    event IN_M1(m1_recv);
+    new nb;
+    let reqB = <nb, sid_recv, a_recv, b> in
+    let ticketB = senc(reqB, kbs) in
+    let m2 = <sid_recv, a_recv, b, ticketA_recv, ticketB> in
+    event B_Start(b, a_recv, sid_recv, nb);
+    event Running_B(b, a_recv, s, sid_recv, nb);
+    event OUT_Message(m2);
+    event OUT_M2(m2);
+    out(m2);
+    in(<sid3_recv, respA_recv, respB_recv>);
+    if sid3_recv = sid_recv then (
+      let plainB = sdec(respB_recv, kbs) in
+      let nb_resp = fst(plainB) in
+      let kab = snd(plainB) in
+      if nb_resp = nb then (
+        let m3_recv = <sid_recv, respA_recv, respB_recv> in
+        event IN_Message(m3_recv);
+        event IN_M3(m3_recv);
+        event B_Accept(b, a_recv, s, sid_recv, nb, kab);
+        event Commit_B(b, a_recv, s, sid_recv, nb, kab);
+        let m4 = <sid_recv, respA_recv> in
+        event OUT_Message(m4);
+        event OUT_M4(m4);
+        out(m4)
+      )
+    )
+  )
+
+let ServerS(s, kas, kbs) =
+  in(<sid_recv, a_recv, b_recv, ticketA_recv, ticketB_recv>);
+  let reqA = sdec(ticketA_recv, kas) in
+  let na_from_a = fst(reqA) in
+  let reqA_tail1 = snd(reqA) in
+  let sid_from_a = fst(reqA_tail1) in
+  let reqA_tail2 = snd(reqA_tail1) in
+  let a_from_a = fst(reqA_tail2) in
+  let b_from_a = snd(reqA_tail2) in
+  let reqB = sdec(ticketB_recv, kbs) in
+  let nb_from_b = fst(reqB) in
+  let reqB_tail1 = snd(reqB) in
+  let sid_from_b = fst(reqB_tail1) in
+  let reqB_tail2 = snd(reqB_tail1) in
+  let a_from_b = fst(reqB_tail2) in
+  let b_from_b = snd(reqB_tail2) in
+  if sid_from_a = sid_recv then (
+    if sid_from_b = sid_recv then (
+      if a_from_a = a_recv then (
+        if a_from_b = a_recv then (
+          if b_from_a = b_recv then (
+            if b_from_b = b_recv then (
+              let m2_recv = <sid_recv, a_recv, b_recv, ticketA_recv, ticketB_recv> in
+              event IN_Message(m2_recv);
+              event IN_M2(m2_recv);
+              new kab;
+              let respA = senc(<na_from_a, kab>, kas) in
+              let respB = senc(<nb_from_b, kab>, kbs) in
+              let m3 = <sid_recv, respA, respB> in
+              event S_Generate(s, a_recv, b_recv, sid_recv, na_from_a, nb_from_b, kab);
+              event Running_S(s, a_recv, b_recv, sid_recv, na_from_a, nb_from_b, kab);
+              event Commit_S(s, a_recv, b_recv, sid_recv, na_from_a, nb_from_b, kab);
+              event Secret(a_recv, b_recv, kab);
+              event OUT_Message(m3);
+              event OUT_M3(m3);
+              out(m3)
+            )
+          )
+        )
+      )
+    )
+  )
+
+process:
+  new kas;
+  new kbs;
+  (!InitiatorA('A', 'B', 'S', kas) | !ResponderB('B', 'S', kbs) | !ServerS('S', kas, kbs))
+
+lemma Secrecy:
+  "All a b kab #t. Secret(a, b, kab) @ t ==> not (Ex #k. K(kab) @ k)"
+
+lemma injectiveagreement_B:
+  "All b a s sid nb kab #t. Commit_B(b, a, s, sid, nb, kab) @ t ==> (Ex na #rs #as. Running_S(s, a, b, sid, na, nb, kab) @ rs & A_Start(a, b, sid, na) @ as & as < rs & rs < t & (All #t2. Commit_B(b, a, s, sid, nb, kab) @ t2 ==> #t2 = #t))"
+
+lemma agreement_B:
+  "All b a s sid nb kab #t. Commit_B(b, a, s, sid, nb, kab) @ t ==> (Ex na #rs #as. Running_S(s, a, b, sid, na, nb, kab) @ rs & A_Start(a, b, sid, na) @ as & as < rs & rs < t)"
+
+lemma injectiveagreement_A:
+  "All a b s sid na kab #t. Commit_A(a, b, s, sid, na, kab) @ t ==> (Ex nb #rs #ba. Running_S(s, a, b, sid, na, nb, kab) @ rs & B_Accept(b, a, s, sid, nb, kab) @ ba & rs < ba & ba < t & (All #t2. Commit_A(a, b, s, sid, na, kab) @ t2 ==> #t2 = #t))"
+
+lemma agreement_A:
+  "All a b s sid na kab #t. Commit_A(a, b, s, sid, na, kab) @ t ==> (Ex nb #rs #ba. Running_S(s, a, b, sid, na, nb, kab) @ rs & B_Accept(b, a, s, sid, nb, kab) @ ba & rs < ba & ba < t)"
+
+lemma injectiveagreement_S:
+  "All s a b sid na nb kab #t. Commit_S(s, a, b, sid, na, nb, kab) @ t ==> (Ex #ra #rb. Running_A(a, b, sid, na) @ ra & Running_B(b, a, s, sid, nb) @ rb & ra < t & rb < t & (All kab2 #t2. Commit_S(s, a, b, sid, na, nb, kab2) @ t2 ==> #t2 = #t))"
+
+lemma agreement_S:
+  "All s a b sid na nb kab #t. Commit_S(s, a, b, sid, na, nb, kab) @ t ==> (Ex #ra #rb. Running_A(a, b, sid, na) @ ra & Running_B(b, a, s, sid, nb) @ rb & ra < t & rb < t)"
+
+lemma executability:
+  exists-trace
+  "Ex a b s sid na nb kab #i #j #k #l. A_Start(a, b, sid, na) @ i & S_Generate(s, a, b, sid, na, nb, kab) @ j & B_Accept(b, a, s, sid, nb, kab) @ k & A_Accept(a, b, s, sid, na, kab) @ l & i < j & j < k & k < l"
+
+lemma AUTO_typing [sources]:
+  "(All m #i. IN_Message(m) @ i ==> ((Ex #j. OUT_Message(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i))) & (All m #i. IN_M1(m) @ i ==> ((Ex #j. OUT_M1(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i))) & (All m #i. IN_M2(m) @ i ==> ((Ex #j. OUT_M2(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i))) & (All m #i. IN_M3(m) @ i ==> ((Ex #j. OUT_M3(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i))) & (All m #i. IN_M4(m) @ i ==> ((Ex #j. OUT_M4(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i)))"
+end

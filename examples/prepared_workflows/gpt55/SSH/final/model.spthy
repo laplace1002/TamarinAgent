@@ -1,0 +1,141 @@
+theory SSH
+begin
+
+builtins: diffie-hellman, hashing, signing, symmetric-encryption
+functions: HASH/1, kdf_initial/4, kdf_extend/3, take_prefix/2
+
+let HonestVerified(c,s,host_ltk,pks) =
+  new vc;
+  new ic;
+  out(<vc,ic>);
+  new vs;
+  new i_s;
+  out(<vs,i_s>);
+  event Context_C(c,s,vc,vs,ic,i_s);
+  event Context_S(s,c,vc,vs,ic,i_s);
+  new x;
+  let e = 'g'^x in
+  event ClientEphemeralSent(c,s,e,vc,vs,ic,i_s);
+  out(e);
+  new y;
+  let f = 'g'^y in
+  let k_s = e^y in
+  let h_s = HASH(<vc,vs,ic,i_s,pks,e,f,k_s>) in
+  let sig_s = sign(h_s,host_ltk) in
+  event Running_S(s,c,h_s,k_s,pks,e,f);
+  event ServerSendsSignedExchange(s,c,h_s,k_s,pks,e,f);
+  out(<pks,f,sig_s>);
+  let session_id_s = h_s in
+  let iv_c2s_s = kdf_initial(k_s,h_s,'A',session_id_s) in
+  let iv_s2c_s = kdf_initial(k_s,h_s,'B',session_id_s) in
+  let enc_c2s_s = kdf_initial(k_s,h_s,'C',session_id_s) in
+  let enc_s2c_s = kdf_initial(k_s,h_s,'D',session_id_s) in
+  let mac_c2s_s = kdf_initial(k_s,h_s,'E',session_id_s) in
+  let mac_s2c_s = kdf_initial(k_s,h_s,'F',session_id_s) in
+  let kdf_material_s = kdf_initial(k_s,h_s,'M',session_id_s) in
+  event ServerKeysDerived(s,c,k_s,h_s,session_id_s,iv_c2s_s,iv_s2c_s,enc_c2s_s,enc_s2c_s,mac_c2s_s,mac_s2c_s);
+  event Secret_S(s,c,k_s,h_s,session_id_s,kdf_material_s);
+  event ServerFinishedKeyExchange(s,c,h_s,k_s,e,f);
+  let ks_recv = pks in
+  let f_recv = f in
+  let sig_recv = sig_s in
+  let k_c = k_s in
+  let h_c = HASH(<vc,vs,ic,i_s,ks_recv,e,f_recv,k_c>) in
+  if ks_recv = pks then (
+    if verify(sig_recv,h_c,ks_recv) = true then (
+      let session_id_c = h_c in
+      let iv_c2s_c = kdf_initial(k_c,h_c,'A',session_id_c) in
+      let iv_s2c_c = kdf_initial(k_c,h_c,'B',session_id_c) in
+      let enc_c2s_c = kdf_initial(k_c,h_c,'C',session_id_c) in
+      let enc_s2c_c = kdf_initial(k_c,h_c,'D',session_id_c) in
+      let mac_c2s_c = kdf_initial(k_c,h_c,'E',session_id_c) in
+      let mac_s2c_c = kdf_initial(k_c,h_c,'F',session_id_c) in
+      let kdf_material_c = kdf_initial(k_c,h_c,'M',session_id_c) in
+      event ClientAcceptVerified(c,s,k_c,h_c,session_id_c,ks_recv);
+      event ClientKeysDerived(c,s,k_c,h_c,session_id_c,iv_c2s_c,iv_s2c_c,enc_c2s_c,enc_s2c_c,mac_c2s_c,mac_s2c_c);
+      event Secret_C(c,s,k_c,h_c,session_id_c,kdf_material_c,'verified_hostkey');
+      event Commit_C_ServerAuth(c,s,h_c,k_c,session_id_c,ks_recv)
+    )
+  )
+
+let ClientUnverified(c,s) =
+  new vc;
+  new ic;
+  out(<vc,ic>);
+  in(<vs,i_s>);
+  event Context_C(c,s,vc,vs,ic,i_s);
+  new x;
+  let e = 'g'^x in
+  event ClientEphemeralSent(c,s,e,vc,vs,ic,i_s);
+  out(e);
+  in(<ks_recv,f_recv,sig_recv>);
+  let k_c = f_recv^x in
+  let h_c = HASH(<vc,vs,ic,i_s,ks_recv,e,f_recv,k_c>) in
+  if verify(sig_recv,h_c,ks_recv) = true then (
+    let session_id = h_c in
+    let iv_c2s = kdf_initial(k_c,h_c,'A',session_id) in
+    let iv_s2c = kdf_initial(k_c,h_c,'B',session_id) in
+    let enc_c2s = kdf_initial(k_c,h_c,'C',session_id) in
+    let enc_s2c = kdf_initial(k_c,h_c,'D',session_id) in
+    let mac_c2s = kdf_initial(k_c,h_c,'E',session_id) in
+    let mac_s2c = kdf_initial(k_c,h_c,'F',session_id) in
+    let kdf_material = kdf_initial(k_c,h_c,'M',session_id) in
+    event ClientAcceptUnverified(c,s,k_c,h_c,session_id,ks_recv);
+    event ClientKeysDerived(c,s,k_c,h_c,session_id,iv_c2s,iv_s2c,enc_c2s,enc_s2c,mac_c2s,mac_s2c);
+    event Secret_C(c,s,k_c,h_c,session_id,kdf_material,'unverified_hostkey')
+  )
+
+process:
+  new host_ltkS;
+  let pks = pk(host_ltkS) in
+  new attacker_ltk;
+  let attacker_pk = pk(attacker_ltk) in
+  out(pks);
+  out(attacker_ltk);
+  out(attacker_pk);
+  (HonestVerified('C','S',host_ltkS,pks) + ClientUnverified('C','S'))
+
+lemma secretP:
+  "All c s k hval sid kmat #i.
+    Secret_C(c,s,k,hval,sid,kmat,'verified_hostkey') @ #i
+    ==>
+    (not (Ex #j. K(k) @ #j)
+     & not (Ex #j. K(hval) @ #j)
+     & not (Ex #j. K(sid) @ #j)
+     & not (Ex #j. K(kmat) @ #j))"
+
+lemma injPS:
+  "All c s hval k sid pks #i.
+    Commit_C_ServerAuth(c,s,hval,k,sid,pks) @ #i
+    ==>
+    (Ex e f #j.
+      ServerSendsSignedExchange(s,c,hval,k,pks,e,f) @ #j
+      & #j < #i
+      & (All #i2. Commit_C_ServerAuth(c,s,hval,k,sid,pks) @ #i2 ==> #i2 = #i))"
+
+lemma injSP:
+  "All s c hval k e f #i.
+    ServerFinishedKeyExchange(s,c,hval,k,e,f) @ #i
+    ==>
+    (Ex vc vs ic isval #j.
+      ClientEphemeralSent(c,s,e,vc,vs,ic,isval) @ #j
+      & #j < #i
+      & (All #i2. ServerFinishedKeyExchange(s,c,hval,k,e,f) @ #i2 ==> #i2 = #i))"
+
+lemma secretS:
+  "All s c k hval sid kmat #i.
+    Secret_S(s,c,k,hval,sid,kmat) @ #i
+    ==>
+    (not (Ex #j. K(k) @ #j)
+     & not (Ex #j. K(hval) @ #j)
+     & not (Ex #j. K(sid) @ #j)
+     & not (Ex #j. K(kmat) @ #j))"
+
+lemma executableS2:
+  exists-trace
+  "Ex c s k hval sid iv_c2s iv_s2c enc_c2s enc_s2c mac_c2s mac_s2c #i #j.
+    ServerKeysDerived(s,c,k,hval,sid,iv_c2s,iv_s2c,enc_c2s,enc_s2c,mac_c2s,mac_s2c) @ #i
+    & ClientKeysDerived(c,s,k,hval,sid,iv_c2s,iv_s2c,enc_c2s,enc_s2c,mac_c2s,mac_s2c) @ #j
+    & #i < #j"
+
+end

@@ -1,0 +1,2139 @@
+theory SPLICE
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: adec/2, aenc/2, fst/1, pair/2, pk/1, plus1/1, privenc/2,
+           pubdec/2, sign/2, snd/1, true/0, valid_lifetime/2, verify/3
+equations:
+    adec(aenc(x.1, pk(x.2)), x.2) = x.1,
+    fst(<x.1, x.2>) = x.1,
+    pubdec(privenc(m, sk), pk(sk)) = m,
+    snd(<x.1, x.2>) = x.2,
+    verify(sign(x.1, x.2), x.1, pk(x.2)) = true
+
+heuristic: p
+
+lemma executability:
+  exists-trace
+  "∃ C S id ts life #i #j #k #l.
+    ((((((C_RequestServerKey( C, S, id ) @ #i) ∧
+         (C_SendAuthenticator( C, S, id, ts, life ) @ #j)) ∧
+        (S_AcceptsClient( S, C, id, ts, life ) @ #k)) ∧
+       (C_AcceptsServer( C, S, id ) @ #l)) ∧
+      (#i < #j)) ∧
+     (#j < #k)) ∧
+    (#k < #l)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ C S id ts life #i #j #k #l.
+  (C_RequestServerKey( C, S, id ) @ #i) ∧
+  (C_SendAuthenticator( C, S, id, ts, life ) @ #j) ∧
+  (S_AcceptsClient( S, C, id, ts, life ) @ #k) ∧
+  (C_AcceptsServer( C, S, id ) @ #l)
+ ∧
+  (#i < #j) ∧ (#j < #k) ∧ (#k < #l)"
+*/
+by sorry
+
+lemma Secrecy:
+  all-traces
+  "¬(∃ C S id #i #j. (Secret( C, S, id ) @ #i) ∧ (K( id ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ C S id #i #j. (Secret( C, S, id ) @ #i) ∧ (K( id ) @ #j)"
+*/
+by sorry
+
+lemma injectiveagreement_B:
+  all-traces
+  "∀ S C id #i.
+    (Commit_B( S, C, id ) @ #i) ⇒
+    ((∃ #j. (Running_A( C, S, id ) @ #j) ∧ (#j < #i)) ∧
+     (∀ #i2. (Commit_B( S, C, id ) @ #i2) ⇒ (#i2 = #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ S C id #i.
+  (Commit_B( S, C, id ) @ #i)
+ ∧
+  ((∀ #j. (Running_A( C, S, id ) @ #j) ⇒ ¬(#j < #i)) ∨
+   (∃ #i2. (Commit_B( S, C, id ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+by sorry
+
+lemma agreement_B:
+  all-traces
+  "∀ S C id #i.
+    (Commit_B( S, C, id ) @ #i) ⇒
+    (∃ #j. (Running_A( C, S, id ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ S C id #i.
+  (Commit_B( S, C, id ) @ #i)
+ ∧
+  ∀ #j. (Running_A( C, S, id ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma injectiveagreement_A:
+  all-traces
+  "∀ C S id #i.
+    (Commit_A( C, S, id ) @ #i) ⇒
+    ((∃ #j. (Running_B( S, C, id ) @ #j) ∧ (#j < #i)) ∧
+     (∀ #i2. (Commit_A( C, S, id ) @ #i2) ⇒ (#i2 = #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ C S id #i.
+  (Commit_A( C, S, id ) @ #i)
+ ∧
+  ((∀ #j. (Running_B( S, C, id ) @ #j) ⇒ ¬(#j < #i)) ∨
+   (∃ #i2. (Commit_A( C, S, id ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+by sorry
+
+lemma agreement_A:
+  all-traces
+  "∀ C S id #i.
+    (Commit_A( C, S, id ) @ #i) ⇒
+    (∃ #j. (Running_B( S, C, id ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ C S id #i.
+  (Commit_A( C, S, id ) @ #i)
+ ∧
+  ∀ #j. (Running_B( S, C, id ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma AUTO_typing [sources]:
+  all-traces
+  "(((((∀ m #i.
+         (IN_M2a_C_AS_ServerKeyRequest( m ) @ #i) ⇒
+         ((∃ #j. (OUT_M2a_C_AS_ServerKeyRequest( m ) @ #j) ∧ (#j < #i)) ∨
+          (∃ #k. (!KU( m ) @ #k) ∧ (#k < #i)))) ∧
+       (∀ m #i.
+         (IN_M2b_AS_C_ServerKeyReply( m ) @ #i) ⇒
+         ((∃ #j. (OUT_M2b_AS_C_ServerKeyReply( m ) @ #j) ∧ (#j < #i)) ∨
+          (∃ #k. (!KU( m ) @ #k) ∧ (#k < #i))))) ∧
+      (∀ m #i.
+        (IN_M2c_C_S_Authenticator( m ) @ #i) ⇒
+        ((∃ #j. (OUT_M2c_C_S_Authenticator( m ) @ #j) ∧ (#j < #i)) ∨
+         (∃ #k. (!KU( m ) @ #k) ∧ (#k < #i))))) ∧
+     (∀ m #i.
+       (IN_M2d_S_AS_ClientKeyRequest( m ) @ #i) ⇒
+       ((∃ #j. (OUT_M2d_S_AS_ClientKeyRequest( m ) @ #j) ∧ (#j < #i)) ∨
+        (∃ #k. (!KU( m ) @ #k) ∧ (#k < #i))))) ∧
+    (∀ m #i.
+      (IN_M2e_AS_S_ClientKeyReply( m ) @ #i) ⇒
+      ((∃ #j. (OUT_M2e_AS_S_ClientKeyReply( m ) @ #j) ∧ (#j < #i)) ∨
+       (∃ #k. (!KU( m ) @ #k) ∧ (#k < #i))))) ∧
+   (∀ m #i.
+     (IN_M2f_S_C_ReturnIdPlusOne( m ) @ #i) ⇒
+     ((∃ #j. (OUT_M2f_S_C_ReturnIdPlusOne( m ) @ #j) ∧ (#j < #i)) ∨
+      (∃ #k. (!KU( m ) @ #k) ∧ (#k < #i))))"
+/*
+guarded formula characterizing all counter-examples:
+"((∃ m #i.
+    (IN_M2a_C_AS_ServerKeyRequest( m ) @ #i)
+   ∧
+    (∀ #j. (OUT_M2a_C_AS_ServerKeyRequest( m ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( m ) @ #k) ⇒ ¬(#k < #i))) ∨
+  (∃ m #i.
+    (IN_M2b_AS_C_ServerKeyReply( m ) @ #i)
+   ∧
+    (∀ #j. (OUT_M2b_AS_C_ServerKeyReply( m ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( m ) @ #k) ⇒ ¬(#k < #i))) ∨
+  (∃ m #i.
+    (IN_M2c_C_S_Authenticator( m ) @ #i)
+   ∧
+    (∀ #j. (OUT_M2c_C_S_Authenticator( m ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( m ) @ #k) ⇒ ¬(#k < #i))) ∨
+  (∃ m #i.
+    (IN_M2d_S_AS_ClientKeyRequest( m ) @ #i)
+   ∧
+    (∀ #j. (OUT_M2d_S_AS_ClientKeyRequest( m ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( m ) @ #k) ⇒ ¬(#k < #i))) ∨
+  (∃ m #i.
+    (IN_M2e_AS_S_ClientKeyReply( m ) @ #i)
+   ∧
+    (∀ #j. (OUT_M2e_AS_S_ClientKeyReply( m ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( m ) @ #k) ⇒ ¬(#k < #i))) ∨
+  (∃ m #i.
+    (IN_M2f_S_C_ReturnIdPlusOne( m ) @ #i)
+   ∧
+    (∀ #j. (OUT_M2f_S_C_ReturnIdPlusOne( m ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( m ) @ #k) ⇒ ¬(#k < #i))))"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="new ltkC.1;", issapicrule,
+                     role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) newltkC_0_[color=#ffffff, process="new ltkC.1;",
+                           issapicrule, role='Process']:
+   [ State_( ), Fr( ltkC.1 ) ] --> [ State_1( ltkC.1 ) ]
+
+rule (modulo E) newltkS_0_1[color=#ffffff, process="new ltkS.1;",
+                            issapicrule, role='Process']:
+   [ State_1( ltkC.1 ), Fr( ltkS.1 ) ] --> [ State_11( ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) newltkAS_0_11[color=#ffffff, process="new ltkAS.1;",
+                              issapicrule, role='Process']:
+   [ State_11( ltkC.1, ltkS.1 ), Fr( ltkAS.1 ) ]
+  -->
+   [ State_111( ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) outpkltkC_0_111[color=#ffffff,
+                                process="out(pk(ltkC.1));", issapicrule, role='Process']:
+   [ State_111( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ State_1111( ltkAS.1, ltkC.1, ltkS.1 ), Out( pk(ltkC.1) ) ]
+
+rule (modulo E) outpkltkS_0_1111[color=#ffffff,
+                                 process="out(pk(ltkS.1));", issapicrule, role='Process']:
+   [ State_1111( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ State_11111( ltkAS.1, ltkC.1, ltkS.1 ), Out( pk(ltkS.1) ) ]
+
+rule (modulo E) outpkltkAS_0_11111[color=#ffffff,
+                                   process="out(pk(ltkAS.1));", issapicrule, role='Process']:
+   [ State_11111( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ State_111111( ltkAS.1, ltkC.1, ltkS.1 ), Out( pk(ltkAS.1) ) ]
+
+rule (modulo E) p_0_111111[color=#ffffff, process="!", issapicrule,
+                           role='Process']:
+   [ State_111111( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ !Semistate_1111111( ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) p_1_111111[color=#ffffff, process="!", issapicrule,
+                           role='Process']:
+   [ !Semistate_1111111( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ State_1111111( ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) p_0_1111111[color=#ffffff, process="|", issapicrule,
+                            role='Process']:
+   [ State_1111111( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [
+   State_11111111( ltkAS.1, ltkC.1, ltkS.1 ),
+   State_11111112( ltkAS.1, ltkC.1, ltkS.1 )
+   ]
+
+rule (modulo E) ClientCSASltkCpkltkAS_0_11111111[color=#ffffff,
+                                                 process="Client('C', 'S', 'AS', ltkC.1, pk(ltkAS.1))",
+                                                 issapicrule, role='Process']:
+   [ State_11111111( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [
+   State_111111111( ltkAS.1, ltkC.1, ltkS.1 ),
+   State_111111112( ltkAS.1, ltkC.1, ltkS.1 )
+   ]
+
+rule (modulo E) newid_0_111111111[color=#518040, process="new id.1;",
+                                  issapicrule, role='Client']:
+   [ State_111111111( ltkAS.1, ltkC.1, ltkS.1 ), Fr( id.1 ) ]
+  -->
+   [ State_1111111111( id.1, ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) eventSecretCSid_0_1111111111[color=#518040,
+                                             process="event Secret( 'C', 'S', id.1 );", issapicrule,
+                                             role='Client']:
+   [ State_1111111111( id.1, ltkAS.1, ltkC.1, ltkS.1 ) ]
+  --[ Secret( 'C', 'S', id.1 ) ]->
+   [ State_11111111111( id.1, ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) eventCRequestServerKeyCSid_0_11111111111[color=#518040,
+                                                         process="event C_RequestServerKey( 'C', 'S', id.1 );",
+                                                         issapicrule, role='Client']:
+   [ State_11111111111( id.1, ltkAS.1, ltkC.1, ltkS.1 ) ]
+  --[ C_RequestServerKey( 'C', 'S', id.1 ) ]->
+   [ State_111111111111( id.1, ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) eventOUTMaCASServerKeyRequestCSid_0_111111111111[color=#518040,
+                                                                 process="event OUT_M2a_C_AS_ServerKeyRequest( <'C', 'S', id.1> );",
+                                                                 issapicrule, role='Client']:
+   [ State_111111111111( id.1, ltkAS.1, ltkC.1, ltkS.1 ) ]
+  --[ OUT_M2a_C_AS_ServerKeyRequest( <'C', 'S', id.1> ) ]->
+   [ State_1111111111111( id.1, ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) outCSid_0_1111111111111[color=#518040,
+                                        process="out(<'C', 'S', id.1>);", issapicrule, role='Client']:
+   [ State_1111111111111( id.1, ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [
+   State_11111111111111( id.1, ltkAS.1, ltkC.1, ltkS.1 ),
+   Out( <'C', 'S', id.1> )
+   ]
+
+rule (modulo E) inashdrsigreply_0_11111111111111[color=#518040,
+                                                 process="in(<as_hdr.1, sig_reply.1>);", issapicrule,
+                                                 role='Client']:
+   [
+   State_11111111111111( id.1, ltkAS.1, ltkC.1, ltkS.1 ),
+   In( <as_hdr.1, sig_reply.1> )
+   ]
+  -->
+   [
+   State_111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                          sig_reply.1
+   )
+   ]
+
+rule (modulo E) ifashdrAS_0_111111111111111[color=#518040,
+                                            process="if as_hdr.1='AS'", issapicrule, role='Client']:
+   [
+   State_111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                          sig_reply.1
+   )
+   ]
+  --[ Pred_Eq( as_hdr.1, 'AS' ) ]->
+   [
+   State_1111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                           sig_reply.1
+   )
+   ]
+
+rule (modulo E) ifashdrAS_1_111111111111111[color=#518040,
+                                            process="if as_hdr.1='AS'", issapicrule, role='Client']:
+   [
+   State_111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                          sig_reply.1
+   )
+   ]
+  --[ Pred_Not_Eq( as_hdr.1, 'AS' ) ]->
+   [
+   State_1111111111111112( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                           sig_reply.1
+   )
+   ]
+
+rule (modulo E) iffstpubdecsigreplypkltkASAS_0_1111111111111111[color=#518040,
+                                                                process="if fst(pubdec(sig_reply.1, pk(ltkAS.1)))='AS'",
+                                                                issapicrule, role='Client']:
+   [
+   State_1111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                           sig_reply.1
+   )
+   ]
+  --[ Pred_Eq( fst(pubdec(sig_reply.1, pk(ltkAS.1))), 'AS' ) ]->
+   [
+   State_11111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                            sig_reply.1
+   )
+   ]
+
+rule (modulo E) iffstpubdecsigreplypkltkASAS_1_1111111111111111[color=#518040,
+                                                                process="if fst(pubdec(sig_reply.1, pk(ltkAS.1)))='AS'",
+                                                                issapicrule, role='Client']:
+   [
+   State_1111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                           sig_reply.1
+   )
+   ]
+  --[ Pred_Not_Eq( fst(pubdec(sig_reply.1, pk(ltkAS.1))), 'AS' ) ]->
+   [
+   State_11111111111111112( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                            sig_reply.1
+   )
+   ]
+
+rule (modulo E) iffstsndpubdecsigreplypkltkASC_0_11111111111111111[color=#518040,
+                                                                   process="if fst(snd(pubdec(sig_reply.1, pk(ltkAS.1))))='C'",
+                                                                   issapicrule, role='Client']:
+   [
+   State_11111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                            sig_reply.1
+   )
+   ]
+  --[ Pred_Eq( fst(snd(pubdec(sig_reply.1, pk(ltkAS.1)))), 'C' ) ]->
+   [
+   State_111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                             sig_reply.1
+   )
+   ]
+
+rule (modulo E) iffstsndpubdecsigreplypkltkASC_1_11111111111111111[color=#518040,
+                                                                   process="if fst(snd(pubdec(sig_reply.1, pk(ltkAS.1))))='C'",
+                                                                   issapicrule, role='Client']:
+   [
+   State_11111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                            sig_reply.1
+   )
+   ]
+  --[ Pred_Not_Eq( fst(snd(pubdec(sig_reply.1, pk(ltkAS.1)))), 'C' ) ]->
+   [
+   State_111111111111111112( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                             sig_reply.1
+   )
+   ]
+
+rule (modulo E) iffstsndsndpubdecsigreplypkltkASid_0_111111111111111111[color=#518040,
+                                                                        process="if fst(snd(snd(pubdec(sig_reply.1, pk(ltkAS.1)))))=id.1",
+                                                                        issapicrule, role='Client']:
+   [
+   State_111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                             sig_reply.1
+   )
+   ]
+  --[ Pred_Eq( fst(snd(snd(pubdec(sig_reply.1, pk(ltkAS.1))))), id.1 ) ]->
+   [
+   State_1111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                              sig_reply.1
+   )
+   ]
+
+rule (modulo E) iffstsndsndpubdecsigreplypkltkASid_1_111111111111111111[color=#518040,
+                                                                        process="if fst(snd(snd(pubdec(sig_reply.1, pk(ltkAS.1)))))=id.1",
+                                                                        issapicrule, role='Client']:
+   [
+   State_111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                             sig_reply.1
+   )
+   ]
+  --[ Pred_Not_Eq( fst(snd(snd(pubdec(sig_reply.1, pk(ltkAS.1))))), id.1 )
+  ]->
+   [
+   State_1111111111111111112( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                              sig_reply.1
+   )
+   ]
+
+rule (modulo E) eventINMbASCServerKeyReplyashdrsigreply_0_1111111111111111111[color=#518040,
+                                                                              process="event IN_M2b_AS_C_ServerKeyReply( <as_hdr.1, sig_reply.1> );",
+                                                                              issapicrule, role='Client']:
+   [
+   State_1111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                              sig_reply.1
+   )
+   ]
+  --[ IN_M2b_AS_C_ServerKeyReply( <as_hdr.1, sig_reply.1> ) ]->
+   [
+   State_11111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                               sig_reply.1
+   )
+   ]
+
+rule (modulo E) eventCAcceptsServerKeyCSidsndsndsndpubdecsigreplypkltkAS_0_11111111111111111111[color=#518040,
+                                                                                                process="event C_AcceptsServerKey( 'C', 'S', id.1,
+                    snd(snd(snd(pubdec(sig_reply.1, pk(ltkAS.1)))))
+);",
+                                                                                                issapicrule,
+                                                                                                role='Client']:
+   [
+   State_11111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                               sig_reply.1
+   )
+   ]
+  --[
+  C_AcceptsServerKey( 'C', 'S', id.1,
+                      snd(snd(snd(pubdec(sig_reply.1, pk(ltkAS.1)))))
+  )
+  ]->
+   [
+   State_111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                                sig_reply.1
+   )
+   ]
+
+rule (modulo E) newtsC_0_111111111111111111111[color=#518040,
+                                               process="new tsC.1;", issapicrule, role='Client']:
+   [
+   State_111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                                sig_reply.1
+   ),
+   Fr( tsC.1 )
+   ]
+  -->
+   [
+   State_1111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                                 sig_reply.1, tsC.1
+   )
+   ]
+
+rule (modulo E) eventRunningACSid_0_1111111111111111111111[color=#518040,
+                                                           process="event Running_A( 'C', 'S', id.1 );",
+                                                           issapicrule, role='Client']:
+   [
+   State_1111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                                 sig_reply.1, tsC.1
+   )
+   ]
+  --[ Running_A( 'C', 'S', id.1 ) ]->
+   [
+   State_11111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                                  sig_reply.1, tsC.1
+   )
+   ]
+
+rule (modulo E) eventCSendAuthenticatorCSidtsClifeC_0_11111111111111111111111[color=#518040,
+                                                                              process="event C_SendAuthenticator( 'C', 'S', id.1, tsC.1, 'lifeC' );",
+                                                                              issapicrule, role='Client']:
+   [
+   State_11111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                                  sig_reply.1, tsC.1
+   )
+   ]
+  --[ C_SendAuthenticator( 'C', 'S', id.1, tsC.1, 'lifeC' ) ]->
+   [
+   State_111111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                                   sig_reply.1, tsC.1
+   )
+   ]
+
+rule (modulo E) eventOUTMcCSAuthenticatorCSprivencCtsClifeCaencidsndsndsndpubdecsigreplypkltkASltkC_0_111111111111111111111111[color=#518040,
+                                                                                                                               process="event OUT_M2c_C_S_Authenticator( <'C', 'S', 
+                            privenc(<'C', tsC.1, 'lifeC', 
+                                     aenc(id.1, snd(snd(snd(pubdec(sig_reply.1, pk(ltkAS.1))))))>,
+                                    ltkC.1)
+                           >
+);",
+                                                                                                                               issapicrule,
+                                                                                                                               role='Client']:
+   [
+   State_111111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                                   sig_reply.1, tsC.1
+   )
+   ]
+  --[
+  OUT_M2c_C_S_Authenticator( <'C', 'S', 
+                              privenc(<'C', tsC.1, 'lifeC', 
+                                       aenc(id.1, snd(snd(snd(pubdec(sig_reply.1, pk(ltkAS.1))))))>,
+                                      ltkC.1)
+                             >
+  )
+  ]->
+   [
+   State_1111111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                                    sig_reply.1, tsC.1
+   )
+   ]
+
+rule (modulo E) outCSprivencCtsClifeCaencidsndsndsndpubdecsigreplypkltkASltkC_0_1111111111111111111111111[color=#518040,
+                                                                                                          process="out(<'C', 'S', 
+ privenc(<'C', tsC.1, 'lifeC', 
+          aenc(id.1, snd(snd(snd(pubdec(sig_reply.1, pk(ltkAS.1))))))>,
+         ltkC.1)
+>);",
+                                                                                                          issapicrule,
+                                                                                                          role='Client']:
+   [
+   State_1111111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                                    sig_reply.1, tsC.1
+   )
+   ]
+  -->
+   [
+   State_11111111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1,
+                                     ltkS.1, sig_reply.1, tsC.1
+   ),
+   Out( <'C', 'S', 
+         privenc(<'C', tsC.1, 'lifeC', 
+                  aenc(id.1, snd(snd(snd(pubdec(sig_reply.1, pk(ltkAS.1))))))>,
+                 ltkC.1)
+        >
+   )
+   ]
+
+rule (modulo E) insoutercoutercipher_0_11111111111111111111111111[color=#518040,
+                                                                  process="in(<s_outer.1, c_outer.1, cipher6.1>);",
+                                                                  issapicrule, role='Client']:
+   [
+   State_11111111111111111111111111( as_hdr.1, id.1, ltkAS.1, ltkC.1,
+                                     ltkS.1, sig_reply.1, tsC.1
+   ),
+   In( <s_outer.1, c_outer.1, cipher6.1> )
+   ]
+  -->
+   [
+   State_111111111111111111111111111( as_hdr.1, c_outer.1, cipher6.1, id.1,
+                                      ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+
+rule (modulo E) ifsndadeccipherltkCplusid_0_111111111111111111111111111[color=#518040,
+                                                                        process="if snd(adec(cipher6.1, ltkC.1))=plus1(id.1)",
+                                                                        issapicrule, role='Client']:
+   [
+   State_111111111111111111111111111( as_hdr.1, c_outer.1, cipher6.1, id.1,
+                                      ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+  --[ Pred_Eq( snd(adec(cipher6.1, ltkC.1)), plus1(id.1) ) ]->
+   [
+   State_1111111111111111111111111111( as_hdr.1, c_outer.1, cipher6.1, id.1,
+                                       ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+
+rule (modulo E) ifsndadeccipherltkCplusid_1_111111111111111111111111111[color=#518040,
+                                                                        process="if snd(adec(cipher6.1, ltkC.1))=plus1(id.1)",
+                                                                        issapicrule, role='Client']:
+   [
+   State_111111111111111111111111111( as_hdr.1, c_outer.1, cipher6.1, id.1,
+                                      ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+  --[ Pred_Not_Eq( snd(adec(cipher6.1, ltkC.1)), plus1(id.1) ) ]->
+   [
+   State_1111111111111111111111111112( as_hdr.1, c_outer.1, cipher6.1, id.1,
+                                       ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+
+rule (modulo E) eventINMfSCReturnIdPlusOnesoutercoutercipher_0_1111111111111111111111111111[color=#518040,
+                                                                                            process="event IN_M2f_S_C_ReturnIdPlusOne( <s_outer.1, c_outer.1, cipher6.1> );",
+                                                                                            issapicrule,
+                                                                                            role='Client']:
+   [
+   State_1111111111111111111111111111( as_hdr.1, c_outer.1, cipher6.1, id.1,
+                                       ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+  --[ IN_M2f_S_C_ReturnIdPlusOne( <s_outer.1, c_outer.1, cipher6.1> ) ]->
+   [
+   State_11111111111111111111111111111( as_hdr.1, c_outer.1, cipher6.1,
+                                        id.1, ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+
+rule (modulo E) eventCommitACSid_0_11111111111111111111111111111[color=#518040,
+                                                                 process="event Commit_A( 'C', 'S', id.1 );",
+                                                                 issapicrule, role='Client']:
+   [
+   State_11111111111111111111111111111( as_hdr.1, c_outer.1, cipher6.1,
+                                        id.1, ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+  --[ Commit_A( 'C', 'S', id.1 ) ]->
+   [
+   State_111111111111111111111111111111( as_hdr.1, c_outer.1, cipher6.1,
+                                         id.1, ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+
+rule (modulo E) eventCAcceptsServerCSid_0_111111111111111111111111111111[color=#518040,
+                                                                         process="event C_AcceptsServer( 'C', 'S', id.1 );",
+                                                                         issapicrule, role='Client']:
+   [
+   State_111111111111111111111111111111( as_hdr.1, c_outer.1, cipher6.1,
+                                         id.1, ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+  --[ C_AcceptsServer( 'C', 'S', id.1 ) ]->
+   [
+   State_1111111111111111111111111111111( as_hdr.1, c_outer.1, cipher6.1,
+                                          id.1, ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+
+rule (modulo E) p_0_1111111111111111111111111111111[color=#518040,
+                                                    process="0", issapicrule, role='Client']:
+   [
+   State_1111111111111111111111111111111( as_hdr.1, c_outer.1, cipher6.1,
+                                          id.1, ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111111111111111111111111112[color=#518040,
+                                                 process="0", issapicrule, role='Client']:
+   [
+   State_1111111111111111111111111112( as_hdr.1, c_outer.1, cipher6.1, id.1,
+                                       ltkAS.1, ltkC.1, ltkS.1, s_outer.1, sig_reply.1, tsC.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111111111111111112[color=#518040, process="0",
+                                        issapicrule, role='Client']:
+   [
+   State_1111111111111111112( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                              sig_reply.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111111111111111112[color=#518040, process="0",
+                                       issapicrule, role='Client']:
+   [
+   State_111111111111111112( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                             sig_reply.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111111111111112[color=#518040, process="0",
+                                      issapicrule, role='Client']:
+   [
+   State_11111111111111112( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                            sig_reply.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111111111111112[color=#518040, process="0",
+                                     issapicrule, role='Client']:
+   [
+   State_1111111111111112( as_hdr.1, id.1, ltkAS.1, ltkC.1, ltkS.1,
+                           sig_reply.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111111112[color=#ffffff, process="0", issapicrule,
+                              role='Process']:
+   [ State_111111112( ltkAS.1, ltkC.1, ltkS.1 ) ] --> [ ]
+
+rule (modulo E) p_0_11111112[color=#ffffff, process="!", issapicrule,
+                             role='Process']:
+   [ State_11111112( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ !Semistate_111111121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) p_1_11111112[color=#ffffff, process="!", issapicrule,
+                             role='Process']:
+   [ !Semistate_111111121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ State_111111121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) p_0_111111121[color=#ffffff, process="|", issapicrule,
+                              role='Process']:
+   [ State_111111121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [
+   State_1111111211( ltkAS.1, ltkC.1, ltkS.1 ),
+   State_1111111212( ltkAS.1, ltkC.1, ltkS.1 )
+   ]
+
+rule (modulo E) ClientCASASltkCpkltkAS_0_1111111211[color=#ffffff,
+                                                    process="Client('C', 'AS', 'AS', ltkC.1, pk(ltkAS.1))",
+                                                    issapicrule, role='Process']:
+   [ State_1111111211( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [
+   State_11111112111( ltkAS.1, ltkC.1, ltkS.1 ),
+   State_11111112112( ltkAS.1, ltkC.1, ltkS.1 )
+   ]
+
+rule (modulo E) newid_0_11111112111[color=#518040, process="new id.2;",
+                                    issapicrule, role='Client']:
+   [ State_11111112111( ltkAS.1, ltkC.1, ltkS.1 ), Fr( id.2 ) ]
+  -->
+   [ State_111111121111( ltkAS.1, ltkC.1, ltkS.1, id.2 ) ]
+
+rule (modulo E) eventSecretCASid_0_111111121111[color=#518040,
+                                                process="event Secret( 'C', 'AS', id.2 );", issapicrule,
+                                                role='Client']:
+   [ State_111111121111( ltkAS.1, ltkC.1, ltkS.1, id.2 ) ]
+  --[ Secret( 'C', 'AS', id.2 ) ]->
+   [ State_1111111211111( ltkAS.1, ltkC.1, ltkS.1, id.2 ) ]
+
+rule (modulo E) eventCRequestServerKeyCASid_0_1111111211111[color=#518040,
+                                                            process="event C_RequestServerKey( 'C', 'AS', id.2 );",
+                                                            issapicrule, role='Client']:
+   [ State_1111111211111( ltkAS.1, ltkC.1, ltkS.1, id.2 ) ]
+  --[ C_RequestServerKey( 'C', 'AS', id.2 ) ]->
+   [ State_11111112111111( ltkAS.1, ltkC.1, ltkS.1, id.2 ) ]
+
+rule (modulo E) eventOUTMaCASServerKeyRequestCASid_0_11111112111111[color=#518040,
+                                                                    process="event OUT_M2a_C_AS_ServerKeyRequest( <'C', 'AS', id.2> );",
+                                                                    issapicrule, role='Client']:
+   [ State_11111112111111( ltkAS.1, ltkC.1, ltkS.1, id.2 ) ]
+  --[ OUT_M2a_C_AS_ServerKeyRequest( <'C', 'AS', id.2> ) ]->
+   [ State_111111121111111( ltkAS.1, ltkC.1, ltkS.1, id.2 ) ]
+
+rule (modulo E) outCASid_0_111111121111111[color=#518040,
+                                           process="out(<'C', 'AS', id.2>);", issapicrule, role='Client']:
+   [ State_111111121111111( ltkAS.1, ltkC.1, ltkS.1, id.2 ) ]
+  -->
+   [
+   State_1111111211111111( ltkAS.1, ltkC.1, ltkS.1, id.2 ),
+   Out( <'C', 'AS', id.2> )
+   ]
+
+rule (modulo E) inashdrsigreply_0_1111111211111111[color=#518040,
+                                                   process="in(<as_hdr.2, sig_reply.2>);", issapicrule,
+                                                   role='Client']:
+   [
+   State_1111111211111111( ltkAS.1, ltkC.1, ltkS.1, id.2 ),
+   In( <as_hdr.2, sig_reply.2> )
+   ]
+  -->
+   [
+   State_11111112111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                            sig_reply.2
+   )
+   ]
+
+rule (modulo E) ifashdrAS_0_11111112111111111[color=#518040,
+                                              process="if as_hdr.2='AS'", issapicrule, role='Client']:
+   [
+   State_11111112111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                            sig_reply.2
+   )
+   ]
+  --[ Pred_Eq( as_hdr.2, 'AS' ) ]->
+   [
+   State_111111121111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                             sig_reply.2
+   )
+   ]
+
+rule (modulo E) ifashdrAS_1_11111112111111111[color=#518040,
+                                              process="if as_hdr.2='AS'", issapicrule, role='Client']:
+   [
+   State_11111112111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                            sig_reply.2
+   )
+   ]
+  --[ Pred_Not_Eq( as_hdr.2, 'AS' ) ]->
+   [
+   State_111111121111111112( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                             sig_reply.2
+   )
+   ]
+
+rule (modulo E) iffstpubdecsigreplypkltkASAS_0_111111121111111111[color=#518040,
+                                                                  process="if fst(pubdec(sig_reply.2, pk(ltkAS.1)))='AS'",
+                                                                  issapicrule, role='Client']:
+   [
+   State_111111121111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                             sig_reply.2
+   )
+   ]
+  --[ Pred_Eq( fst(pubdec(sig_reply.2, pk(ltkAS.1))), 'AS' ) ]->
+   [
+   State_1111111211111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                              sig_reply.2
+   )
+   ]
+
+rule (modulo E) iffstpubdecsigreplypkltkASAS_1_111111121111111111[color=#518040,
+                                                                  process="if fst(pubdec(sig_reply.2, pk(ltkAS.1)))='AS'",
+                                                                  issapicrule, role='Client']:
+   [
+   State_111111121111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                             sig_reply.2
+   )
+   ]
+  --[ Pred_Not_Eq( fst(pubdec(sig_reply.2, pk(ltkAS.1))), 'AS' ) ]->
+   [
+   State_1111111211111111112( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                              sig_reply.2
+   )
+   ]
+
+rule (modulo E) iffstsndpubdecsigreplypkltkASC_0_1111111211111111111[color=#518040,
+                                                                     process="if fst(snd(pubdec(sig_reply.2, pk(ltkAS.1))))='C'",
+                                                                     issapicrule, role='Client']:
+   [
+   State_1111111211111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                              sig_reply.2
+   )
+   ]
+  --[ Pred_Eq( fst(snd(pubdec(sig_reply.2, pk(ltkAS.1)))), 'C' ) ]->
+   [
+   State_11111112111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                               sig_reply.2
+   )
+   ]
+
+rule (modulo E) iffstsndpubdecsigreplypkltkASC_1_1111111211111111111[color=#518040,
+                                                                     process="if fst(snd(pubdec(sig_reply.2, pk(ltkAS.1))))='C'",
+                                                                     issapicrule, role='Client']:
+   [
+   State_1111111211111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                              sig_reply.2
+   )
+   ]
+  --[ Pred_Not_Eq( fst(snd(pubdec(sig_reply.2, pk(ltkAS.1)))), 'C' ) ]->
+   [
+   State_11111112111111111112( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                               sig_reply.2
+   )
+   ]
+
+rule (modulo E) iffstsndsndpubdecsigreplypkltkASid_0_11111112111111111111[color=#518040,
+                                                                          process="if fst(snd(snd(pubdec(sig_reply.2, pk(ltkAS.1)))))=id.2",
+                                                                          issapicrule, role='Client']:
+   [
+   State_11111112111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                               sig_reply.2
+   )
+   ]
+  --[ Pred_Eq( fst(snd(snd(pubdec(sig_reply.2, pk(ltkAS.1))))), id.2 ) ]->
+   [
+   State_111111121111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                sig_reply.2
+   )
+   ]
+
+rule (modulo E) iffstsndsndpubdecsigreplypkltkASid_1_11111112111111111111[color=#518040,
+                                                                          process="if fst(snd(snd(pubdec(sig_reply.2, pk(ltkAS.1)))))=id.2",
+                                                                          issapicrule, role='Client']:
+   [
+   State_11111112111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                               sig_reply.2
+   )
+   ]
+  --[ Pred_Not_Eq( fst(snd(snd(pubdec(sig_reply.2, pk(ltkAS.1))))), id.2 )
+  ]->
+   [
+   State_111111121111111111112( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                sig_reply.2
+   )
+   ]
+
+rule (modulo E) eventINMbASCServerKeyReplyashdrsigreply_0_111111121111111111111[color=#518040,
+                                                                                process="event IN_M2b_AS_C_ServerKeyReply( <as_hdr.2, sig_reply.2> );",
+                                                                                issapicrule, role='Client']:
+   [
+   State_111111121111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                sig_reply.2
+   )
+   ]
+  --[ IN_M2b_AS_C_ServerKeyReply( <as_hdr.2, sig_reply.2> ) ]->
+   [
+   State_1111111211111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                 sig_reply.2
+   )
+   ]
+
+rule (modulo E) eventCAcceptsServerKeyCASidsndsndsndpubdecsigreplypkltkAS_0_1111111211111111111111[color=#518040,
+                                                                                                   process="event C_AcceptsServerKey( 'C', 'AS', id.2,
+                    snd(snd(snd(pubdec(sig_reply.2, pk(ltkAS.1)))))
+);",
+                                                                                                   issapicrule,
+                                                                                                   role='Client']:
+   [
+   State_1111111211111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                 sig_reply.2
+   )
+   ]
+  --[
+  C_AcceptsServerKey( 'C', 'AS', id.2,
+                      snd(snd(snd(pubdec(sig_reply.2, pk(ltkAS.1)))))
+  )
+  ]->
+   [
+   State_11111112111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                  sig_reply.2
+   )
+   ]
+
+rule (modulo E) newtsC_0_11111112111111111111111[color=#518040,
+                                                 process="new tsC.2;", issapicrule, role='Client']:
+   [
+   State_11111112111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                  sig_reply.2
+   ),
+   Fr( tsC.2 )
+   ]
+  -->
+   [
+   State_111111121111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                   sig_reply.2, tsC.2
+   )
+   ]
+
+rule (modulo E) eventRunningACASid_0_111111121111111111111111[color=#518040,
+                                                              process="event Running_A( 'C', 'AS', id.2 );",
+                                                              issapicrule, role='Client']:
+   [
+   State_111111121111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                   sig_reply.2, tsC.2
+   )
+   ]
+  --[ Running_A( 'C', 'AS', id.2 ) ]->
+   [
+   State_1111111211111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                    sig_reply.2, tsC.2
+   )
+   ]
+
+rule (modulo E) eventCSendAuthenticatorCASidtsClifeC_0_1111111211111111111111111[color=#518040,
+                                                                                 process="event C_SendAuthenticator( 'C', 'AS', id.2, tsC.2, 'lifeC' );",
+                                                                                 issapicrule, role='Client']:
+   [
+   State_1111111211111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                    sig_reply.2, tsC.2
+   )
+   ]
+  --[ C_SendAuthenticator( 'C', 'AS', id.2, tsC.2, 'lifeC' ) ]->
+   [
+   State_11111112111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                     id.2, sig_reply.2, tsC.2
+   )
+   ]
+
+rule (modulo E) eventOUTMcCSAuthenticatorCASprivencCtsClifeCaencidsndsndsndpubdecsigreplypkltkASltkC_0_11111112111111111111111111[color=#518040,
+                                                                                                                                  process="event OUT_M2c_C_S_Authenticator( <'C', 'AS', 
+                            privenc(<'C', tsC.2, 'lifeC', 
+                                     aenc(id.2, snd(snd(snd(pubdec(sig_reply.2, pk(ltkAS.1))))))>,
+                                    ltkC.1)
+                           >
+);",
+                                                                                                                                  issapicrule,
+                                                                                                                                  role='Client']:
+   [
+   State_11111112111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                     id.2, sig_reply.2, tsC.2
+   )
+   ]
+  --[
+  OUT_M2c_C_S_Authenticator( <'C', 'AS', 
+                              privenc(<'C', tsC.2, 'lifeC', 
+                                       aenc(id.2, snd(snd(snd(pubdec(sig_reply.2, pk(ltkAS.1))))))>,
+                                      ltkC.1)
+                             >
+  )
+  ]->
+   [
+   State_111111121111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                      id.2, sig_reply.2, tsC.2
+   )
+   ]
+
+rule (modulo E) outCASprivencCtsClifeCaencidsndsndsndpubdecsigreplypkltkASltkC_0_111111121111111111111111111[color=#518040,
+                                                                                                             process="out(<'C', 'AS', 
+ privenc(<'C', tsC.2, 'lifeC', 
+          aenc(id.2, snd(snd(snd(pubdec(sig_reply.2, pk(ltkAS.1))))))>,
+         ltkC.1)
+>);",
+                                                                                                             issapicrule,
+                                                                                                             role='Client']:
+   [
+   State_111111121111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                      id.2, sig_reply.2, tsC.2
+   )
+   ]
+  -->
+   [
+   State_1111111211111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                       id.2, sig_reply.2, tsC.2
+   ),
+   Out( <'C', 'AS', 
+         privenc(<'C', tsC.2, 'lifeC', 
+                  aenc(id.2, snd(snd(snd(pubdec(sig_reply.2, pk(ltkAS.1))))))>,
+                 ltkC.1)
+        >
+   )
+   ]
+
+rule (modulo E) insoutercoutercipher_0_1111111211111111111111111111[color=#518040,
+                                                                    process="in(<s_outer.2, c_outer.2, cipher6.2>);",
+                                                                    issapicrule, role='Client']:
+   [
+   State_1111111211111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                       id.2, sig_reply.2, tsC.2
+   ),
+   In( <s_outer.2, c_outer.2, cipher6.2> )
+   ]
+  -->
+   [
+   State_11111112111111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                        c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2, tsC.2
+   )
+   ]
+
+rule (modulo E) ifsndadeccipherltkCplusid_0_11111112111111111111111111111[color=#518040,
+                                                                          process="if snd(adec(cipher6.2, ltkC.1))=plus1(id.2)",
+                                                                          issapicrule, role='Client']:
+   [
+   State_11111112111111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                        c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2, tsC.2
+   )
+   ]
+  --[ Pred_Eq( snd(adec(cipher6.2, ltkC.1)), plus1(id.2) ) ]->
+   [
+   State_111111121111111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                         c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2, tsC.2
+   )
+   ]
+
+rule (modulo E) ifsndadeccipherltkCplusid_1_11111112111111111111111111111[color=#518040,
+                                                                          process="if snd(adec(cipher6.2, ltkC.1))=plus1(id.2)",
+                                                                          issapicrule, role='Client']:
+   [
+   State_11111112111111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                        c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2, tsC.2
+   )
+   ]
+  --[ Pred_Not_Eq( snd(adec(cipher6.2, ltkC.1)), plus1(id.2) ) ]->
+   [
+   State_111111121111111111111111111112( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                         c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2, tsC.2
+   )
+   ]
+
+rule (modulo E) eventINMfSCReturnIdPlusOnesoutercoutercipher_0_111111121111111111111111111111[color=#518040,
+                                                                                              process="event IN_M2f_S_C_ReturnIdPlusOne( <s_outer.2, c_outer.2, cipher6.2> );",
+                                                                                              issapicrule,
+                                                                                              role='Client']:
+   [
+   State_111111121111111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                         c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2, tsC.2
+   )
+   ]
+  --[ IN_M2f_S_C_ReturnIdPlusOne( <s_outer.2, c_outer.2, cipher6.2> ) ]->
+   [
+   State_1111111211111111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                          c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2, tsC.2
+   )
+   ]
+
+rule (modulo E) eventCommitACASid_0_1111111211111111111111111111111[color=#518040,
+                                                                    process="event Commit_A( 'C', 'AS', id.2 );",
+                                                                    issapicrule, role='Client']:
+   [
+   State_1111111211111111111111111111111( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                          c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2, tsC.2
+   )
+   ]
+  --[ Commit_A( 'C', 'AS', id.2 ) ]->
+   [
+   State_11111112111111111111111111111111( ltkAS.1, ltkC.1, ltkS.1,
+                                           as_hdr.2, c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2, tsC.2
+   )
+   ]
+
+rule (modulo E) eventCAcceptsServerCASid_0_11111112111111111111111111111111[color=#518040,
+                                                                            process="event C_AcceptsServer( 'C', 'AS', id.2 );",
+                                                                            issapicrule, role='Client']:
+   [
+   State_11111112111111111111111111111111( ltkAS.1, ltkC.1, ltkS.1,
+                                           as_hdr.2, c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2, tsC.2
+   )
+   ]
+  --[ C_AcceptsServer( 'C', 'AS', id.2 ) ]->
+   [
+   State_111111121111111111111111111111111( ltkAS.1, ltkC.1, ltkS.1,
+                                            as_hdr.2, c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2,
+                                            tsC.2
+   )
+   ]
+
+rule (modulo E) p_0_111111121111111111111111111111111[color=#518040,
+                                                      process="0", issapicrule, role='Client']:
+   [
+   State_111111121111111111111111111111111( ltkAS.1, ltkC.1, ltkS.1,
+                                            as_hdr.2, c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2,
+                                            tsC.2
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111111121111111111111111111112[color=#518040,
+                                                   process="0", issapicrule, role='Client']:
+   [
+   State_111111121111111111111111111112( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2,
+                                         c_outer.2, cipher6.2, id.2, s_outer.2, sig_reply.2, tsC.2
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111111121111111111112[color=#518040, process="0",
+                                          issapicrule, role='Client']:
+   [
+   State_111111121111111111112( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                                sig_reply.2
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111112111111111112[color=#518040, process="0",
+                                         issapicrule, role='Client']:
+   [
+   State_11111112111111111112( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                               sig_reply.2
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111111211111111112[color=#518040, process="0",
+                                        issapicrule, role='Client']:
+   [
+   State_1111111211111111112( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                              sig_reply.2
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111111121111111112[color=#518040, process="0",
+                                       issapicrule, role='Client']:
+   [
+   State_111111121111111112( ltkAS.1, ltkC.1, ltkS.1, as_hdr.2, id.2,
+                             sig_reply.2
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111112112[color=#ffffff, process="0", issapicrule,
+                                role='Process']:
+   [ State_11111112112( ltkAS.1, ltkC.1, ltkS.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1111111212[color=#ffffff, process="!", issapicrule,
+                               role='Process']:
+   [ State_1111111212( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ !Semistate_11111112121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) p_1_1111111212[color=#ffffff, process="!", issapicrule,
+                               role='Process']:
+   [ !Semistate_11111112121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ State_11111112121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) p_0_11111112121[color=#ffffff, process="|", issapicrule,
+                                role='Process']:
+   [ State_11111112121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [
+   State_111111121211( ltkAS.1, ltkC.1, ltkS.1 ),
+   State_111111121212( ltkAS.1, ltkC.1, ltkS.1 )
+   ]
+
+rule (modulo E) ServerSASltkSpkltkAS_0_111111121211[color=#ffffff,
+                                                    process="Server('S', 'AS', ltkS.1, pk(ltkAS.1))",
+                                                    issapicrule, role='Process']:
+   [ State_111111121211( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [
+   State_1111111212111( ltkAS.1, ltkC.1, ltkS.1 ),
+   State_1111111212112( ltkAS.1, ltkC.1, ltkS.1 )
+   ]
+
+rule (modulo E) inchdrshdrauthouter_0_1111111212111[color=#806040,
+                                                    process="in(<c_hdr.1, s_hdr.1, auth_outer.3>);",
+                                                    issapicrule, role='Server']:
+   [
+   State_1111111212111( ltkAS.1, ltkC.1, ltkS.1 ),
+   In( <c_hdr.1, s_hdr.1, auth_outer.3> )
+   ]
+  -->
+   [
+   State_11111112121111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                         auth_outer.3
+   )
+   ]
+
+rule (modulo E) newsidS_0_11111112121111[color=#806040,
+                                         process="new sidS.1;", issapicrule, role='Server']:
+   [
+   State_11111112121111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                         auth_outer.3
+   ),
+   Fr( sidS.1 )
+   ]
+  -->
+   [
+   State_111111121211111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1, sidS.1,
+                          auth_outer.3
+   )
+   ]
+
+rule (modulo E) eventSRequestsClientKeySchdrsidS_0_111111121211111[color=#806040,
+                                                                   process="event S_RequestsClientKey( 'S', c_hdr.1, sidS.1 );",
+                                                                   issapicrule, role='Server']:
+   [
+   State_111111121211111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1, sidS.1,
+                          auth_outer.3
+   )
+   ]
+  --[ S_RequestsClientKey( 'S', c_hdr.1, sidS.1 ) ]->
+   [
+   State_1111111212111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                           sidS.1, auth_outer.3
+   )
+   ]
+
+rule (modulo E) eventOUTMdSASClientKeyRequestSchdrsidS_0_1111111212111111[color=#806040,
+                                                                          process="event OUT_M2d_S_AS_ClientKeyRequest( <'S', c_hdr.1, sidS.1> );",
+                                                                          issapicrule, role='Server']:
+   [
+   State_1111111212111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                           sidS.1, auth_outer.3
+   )
+   ]
+  --[ OUT_M2d_S_AS_ClientKeyRequest( <'S', c_hdr.1, sidS.1> ) ]->
+   [
+   State_11111112121111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                            sidS.1, auth_outer.3
+   )
+   ]
+
+rule (modulo E) outSchdrsidS_0_11111112121111111[color=#806040,
+                                                 process="out(<'S', c_hdr.1, sidS.1>);", issapicrule,
+                                                 role='Server']:
+   [
+   State_11111112121111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                            sidS.1, auth_outer.3
+   )
+   ]
+  -->
+   [
+   State_111111121211111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                             sidS.1, auth_outer.3
+   ),
+   Out( <'S', c_hdr.1, sidS.1> )
+   ]
+
+rule (modulo E) inashdrsigkey_0_111111121211111111[color=#806040,
+                                                   process="in(<as_hdr.3, sig_key.1>);", issapicrule,
+                                                   role='Server']:
+   [
+   State_111111121211111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                             sidS.1, auth_outer.3
+   ),
+   In( <as_hdr.3, sig_key.1> )
+   ]
+  -->
+   [
+   State_1111111212111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                              sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) ifashdrAS_0_1111111212111111111[color=#806040,
+                                                process="if as_hdr.3='AS'", issapicrule, role='Server']:
+   [
+   State_1111111212111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                              sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[ Pred_Eq( as_hdr.3, 'AS' ) ]->
+   [
+   State_11111112121111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                               sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) ifashdrAS_1_1111111212111111111[color=#806040,
+                                                process="if as_hdr.3='AS'", issapicrule, role='Server']:
+   [
+   State_1111111212111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                              sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[ Pred_Not_Eq( as_hdr.3, 'AS' ) ]->
+   [
+   State_11111112121111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                               sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) iffstpubdecsigkeypkltkASAS_0_11111112121111111111[color=#806040,
+                                                                  process="if fst(pubdec(sig_key.1, pk(ltkAS.1)))='AS'",
+                                                                  issapicrule, role='Server']:
+   [
+   State_11111112121111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                               sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[ Pred_Eq( fst(pubdec(sig_key.1, pk(ltkAS.1))), 'AS' ) ]->
+   [
+   State_111111121211111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) iffstpubdecsigkeypkltkASAS_1_11111112121111111111[color=#806040,
+                                                                  process="if fst(pubdec(sig_key.1, pk(ltkAS.1)))='AS'",
+                                                                  issapicrule, role='Server']:
+   [
+   State_11111112121111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                               sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[ Pred_Not_Eq( fst(pubdec(sig_key.1, pk(ltkAS.1))), 'AS' ) ]->
+   [
+   State_111111121211111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) iffstsndpubdecsigkeypkltkASS_0_111111121211111111111[color=#806040,
+                                                                     process="if fst(snd(pubdec(sig_key.1, pk(ltkAS.1))))='S'",
+                                                                     issapicrule, role='Server']:
+   [
+   State_111111121211111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[ Pred_Eq( fst(snd(pubdec(sig_key.1, pk(ltkAS.1)))), 'S' ) ]->
+   [
+   State_1111111212111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                 sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) iffstsndpubdecsigkeypkltkASS_1_111111121211111111111[color=#806040,
+                                                                     process="if fst(snd(pubdec(sig_key.1, pk(ltkAS.1))))='S'",
+                                                                     issapicrule, role='Server']:
+   [
+   State_111111121211111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[ Pred_Not_Eq( fst(snd(pubdec(sig_key.1, pk(ltkAS.1)))), 'S' ) ]->
+   [
+   State_1111111212111111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                 sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) iffstsndsndpubdecsigkeypkltkASsidS_0_1111111212111111111111[color=#806040,
+                                                                            process="if fst(snd(snd(pubdec(sig_key.1, pk(ltkAS.1)))))=sidS.1",
+                                                                            issapicrule, role='Server']:
+   [
+   State_1111111212111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                 sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[ Pred_Eq( fst(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))), sidS.1 ) ]->
+   [
+   State_11111112121111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                  sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) iffstsndsndpubdecsigkeypkltkASsidS_1_1111111212111111111111[color=#806040,
+                                                                            process="if fst(snd(snd(pubdec(sig_key.1, pk(ltkAS.1)))))=sidS.1",
+                                                                            issapicrule, role='Server']:
+   [
+   State_1111111212111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                 sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[ Pred_Not_Eq( fst(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))), sidS.1 )
+  ]->
+   [
+   State_11111112121111111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                  sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) eventINMeASSClientKeyReplyashdrsigkey_0_11111112121111111111111[color=#806040,
+                                                                                process="event IN_M2e_AS_S_ClientKeyReply( <as_hdr.3, sig_key.1> );",
+                                                                                issapicrule, role='Server']:
+   [
+   State_11111112121111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                  sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[ IN_M2e_AS_S_ClientKeyReply( <as_hdr.3, sig_key.1> ) ]->
+   [
+   State_111111121211111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                   s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) iffstpubdecauthoutersndsndsndpubdecsigkeypkltkASchdr_0_111111121211111111111111[color=#806040,
+                                                                                                process="if fst(pubdec(auth_outer.3,
+           snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1)))))))=c_hdr.1",
+                                                                                                issapicrule,
+                                                                                                role='Server']:
+   [
+   State_111111121211111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                   s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[
+  Pred_Eq( fst(pubdec(auth_outer.3,
+                      snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))),
+           c_hdr.1
+  )
+  ]->
+   [
+   State_1111111212111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                    s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) iffstpubdecauthoutersndsndsndpubdecsigkeypkltkASchdr_1_111111121211111111111111[color=#806040,
+                                                                                                process="if fst(pubdec(auth_outer.3,
+           snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1)))))))=c_hdr.1",
+                                                                                                issapicrule,
+                                                                                                role='Server']:
+   [
+   State_111111121211111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                   s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[
+  Pred_Not_Eq( fst(pubdec(auth_outer.3,
+                          snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))),
+               c_hdr.1
+  )
+  ]->
+   [
+   State_1111111212111111111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                    s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) iffstsndsndpubdecauthoutersndsndsndpubdecsigkeypkltkASlifeC_0_1111111212111111111111111[color=#806040,
+                                                                                                        process="if fst(snd(snd(pubdec(auth_outer.3,
+                   snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1)))))))))='lifeC'",
+                                                                                                        issapicrule,
+                                                                                                        role='Server']:
+   [
+   State_1111111212111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                    s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[
+  Pred_Eq( fst(snd(snd(pubdec(auth_outer.3,
+                              snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))))),
+           'lifeC'
+  )
+  ]->
+   [
+   State_11111112121111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                     s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) iffstsndsndpubdecauthoutersndsndsndpubdecsigkeypkltkASlifeC_1_1111111212111111111111111[color=#806040,
+                                                                                                        process="if fst(snd(snd(pubdec(auth_outer.3,
+                   snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1)))))))))='lifeC'",
+                                                                                                        issapicrule,
+                                                                                                        role='Server']:
+   [
+   State_1111111212111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                    s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[
+  Pred_Not_Eq( fst(snd(snd(pubdec(auth_outer.3,
+                                  snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))))),
+               'lifeC'
+  )
+  ]->
+   [
+   State_11111112121111111111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                     s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) eventINMcCSAuthenticatorchdrshdrauthouter_0_11111112121111111111111111[color=#806040,
+                                                                                       process="event IN_M2c_C_S_Authenticator( <c_hdr.1, s_hdr.1, auth_outer.3> );",
+                                                                                       issapicrule,
+                                                                                       role='Server']:
+   [
+   State_11111112121111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                     s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[ IN_M2c_C_S_Authenticator( <c_hdr.1, s_hdr.1, auth_outer.3> ) ]->
+   [
+   State_111111121211111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                      s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) eventCommitBSchdradecsndsndsndpubdecauthoutersndsndsndpubdecsigkeypkltkASltkS_0_111111121211111111111111111[color=#806040,
+                                                                                                                            process="event Commit_B( 'S', c_hdr.1,
+          adec(snd(snd(snd(pubdec(auth_outer.3,
+                                  snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))))),
+               ltkS.1)
+);",
+                                                                                                                            issapicrule,
+                                                                                                                            role='Server']:
+   [
+   State_111111121211111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                      s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[
+  Commit_B( 'S', c_hdr.1,
+            adec(snd(snd(snd(pubdec(auth_outer.3,
+                                    snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))))),
+                 ltkS.1)
+  )
+  ]->
+   [
+   State_1111111212111111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                       s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) eventSAcceptsClientSchdradecsndsndsndpubdecauthoutersndsndsndpubdecsigkeypkltkASltkSfstsndpubdecauthoutersndsndsndpubdecsigkeypkltkASfstsndsndpubdecauthoutersndsndsndpubdecsigkeypkltkAS_0_1111111212111111111111111111[color=#806040,
+                                                                                                                                                                                                                                         process="event S_AcceptsClient( 'S', c_hdr.1,
+                 adec(snd(snd(snd(pubdec(auth_outer.3,
+                                         snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))))),
+                      ltkS.1),
+                 fst(snd(pubdec(auth_outer.3,
+                                snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1)))))))),
+                 fst(snd(snd(pubdec(auth_outer.3,
+                                    snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1)))))))))
+);",
+                                                                                                                                                                                                                                         issapicrule,
+                                                                                                                                                                                                                                         role='Server']:
+   [
+   State_1111111212111111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                       s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[
+  S_AcceptsClient( 'S', c_hdr.1,
+                   adec(snd(snd(snd(pubdec(auth_outer.3,
+                                           snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))))),
+                        ltkS.1),
+                   fst(snd(pubdec(auth_outer.3,
+                                  snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1)))))))),
+                   fst(snd(snd(pubdec(auth_outer.3,
+                                      snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1)))))))))
+  )
+  ]->
+   [
+   State_11111112121111111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                        s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) eventRunningBSchdradecsndsndsndpubdecauthoutersndsndsndpubdecsigkeypkltkASltkS_0_11111112121111111111111111111[color=#806040,
+                                                                                                                               process="event Running_B( 'S', c_hdr.1,
+           adec(snd(snd(snd(pubdec(auth_outer.3,
+                                   snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))))),
+                ltkS.1)
+);",
+                                                                                                                               issapicrule,
+                                                                                                                               role='Server']:
+   [
+   State_11111112121111111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                        s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[
+  Running_B( 'S', c_hdr.1,
+             adec(snd(snd(snd(pubdec(auth_outer.3,
+                                     snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))))),
+                  ltkS.1)
+  )
+  ]->
+   [
+   State_111111121211111111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                         s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) eventOUTMfSCReturnIdPlusOneSchdraencSplusadecsndsndsndpubdecauthoutersndsndsndpubdecsigkeypkltkASltkSsndsndsndpubdecsigkeypkltkAS_0_111111121211111111111111111111[color=#806040,
+                                                                                                                                                                                   process="event OUT_M2f_S_C_ReturnIdPlusOne( <'S', c_hdr.1, 
+                              aenc(<'S', 
+                                    plus1(adec(snd(snd(snd(pubdec(auth_outer.3,
+                                                                  snd(snd(snd(pubdec(sig_key.1,
+                                                                                     pk(ltkAS.1))))))))),
+                                               ltkS.1))
+                                   >,
+                                   snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))
+                             >
+);",
+                                                                                                                                                                                   issapicrule,
+                                                                                                                                                                                   role='Server']:
+   [
+   State_111111121211111111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                         s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  --[
+  OUT_M2f_S_C_ReturnIdPlusOne( <'S', c_hdr.1, 
+                                aenc(<'S', 
+                                      plus1(adec(snd(snd(snd(pubdec(auth_outer.3,
+                                                                    snd(snd(snd(pubdec(sig_key.1,
+                                                                                       pk(ltkAS.1))))))))),
+                                                 ltkS.1))
+                                     >,
+                                     snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))
+                               >
+  )
+  ]->
+   [
+   State_1111111212111111111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                          s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+
+rule (modulo E) outSchdraencSplusadecsndsndsndpubdecauthoutersndsndsndpubdecsigkeypkltkASltkSsndsndsndpubdecsigkeypkltkAS_0_1111111212111111111111111111111[color=#806040,
+                                                                                                                                                            process="out(<'S', c_hdr.1, 
+ aenc(<'S', 
+       plus1(adec(snd(snd(snd(pubdec(auth_outer.3,
+                                     snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))))),
+                  ltkS.1))
+      >,
+      snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))
+>);",
+                                                                                                                                                            issapicrule,
+                                                                                                                                                            role='Server']:
+   [
+   State_1111111212111111111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                          s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  -->
+   [
+   State_11111112121111111111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                           s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   ),
+   Out( <'S', c_hdr.1, 
+         aenc(<'S', 
+               plus1(adec(snd(snd(snd(pubdec(auth_outer.3,
+                                             snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))))),
+                          ltkS.1))
+              >,
+              snd(snd(snd(pubdec(sig_key.1, pk(ltkAS.1))))))
+        >
+   )
+   ]
+
+rule (modulo E) p_0_11111112121111111111111111111111[color=#806040,
+                                                     process="0", issapicrule, role='Server']:
+   [
+   State_11111112121111111111111111111111( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                           s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111112121111111111111112[color=#806040,
+                                               process="0", issapicrule, role='Server']:
+   [
+   State_11111112121111111111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                     s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111111212111111111111112[color=#806040, process="0",
+                                              issapicrule, role='Server']:
+   [
+   State_1111111212111111111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1,
+                                    s_hdr.1, sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111112121111111111112[color=#806040, process="0",
+                                            issapicrule, role='Server']:
+   [
+   State_11111112121111111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                  sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111111212111111111112[color=#806040, process="0",
+                                           issapicrule, role='Server']:
+   [
+   State_1111111212111111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                 sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111111121211111111112[color=#806040, process="0",
+                                          issapicrule, role='Server']:
+   [
+   State_111111121211111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                                sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111112121111111112[color=#806040, process="0",
+                                         issapicrule, role='Server']:
+   [
+   State_11111112121111111112( c_hdr.1, ltkAS.1, ltkC.1, ltkS.1, s_hdr.1,
+                               sidS.1, sig_key.1, as_hdr.3, auth_outer.3
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111111212112[color=#ffffff, process="0",
+                                  issapicrule, role='Process']:
+   [ State_1111111212112( ltkAS.1, ltkC.1, ltkS.1 ) ] --> [ ]
+
+rule (modulo E) p_0_111111121212[color=#ffffff, process="!", issapicrule,
+                                 role='Process']:
+   [ State_111111121212( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ !Semistate_1111111212121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) p_1_111111121212[color=#ffffff, process="!", issapicrule,
+                                 role='Process']:
+   [ !Semistate_1111111212121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ State_1111111212121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) p_0_1111111212121[color=#ffffff, process="|",
+                                  issapicrule, role='Process']:
+   [ State_1111111212121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [
+   State_11111112121211( ltkAS.1, ltkC.1, ltkS.1 ),
+   State_11111112121212( ltkAS.1, ltkC.1, ltkS.1 )
+   ]
+
+rule (modulo E) AuthServerServerKeyASSltkASpkltkS_0_11111112121211[color=#ffffff,
+                                                                   process="AuthServerServerKey('AS', 'S', ltkAS.1, pk(ltkS.1))",
+                                                                   issapicrule, role='Process']:
+   [ State_11111112121211( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [
+   State_111111121212111( ltkAS.1, ltkC.1, ltkS.1 ),
+   State_111111121212112( ltkAS.1, ltkC.1, ltkS.1 )
+   ]
+
+rule (modulo E) inreqtargetreqid_0_111111121212111[color=#806d40,
+                                                   process="in(<req.1, target.1, reqid.1>);", issapicrule,
+                                                   role='AuthServerServerKey']:
+   [
+   State_111111121212111( ltkAS.1, ltkC.1, ltkS.1 ),
+   In( <req.1, target.1, reqid.1> )
+   ]
+  -->
+   [
+   State_1111111212121111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1, target.1
+   )
+   ]
+
+rule (modulo E) iftargetS_0_1111111212121111[color=#806d40,
+                                             process="if target.1='S'", issapicrule,
+                                             role='AuthServerServerKey']:
+   [
+   State_1111111212121111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1, target.1
+   )
+   ]
+  --[ Pred_Eq( target.1, 'S' ) ]->
+   [
+   State_11111112121211111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                            target.1
+   )
+   ]
+
+rule (modulo E) iftargetS_1_1111111212121111[color=#806d40,
+                                             process="if target.1='S'", issapicrule,
+                                             role='AuthServerServerKey']:
+   [
+   State_1111111212121111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1, target.1
+   )
+   ]
+  --[ Pred_Not_Eq( target.1, 'S' ) ]->
+   [
+   State_11111112121211112( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                            target.1
+   )
+   ]
+
+rule (modulo E) eventINMaCASServerKeyRequestreqtargetreqid_0_11111112121211111[color=#806d40,
+                                                                               process="event IN_M2a_C_AS_ServerKeyRequest( <req.1, target.1, reqid.1> );",
+                                                                               issapicrule,
+                                                                               role='AuthServerServerKey']:
+   [
+   State_11111112121211111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                            target.1
+   )
+   ]
+  --[ IN_M2a_C_AS_ServerKeyRequest( <req.1, target.1, reqid.1> ) ]->
+   [
+   State_111111121212111111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                             target.1
+   )
+   ]
+
+rule (modulo E) eventASIssuesServerKeyASreqtargetreqidpkltkS_0_111111121212111111[color=#806d40,
+                                                                                  process="event AS_IssuesServerKey( 'AS', req.1, target.1, reqid.1, pk(ltkS.1) );",
+                                                                                  issapicrule,
+                                                                                  role='AuthServerServerKey']:
+   [
+   State_111111121212111111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                             target.1
+   )
+   ]
+  --[ AS_IssuesServerKey( 'AS', req.1, target.1, reqid.1, pk(ltkS.1) ) ]->
+   [
+   State_1111111212121111111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                              target.1
+   )
+   ]
+
+rule (modulo E) eventOUTMbASCServerKeyReplyASprivencASreqreqidpkltkSltkAS_0_1111111212121111111[color=#806d40,
+                                                                                                process="event OUT_M2b_AS_C_ServerKeyReply( <'AS', 
+                              privenc(<'AS', req.1, reqid.1, pk(ltkS.1)>, ltkAS.1)>
+);",
+                                                                                                issapicrule,
+                                                                                                role='AuthServerServerKey']:
+   [
+   State_1111111212121111111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                              target.1
+   )
+   ]
+  --[
+  OUT_M2b_AS_C_ServerKeyReply( <'AS', 
+                                privenc(<'AS', req.1, reqid.1, pk(ltkS.1)>, ltkAS.1)>
+  )
+  ]->
+   [
+   State_11111112121211111111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                               target.1
+   )
+   ]
+
+rule (modulo E) outASprivencASreqreqidpkltkSltkAS_0_11111112121211111111[color=#806d40,
+                                                                         process="out(<'AS', privenc(<'AS', req.1, reqid.1, pk(ltkS.1)>, ltkAS.1)>);",
+                                                                         issapicrule,
+                                                                         role='AuthServerServerKey']:
+   [
+   State_11111112121211111111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                               target.1
+   )
+   ]
+  -->
+   [
+   State_111111121212111111111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                                target.1
+   ),
+   Out( <'AS', privenc(<'AS', req.1, reqid.1, pk(ltkS.1)>, ltkAS.1)> )
+   ]
+
+rule (modulo E) p_0_111111121212111111111[color=#806d40, process="0",
+                                          issapicrule, role='AuthServerServerKey']:
+   [
+   State_111111121212111111111( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                                target.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111112121211112[color=#806d40, process="0",
+                                      issapicrule, role='AuthServerServerKey']:
+   [
+   State_11111112121211112( ltkAS.1, ltkC.1, ltkS.1, req.1, reqid.1,
+                            target.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111111121212112[color=#ffffff, process="0",
+                                    issapicrule, role='Process']:
+   [ State_111111121212112( ltkAS.1, ltkC.1, ltkS.1 ) ] --> [ ]
+
+rule (modulo E) p_0_11111112121212[color=#ffffff, process="!",
+                                   issapicrule, role='Process']:
+   [ State_11111112121212( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ !Semistate_111111121212121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) p_1_11111112121212[color=#ffffff, process="!",
+                                   issapicrule, role='Process']:
+   [ !Semistate_111111121212121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [ State_111111121212121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+
+rule (modulo E) AuthServerClientKeyASCltkASpkltkC_0_111111121212121[color=#ffffff,
+                                                                    process="AuthServerClientKey('AS', 'C', ltkAS.1, pk(ltkC.1))",
+                                                                    issapicrule, role='Process']:
+   [ State_111111121212121( ltkAS.1, ltkC.1, ltkS.1 ) ]
+  -->
+   [
+   State_1111111212121211( ltkAS.1, ltkC.1, ltkS.1 ),
+   State_1111111212121212( ltkAS.1, ltkC.1, ltkS.1 )
+   ]
+
+rule (modulo E) inreqtargetreqid_0_1111111212121211[color=#4d4080,
+                                                    process="in(<req.2, target.2, reqid.2>);", issapicrule,
+                                                    role='AuthServerClientKey']:
+   [
+   State_1111111212121211( ltkAS.1, ltkC.1, ltkS.1 ),
+   In( <req.2, target.2, reqid.2> )
+   ]
+  -->
+   [
+   State_11111112121212111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                            target.2
+   )
+   ]
+
+rule (modulo E) iftargetC_0_11111112121212111[color=#4d4080,
+                                              process="if target.2='C'", issapicrule,
+                                              role='AuthServerClientKey']:
+   [
+   State_11111112121212111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                            target.2
+   )
+   ]
+  --[ Pred_Eq( target.2, 'C' ) ]->
+   [
+   State_111111121212121111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                             target.2
+   )
+   ]
+
+rule (modulo E) iftargetC_1_11111112121212111[color=#4d4080,
+                                              process="if target.2='C'", issapicrule,
+                                              role='AuthServerClientKey']:
+   [
+   State_11111112121212111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                            target.2
+   )
+   ]
+  --[ Pred_Not_Eq( target.2, 'C' ) ]->
+   [
+   State_111111121212121112( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                             target.2
+   )
+   ]
+
+rule (modulo E) eventINMdSASClientKeyRequestreqtargetreqid_0_111111121212121111[color=#4d4080,
+                                                                                process="event IN_M2d_S_AS_ClientKeyRequest( <req.2, target.2, reqid.2> );",
+                                                                                issapicrule,
+                                                                                role='AuthServerClientKey']:
+   [
+   State_111111121212121111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                             target.2
+   )
+   ]
+  --[ IN_M2d_S_AS_ClientKeyRequest( <req.2, target.2, reqid.2> ) ]->
+   [
+   State_1111111212121211111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                              target.2
+   )
+   ]
+
+rule (modulo E) eventASIssuesClientKeyASreqtargetreqidpkltkC_0_1111111212121211111[color=#4d4080,
+                                                                                   process="event AS_IssuesClientKey( 'AS', req.2, target.2, reqid.2, pk(ltkC.1) );",
+                                                                                   issapicrule,
+                                                                                   role='AuthServerClientKey']:
+   [
+   State_1111111212121211111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                              target.2
+   )
+   ]
+  --[ AS_IssuesClientKey( 'AS', req.2, target.2, reqid.2, pk(ltkC.1) ) ]->
+   [
+   State_11111112121212111111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                               target.2
+   )
+   ]
+
+rule (modulo E) eventOUTMeASSClientKeyReplyASprivencASreqreqidpkltkCltkAS_0_11111112121212111111[color=#4d4080,
+                                                                                                 process="event OUT_M2e_AS_S_ClientKeyReply( <'AS', 
+                              privenc(<'AS', req.2, reqid.2, pk(ltkC.1)>, ltkAS.1)>
+);",
+                                                                                                 issapicrule,
+                                                                                                 role='AuthServerClientKey']:
+   [
+   State_11111112121212111111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                               target.2
+   )
+   ]
+  --[
+  OUT_M2e_AS_S_ClientKeyReply( <'AS', 
+                                privenc(<'AS', req.2, reqid.2, pk(ltkC.1)>, ltkAS.1)>
+  )
+  ]->
+   [
+   State_111111121212121111111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                                target.2
+   )
+   ]
+
+rule (modulo E) outASprivencASreqreqidpkltkCltkAS_0_111111121212121111111[color=#4d4080,
+                                                                          process="out(<'AS', privenc(<'AS', req.2, reqid.2, pk(ltkC.1)>, ltkAS.1)>);",
+                                                                          issapicrule,
+                                                                          role='AuthServerClientKey']:
+   [
+   State_111111121212121111111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                                target.2
+   )
+   ]
+  -->
+   [
+   State_1111111212121211111111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                                 target.2
+   ),
+   Out( <'AS', privenc(<'AS', req.2, reqid.2, pk(ltkC.1)>, ltkAS.1)> )
+   ]
+
+rule (modulo E) p_0_1111111212121211111111[color=#4d4080, process="0",
+                                           issapicrule, role='AuthServerClientKey']:
+   [
+   State_1111111212121211111111( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                                 target.2
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111111121212121112[color=#4d4080, process="0",
+                                       issapicrule, role='AuthServerClientKey']:
+   [
+   State_111111121212121112( ltkAS.1, ltkC.1, ltkS.1, req.2, reqid.2,
+                             target.2
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111111212121212[color=#ffffff, process="0",
+                                     issapicrule, role='Process']:
+   [ State_1111111212121212( ltkAS.1, ltkC.1, ltkS.1 ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/*
+WARNING: the following wellformedness checks failed!
+
+Derivation Checks
+=================
+
+  Derivation checks timed out.
+  Use --derivcheck-timeout=INT to configure timeout.
+  Set to 0 to deactivate for no timeout.
+*/
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

@@ -1,0 +1,40 @@
+theory Example
+begin
+builtins: asymmetric-encryption, hashing, symmetric-encryption
+
+let Client(pkS) =
+  new k;
+  event SessionKeyGenerated('C', 'S', k);
+  out(aenc(k, pkS));
+  in(m2);
+  let expected = h(k) in
+  if m2 = expected then (
+    event Commit('C', 'S', k);
+    event Secret('C', 'S', k)
+  )
+
+let Server(ltkS) =
+  in(cipher);
+  let kM1 = adec(cipher, ltkS) in
+  event ServerConfirm('S', kM1);
+  out(h(kM1))
+
+process:
+  new ltkS;
+  let pkS = pk(ltkS) in
+  out(pkS);
+  (!Client(pkS) | !Server(ltkS))
+
+lemma Client_session_key_secrecy:
+  "All c s k #i. Secret(c, s, k) @ i ==> not (Ex #j. K(k) @ j)"
+
+lemma Client_auth:
+  "All c s k #i. Commit(c, s, k) @ i ==> (Ex #j. ServerConfirm(s, k) @ j & j < i)"
+
+lemma Client_auth_injective:
+  "(All c s k #i. Commit(c, s, k) @ i ==> (Ex #j. ServerConfirm(s, k) @ j & j < i)) & (All c s k #i #i2. Commit(c, s, k) @ i & Commit(c, s, k) @ i2 ==> #i = #i2)"
+
+lemma Client_session_key_honest_setup:
+  exists-trace
+  "Ex k #i #j #l #m. SessionKeyGenerated('C', 'S', k) @ i & ServerConfirm('S', k) @ j & Commit('C', 'S', k) @ l & Secret('C', 'S', k) @ m & i < j & j < l"
+end

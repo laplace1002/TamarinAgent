@@ -1,0 +1,89 @@
+theory Woo_Lam
+begin
+
+builtins: symmetric-encryption
+
+let InitiatorA(a, peer, kas) =
+  event A_Begin(a, peer);
+  event OUT_Message(<'M1', a>);
+  out(a);
+  in(nb_recv);
+  event IN_Message(<'M2', nb_recv>);
+  let c3 = senc(nb_recv, kas) in
+  event Running_A(a, peer, nb_recv);
+  event A_Response(a, peer, nb_recv, c3);
+  event OUT_Message(<'M3', c3>);
+  out(c3)
+
+let ResponderB(b, s, kbs) =
+  in(a_claim);
+  event IN_Message(<'M1', a_claim>);
+  new nb;
+  event B_Challenge(b, a_claim, nb);
+  event OUT_Message(<'M2', nb>);
+  out(nb);
+  in(c3_recv);
+  event IN_Message(<'M3', c3_recv>);
+  event B_Forward_To_Server(b, a_claim, nb, c3_recv);
+  let m4_plain = <a_claim, c3_recv> in
+  let m4 = senc(m4_plain, kbs) in
+  event OUT_Message(<'M4', m4>);
+  out(m4);
+  in(m5_recv);
+  let nb_from_s = sdec(m5_recv, kbs) in
+  if nb_from_s = nb then (
+    event IN_Message(<'M5', m5_recv>);
+    event Accept_B(b, a_claim, nb);
+    event Commit_B(b, a_claim, nb)
+  )
+
+let ServerS(s, b, kas, kbs) =
+  in(m4_recv);
+  let plain4 = sdec(m4_recv, kbs) in
+  let a_claim = fst(plain4) in
+  let c3_inner = snd(plain4) in
+  if a_claim = 'A' then (
+    let nb_inner = sdec(c3_inner, kas) in
+    let c3_check = senc(nb_inner, kas) in
+    if c3_check = c3_inner then (
+      event IN_Message(<'M4', m4_recv>);
+      event Server_Unwrapped(s, b, a_claim, nb_inner, c3_inner);
+      let m5 = senc(nb_inner, kbs) in
+      event OUT_Message(<'M5', m5>);
+      out(m5)
+    )
+  )
+
+process:
+  new kas;
+  new kbs;
+  event SecretKey('A', 'S', kas);
+  event SecretKey('B', 'S', kbs);
+  (
+    (!InitiatorA('A', 'B', kas)) |
+    (!InitiatorA('A', 'S', kas)) |
+    (!ResponderB('B', 'S', kbs)) |
+    (!ServerS('S', 'B', kas, kbs))
+  )
+
+lemma AUTO_typing [sources]:
+  "(All m #i. IN_Message(<'M1', m>) @ #i ==> ((Ex #j. OUT_Message(<'M1', m>) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) &
+   (All m #i. IN_Message(<'M2', m>) @ #i ==> ((Ex #j. OUT_Message(<'M2', m>) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) &
+   (All m #i. IN_Message(<'M3', m>) @ #i ==> ((Ex #j. OUT_Message(<'M3', m>) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) &
+   (All m #i. IN_Message(<'M4', m>) @ #i ==> ((Ex #j. OUT_Message(<'M4', m>) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) &
+   (All m #i. IN_Message(<'M5', m>) @ #i ==> ((Ex #j. OUT_Message(<'M5', m>) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i)))"
+
+lemma executability:
+  exists-trace
+  "Ex nb #i. Accept_B('B', 'A', nb) @ #i"
+
+lemma Secrecy:
+  "All p q k #i #j. (SecretKey(p, q, k) @ #i & K(k) @ #j) ==> F"
+
+lemma injectiveagreement_B:
+  "All b a nb #i. Commit_B(b, a, nb) @ #i ==> (Ex #j. Running_A(a, b, nb) @ #j & #j < #i & (All #j2. Running_A(a, b, nb) @ #j2 ==> #j2 = #j))"
+
+lemma agreement_B:
+  "All b a nb #i. Commit_B(b, a, nb) @ #i ==> (Ex #j. Running_A(a, b, nb) @ #j & #j < #i)"
+
+end

@@ -1,0 +1,63 @@
+theory Sigfox
+begin
+
+builtins: asymmetric-encryption, signing, symmetric-encryption
+
+let Role_A(a, b, ltkA, pkB) =
+  new na;
+  event Secret_A(a,b,na);
+  let plain = <a,na> in
+  let mess = aenc(plain, pkB) in
+  let sig = sign(mess, ltkA) in
+  let m1 = <mess,sig> in
+  event A_Send(a,b,na,mess,sig);
+  event OUT_M1(m1);
+  out(m1)
+
+let Role_B(a, b, ltkB, pkA) =
+  in(<mess_recv, sig_recv>);
+  let m1 = <mess_recv,sig_recv> in
+  event IN_M1(m1);
+  if verify(sig_recv, mess_recv, pkA) = true then
+    (
+      let plain_recv = adec(mess_recv, ltkB) in
+      let sender_recv = fst(plain_recv) in
+      let na_recv = snd(plain_recv) in
+      if sender_recv = a then
+        (
+          event B_Accept(a,b,na_recv,mess_recv);
+          event Secret_B(a,b,na_recv)
+        )
+    )
+
+let Reveal_A(a, ltkA) =
+  event Reveal_ltkA(a,ltkA);
+  out(ltkA)
+
+let Reveal_B(b, ltkB) =
+  event Reveal_ltkB(b,ltkB);
+  out(ltkB)
+
+process:
+  new ltkA;
+  new ltkB;
+  let pkA = pk(ltkA) in
+  let pkB = pk(ltkB) in
+  out(pkA);
+  out(pkB);
+  (Role_A('A','B',ltkA,pkB) | Role_B('A','B',ltkB,pkA) | Reveal_A('A',ltkA) | Reveal_B('B',ltkB))
+
+lemma executable:
+  exists-trace
+  "Ex na mess sig #i #j. A_Send('A','B',na,mess,sig) @ #i & B_Accept('A','B',na,mess) @ #j & #i < #j"
+
+lemma secret_A:
+  "All a b na #i. Secret_A(a,b,na) @ #i ==> (not (Ex #j. K(na) @ #j) | (Ex ltkB #r. Reveal_ltkB(b,ltkB) @ #r))"
+
+lemma secret_B:
+  "All a b na #i. Secret_B(a,b,na) @ #i ==> (not (Ex #j. K(na) @ #j) | (Ex ltkB #r. Reveal_ltkB(b,ltkB) @ #r) | (Ex ltkA #r. Reveal_ltkA(a,ltkA) @ #r))"
+
+lemma secrecy_PFS_A:
+  "All a b na ltkB #i #r. Secret_A(a,b,na) @ #i & Reveal_ltkB(b,ltkB) @ #r & #i < #r ==> not (Ex #j. K(na) @ #j)"
+
+end

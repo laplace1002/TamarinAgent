@@ -1,0 +1,696 @@
+theory LAK06
+
+begin
+
+// Function signature and definition of the equational theory E
+
+builtins: xor
+functions: fst/1, h/1, key/1, pair/2, rval/1, snd/1, sval/1
+equations: fst(<x.1, x.2>) = x.1, snd(<x.1, x.2>) = x.2
+
+heuristic: p
+
+lemma executable:
+  exists-trace
+  "∃ reader tag backend s r1 r2 r3 k #i #j #l #m #n.
+    ((((((((Start_READER( reader, tag, s ) @ #i) ∧
+           (Running_TAG( tag, reader, s, r1, r2, k ) @ #j)) ∧
+          (DB_Found( backend, tag, k, s, r1, r2 ) @ #l)) ∧
+         (Running_READER( reader, tag, s, r1, r2, r3, k ) @ #m)) ∧
+        (Commit_TAG( tag, reader, s, r1, r2, r3, k ) @ #n)) ∧
+       (#i < #j)) ∧
+      (#j < #l)) ∧
+     (#l < #m)) ∧
+    (#m < #n)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ reader tag backend s r1 r2 r3 k #i #j #l #m #n.
+  (Start_READER( reader, tag, s ) @ #i) ∧
+  (Running_TAG( tag, reader, s, r1, r2, k ) @ #j) ∧
+  (DB_Found( backend, tag, k, s, r1, r2 ) @ #l) ∧
+  (Running_READER( reader, tag, s, r1, r2, r3, k ) @ #m) ∧
+  (Commit_TAG( tag, reader, s, r1, r2, r3, k ) @ #n)
+ ∧
+  (#i < #j) ∧ (#j < #l) ∧ (#l < #m) ∧ (#m < #n)"
+*/
+by sorry
+
+lemma helpingSecrecy:
+  all-traces
+  "∀ tag backend k #i.
+    (Secret( tag, backend, k ) @ #i) ⇒ (¬(∃ #j. K( k ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ tag backend k #i.
+  (Secret( tag, backend, k ) @ #i) ∧ ∃ #j. (K( k ) @ #j)"
+*/
+by sorry
+
+lemma noninjectiveagreementTAG:
+  all-traces
+  "∀ tag reader s r1 r2 r3 k #i.
+    (Commit_TAG( tag, reader, s, r1, r2, r3, k ) @ #i) ⇒
+    (∃ #j.
+      (Running_READER( reader, tag, s, r1, r2, r3, k ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ tag reader s r1 r2 r3 k #i.
+  (Commit_TAG( tag, reader, s, r1, r2, r3, k ) @ #i)
+ ∧
+  ∀ #j.
+   (Running_READER( reader, tag, s, r1, r2, r3, k ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma noninjectiveagreementREADER:
+  all-traces
+  "∀ reader tag s r1 r2 r3 k #i.
+    (Commit_READER( reader, tag, s, r1, r2, r3, k ) @ #i) ⇒
+    (∃ #j. (Running_TAG( tag, reader, s, r1, r2, k ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ reader tag s r1 r2 r3 k #i.
+  (Commit_READER( reader, tag, s, r1, r2, r3, k ) @ #i)
+ ∧
+  ∀ #j. (Running_TAG( tag, reader, s, r1, r2, k ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="new k_last_seed.1;",
+                     issapicrule, role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) newklastseed_0_[color=#ffffff,
+                                process="new k_last_seed.1;", issapicrule, role='Process']:
+   [ State_( ), Fr( k_last_seed.1 ) ] --> [ State_1( k_last_seed.1 ) ]
+
+rule (modulo E) eventSecretTBhkeyklastseed_0_1[color=#ffffff,
+                                               process="event Secret( 'T', 'B', h(key(k_last_seed.1)) );",
+                                               issapicrule, role='Process']:
+   [ State_1( k_last_seed.1 ) ]
+  --[ Secret( 'T', 'B', h(key(k_last_seed.1)) ) ]->
+   [ State_11( k_last_seed.1 ) ]
+
+rule (modulo E) p_0_11[color=#ffffff, process="|", issapicrule,
+                       role='Process']:
+   [ State_11( k_last_seed.1 ) ]
+  -->
+   [ State_111( k_last_seed.1 ), State_112( k_last_seed.1 ) ]
+
+rule (modulo E) p_0_111[color=#ffffff, process="|", issapicrule,
+                        role='Process']:
+   [ State_111( k_last_seed.1 ) ]
+  -->
+   [ State_1111( k_last_seed.1 ), State_1112( k_last_seed.1 ) ]
+
+rule (modulo E) p_0_1111[color=#ffffff, process="|", issapicrule,
+                         role='Process']:
+   [ State_1111( k_last_seed.1 ) ]
+  -->
+   [ State_11111( k_last_seed.1 ), State_11112( k_last_seed.1 ) ]
+
+rule (modulo E) ReaderBackendCurrentRTBhkeyklastseed_0_11111[color=#ffffff,
+                                                             process="ReaderBackendCurrent('R', 'T', 'B', h(key(k_last_seed.1)))",
+                                                             issapicrule, role='Process']:
+   [ State_11111( k_last_seed.1 ) ]
+  -->
+   [ State_111111( k_last_seed.1 ), State_111112( k_last_seed.1 ) ]
+
+rule (modulo E) newsseed_0_111111[color=#408058, process="new s_seed.1;",
+                                  issapicrule, role='ReaderBackendCurrent']:
+   [ State_111111( k_last_seed.1 ), Fr( s_seed.1 ) ]
+  -->
+   [ State_1111111( k_last_seed.1, s_seed.1 ) ]
+
+rule (modulo E) eventStartREADERRTsvalsseed_0_1111111[color=#408058,
+                                                      process="event Start_READER( 'R', 'T', sval(s_seed.1) );",
+                                                      issapicrule, role='ReaderBackendCurrent']:
+   [ State_1111111( k_last_seed.1, s_seed.1 ) ]
+  --[ Start_READER( 'R', 'T', sval(s_seed.1) ) ]->
+   [ State_11111111( k_last_seed.1, s_seed.1 ) ]
+
+rule (modulo E) eventOUTMsvalsseed_0_11111111[color=#408058,
+                                              process="event OUT_M1( sval(s_seed.1) );", issapicrule,
+                                              role='ReaderBackendCurrent']:
+   [ State_11111111( k_last_seed.1, s_seed.1 ) ]
+  --[ OUT_M1( sval(s_seed.1) ) ]->
+   [ State_111111111( k_last_seed.1, s_seed.1 ) ]
+
+rule (modulo E) outsvalsseed_0_111111111[color=#408058,
+                                         process="out(sval(s_seed.1));", issapicrule,
+                                         role='ReaderBackendCurrent']:
+   [ State_111111111( k_last_seed.1, s_seed.1 ) ]
+  -->
+   [ State_1111111111( k_last_seed.1, s_seed.1 ), Out( sval(s_seed.1) ) ]
+
+rule (modulo E) inrinrin_0_1111111111[color=#408058,
+                                      process="in(<r1_in.1, r2_in.1>);", issapicrule,
+                                      role='ReaderBackendCurrent']:
+   [ State_1111111111( k_last_seed.1, s_seed.1 ), In( <r1_in.1, r2_in.1> ) ]
+  -->
+   [ State_11111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+
+rule (modulo E) eventForwardREADERTOBACKENDRBsvalsseedrinrin_0_11111111111[color=#408058,
+                                                                           process="event Forward_READER_TO_BACKEND( 'R', 'B', sval(s_seed.1), r1_in.1,
+                           r2_in.1
+);",
+                                                                           issapicrule,
+                                                                           role='ReaderBackendCurrent']:
+   [ State_11111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+  --[
+  Forward_READER_TO_BACKEND( 'R', 'B', sval(s_seed.1), r1_in.1, r2_in.1 )
+  ]->
+   [ State_111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+
+rule (modulo E) eventOUTMsvalsseedrinrin_0_111111111111[color=#408058,
+                                                        process="event OUT_M3( <sval(s_seed.1), r1_in.1, r2_in.1> );",
+                                                        issapicrule, role='ReaderBackendCurrent']:
+   [ State_111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+  --[ OUT_M3( <sval(s_seed.1), r1_in.1, r2_in.1> ) ]->
+   [ State_1111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+
+rule (modulo E) outsvalsseedrinrin_0_1111111111111[color=#408058,
+                                                   process="out(<sval(s_seed.1), r1_in.1, r2_in.1>);",
+                                                   issapicrule, role='ReaderBackendCurrent']:
+   [ State_1111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+  -->
+   [
+   State_11111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ),
+   Out( <sval(s_seed.1), r1_in.1, r2_in.1> )
+   ]
+
+rule (modulo E) ifrinhrinhkeyklastseedsvalsseed_0_11111111111111[color=#408058,
+                                                                 process="if r2_in.1=h((r1_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1)))",
+                                                                 issapicrule, role='ReaderBackendCurrent']:
+   [ State_11111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+  --[ Pred_Eq( r2_in.1, h((r1_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))) )
+  ]->
+   [ State_111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+
+rule (modulo E) ifrinhrinhkeyklastseedsvalsseed_1_11111111111111[color=#408058,
+                                                                 process="if r2_in.1=h((r1_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1)))",
+                                                                 issapicrule, role='ReaderBackendCurrent']:
+   [ State_11111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+  --[
+  Pred_Not_Eq( r2_in.1, h((r1_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))) )
+  ]->
+   [ State_111111111111112( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+
+rule (modulo E) eventDBFoundBThkeyklastseedsvalsseedrinrin_0_111111111111111[color=#408058,
+                                                                             process="event DB_Found( 'B', 'T', h(key(k_last_seed.1)), sval(s_seed.1), r1_in.1,
+          r2_in.1
+);",
+                                                                             issapicrule,
+                                                                             role='ReaderBackendCurrent']:
+   [ State_111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+  --[
+  DB_Found( 'B', 'T', h(key(k_last_seed.1)), sval(s_seed.1), r1_in.1,
+            r2_in.1
+  )
+  ]->
+   [ State_1111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+
+rule (modulo E) eventCommitREADERRTsvalsseedrinrinhrinhkeyklastseedsvalsseedhkeyklastseed_0_1111111111111111[color=#408058,
+                                                                                                             process="event Commit_READER( 'R', 'T', sval(s_seed.1), r1_in.1, r2_in.1,
+               h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))),
+               h(key(k_last_seed.1))
+);",
+                                                                                                             issapicrule,
+                                                                                                             role='ReaderBackendCurrent']:
+   [ State_1111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+  --[
+  Commit_READER( 'R', 'T', sval(s_seed.1), r1_in.1, r2_in.1,
+                 h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))), h(key(k_last_seed.1))
+  )
+  ]->
+   [ State_11111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+
+rule (modulo E) eventRunningREADERRTsvalsseedrinrinhrinhkeyklastseedsvalsseedhkeyklastseed_0_11111111111111111[color=#408058,
+                                                                                                               process="event Running_READER( 'R', 'T', sval(s_seed.1), r1_in.1, r2_in.1,
+                h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))),
+                h(key(k_last_seed.1))
+);",
+                                                                                                               issapicrule,
+                                                                                                               role='ReaderBackendCurrent']:
+   [ State_11111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+  --[
+  Running_READER( 'R', 'T', sval(s_seed.1), r1_in.1, r2_in.1,
+                  h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))), h(key(k_last_seed.1))
+  )
+  ]->
+   [ State_111111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+
+rule (modulo E) eventOUTMhrinhkeyklastseedsvalsseed_0_111111111111111111[color=#408058,
+                                                                         process="event OUT_M4( h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))) );",
+                                                                         issapicrule,
+                                                                         role='ReaderBackendCurrent']:
+   [ State_111111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+  --[ OUT_M4( h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))) ) ]->
+   [ State_1111111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 )
+   ]
+
+rule (modulo E) outhrinhkeyklastseedsvalsseed_0_1111111111111111111[color=#408058,
+                                                                    process="out(h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))));",
+                                                                    issapicrule, role='ReaderBackendCurrent']:
+   [ State_1111111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 )
+   ]
+  -->
+   [
+   State_11111111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ),
+   Out( h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))) )
+   ]
+
+rule (modulo E) eventOUTMhrinhkeyklastseedsvalsseed_0_11111111111111111111[color=#408058,
+                                                                           process="event OUT_M5( h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))) );",
+                                                                           issapicrule,
+                                                                           role='ReaderBackendCurrent']:
+   [ State_11111111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 )
+   ]
+  --[ OUT_M5( h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))) ) ]->
+   [
+   State_111111111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 )
+   ]
+
+rule (modulo E) outhrinhkeyklastseedsvalsseed_0_111111111111111111111[color=#408058,
+                                                                      process="out(h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))));",
+                                                                      issapicrule,
+                                                                      role='ReaderBackendCurrent']:
+   [
+   State_111111111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 )
+   ]
+  -->
+   [
+   State_1111111111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1
+   ),
+   Out( h((r2_in.1⊕h(key(k_last_seed.1))⊕sval(s_seed.1))) )
+   ]
+
+rule (modulo E) p_0_1111111111111111111111[color=#408058, process="0",
+                                           issapicrule, role='ReaderBackendCurrent']:
+   [
+   State_1111111111111111111111( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111111111111112[color=#408058, process="0",
+                                    issapicrule, role='ReaderBackendCurrent']:
+   [ State_111111111111112( k_last_seed.1, r1_in.1, r2_in.1, s_seed.1 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111112[color=#ffffff, process="0", issapicrule,
+                           role='Process']:
+   [ State_111112( k_last_seed.1 ) ] --> [ ]
+
+rule (modulo E) ReaderBackendLastRTBkeyklastseed_0_11112[color=#ffffff,
+                                                         process="ReaderBackendLast('R', 'T', 'B', key(k_last_seed.1))",
+                                                         issapicrule, role='Process']:
+   [ State_11112( k_last_seed.1 ) ]
+  -->
+   [ State_111121( k_last_seed.1 ), State_111122( k_last_seed.1 ) ]
+
+rule (modulo E) newsseed_0_111121[color=#804240, process="new s_seed.2;",
+                                  issapicrule, role='ReaderBackendLast']:
+   [ State_111121( k_last_seed.1 ), Fr( s_seed.2 ) ]
+  -->
+   [ State_1111211( k_last_seed.1, s_seed.2 ) ]
+
+rule (modulo E) eventStartREADERRTsvalsseed_0_1111211[color=#804240,
+                                                      process="event Start_READER( 'R', 'T', sval(s_seed.2) );",
+                                                      issapicrule, role='ReaderBackendLast']:
+   [ State_1111211( k_last_seed.1, s_seed.2 ) ]
+  --[ Start_READER( 'R', 'T', sval(s_seed.2) ) ]->
+   [ State_11112111( k_last_seed.1, s_seed.2 ) ]
+
+rule (modulo E) eventOUTMsvalsseed_0_11112111[color=#804240,
+                                              process="event OUT_M1( sval(s_seed.2) );", issapicrule,
+                                              role='ReaderBackendLast']:
+   [ State_11112111( k_last_seed.1, s_seed.2 ) ]
+  --[ OUT_M1( sval(s_seed.2) ) ]->
+   [ State_111121111( k_last_seed.1, s_seed.2 ) ]
+
+rule (modulo E) outsvalsseed_0_111121111[color=#804240,
+                                         process="out(sval(s_seed.2));", issapicrule,
+                                         role='ReaderBackendLast']:
+   [ State_111121111( k_last_seed.1, s_seed.2 ) ]
+  -->
+   [ State_1111211111( k_last_seed.1, s_seed.2 ), Out( sval(s_seed.2) ) ]
+
+rule (modulo E) inrinrin_0_1111211111[color=#804240,
+                                      process="in(<r1_in.2, r2_in.2>);", issapicrule,
+                                      role='ReaderBackendLast']:
+   [ State_1111211111( k_last_seed.1, s_seed.2 ), In( <r1_in.2, r2_in.2> ) ]
+  -->
+   [ State_11112111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+
+rule (modulo E) eventForwardREADERTOBACKENDRBsvalsseedrinrin_0_11112111111[color=#804240,
+                                                                           process="event Forward_READER_TO_BACKEND( 'R', 'B', sval(s_seed.2), r1_in.2,
+                           r2_in.2
+);",
+                                                                           issapicrule,
+                                                                           role='ReaderBackendLast']:
+   [ State_11112111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+  --[
+  Forward_READER_TO_BACKEND( 'R', 'B', sval(s_seed.2), r1_in.2, r2_in.2 )
+  ]->
+   [ State_111121111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+
+rule (modulo E) eventOUTMsvalsseedrinrin_0_111121111111[color=#804240,
+                                                        process="event OUT_M3( <sval(s_seed.2), r1_in.2, r2_in.2> );",
+                                                        issapicrule, role='ReaderBackendLast']:
+   [ State_111121111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+  --[ OUT_M3( <sval(s_seed.2), r1_in.2, r2_in.2> ) ]->
+   [ State_1111211111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+
+rule (modulo E) outsvalsseedrinrin_0_1111211111111[color=#804240,
+                                                   process="out(<sval(s_seed.2), r1_in.2, r2_in.2>);",
+                                                   issapicrule, role='ReaderBackendLast']:
+   [ State_1111211111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+  -->
+   [
+   State_11112111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ),
+   Out( <sval(s_seed.2), r1_in.2, r2_in.2> )
+   ]
+
+rule (modulo E) ifrinhrinkeyklastseedsvalsseed_0_11112111111111[color=#804240,
+                                                                process="if r2_in.2=h((r1_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2)))",
+                                                                issapicrule, role='ReaderBackendLast']:
+   [ State_11112111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+  --[ Pred_Eq( r2_in.2, h((r1_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))) )
+  ]->
+   [ State_111121111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+
+rule (modulo E) ifrinhrinkeyklastseedsvalsseed_1_11112111111111[color=#804240,
+                                                                process="if r2_in.2=h((r1_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2)))",
+                                                                issapicrule, role='ReaderBackendLast']:
+   [ State_11112111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+  --[
+  Pred_Not_Eq( r2_in.2, h((r1_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))) )
+  ]->
+   [ State_111121111111112( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+
+rule (modulo E) eventDBFoundBTkeyklastseedsvalsseedrinrin_0_111121111111111[color=#804240,
+                                                                            process="event DB_Found( 'B', 'T', key(k_last_seed.1), sval(s_seed.2), r1_in.2,
+          r2_in.2
+);",
+                                                                            issapicrule,
+                                                                            role='ReaderBackendLast']:
+   [ State_111121111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+  --[
+  DB_Found( 'B', 'T', key(k_last_seed.1), sval(s_seed.2), r1_in.2, r2_in.2
+  )
+  ]->
+   [ State_1111211111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+
+rule (modulo E) eventCommitREADERRTsvalsseedrinrinhrinkeyklastseedsvalsseedkeyklastseed_0_1111211111111111[color=#804240,
+                                                                                                           process="event Commit_READER( 'R', 'T', sval(s_seed.2), r1_in.2, r2_in.2,
+               h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))), key(k_last_seed.1)
+);",
+                                                                                                           issapicrule,
+                                                                                                           role='ReaderBackendLast']:
+   [ State_1111211111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+  --[
+  Commit_READER( 'R', 'T', sval(s_seed.2), r1_in.2, r2_in.2,
+                 h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))), key(k_last_seed.1)
+  )
+  ]->
+   [ State_11112111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+
+rule (modulo E) eventRunningREADERRTsvalsseedrinrinhrinkeyklastseedsvalsseedkeyklastseed_0_11112111111111111[color=#804240,
+                                                                                                             process="event Running_READER( 'R', 'T', sval(s_seed.2), r1_in.2, r2_in.2,
+                h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))), key(k_last_seed.1)
+);",
+                                                                                                             issapicrule,
+                                                                                                             role='ReaderBackendLast']:
+   [ State_11112111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+  --[
+  Running_READER( 'R', 'T', sval(s_seed.2), r1_in.2, r2_in.2,
+                  h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))), key(k_last_seed.1)
+  )
+  ]->
+   [ State_111121111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+
+rule (modulo E) eventOUTMhrinkeyklastseedsvalsseed_0_111121111111111111[color=#804240,
+                                                                        process="event OUT_M4( h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))) );",
+                                                                        issapicrule,
+                                                                        role='ReaderBackendLast']:
+   [ State_111121111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+  --[ OUT_M4( h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))) ) ]->
+   [ State_1111211111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 )
+   ]
+
+rule (modulo E) outhrinkeyklastseedsvalsseed_0_1111211111111111111[color=#804240,
+                                                                   process="out(h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))));",
+                                                                   issapicrule, role='ReaderBackendLast']:
+   [ State_1111211111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 )
+   ]
+  -->
+   [
+   State_11112111111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ),
+   Out( h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))) )
+   ]
+
+rule (modulo E) eventOUTMhrinkeyklastseedsvalsseed_0_11112111111111111111[color=#804240,
+                                                                          process="event OUT_M5( h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))) );",
+                                                                          issapicrule,
+                                                                          role='ReaderBackendLast']:
+   [ State_11112111111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 )
+   ]
+  --[ OUT_M5( h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))) ) ]->
+   [
+   State_111121111111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 )
+   ]
+
+rule (modulo E) outhrinkeyklastseedsvalsseed_0_111121111111111111111[color=#804240,
+                                                                     process="out(h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))));",
+                                                                     issapicrule, role='ReaderBackendLast']:
+   [
+   State_111121111111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 )
+   ]
+  -->
+   [
+   State_1111211111111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2
+   ),
+   Out( h((r2_in.2⊕key(k_last_seed.1)⊕sval(s_seed.2))) )
+   ]
+
+rule (modulo E) p_0_1111211111111111111111[color=#804240, process="0",
+                                           issapicrule, role='ReaderBackendLast']:
+   [
+   State_1111211111111111111111( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111121111111112[color=#804240, process="0",
+                                    issapicrule, role='ReaderBackendLast']:
+   [ State_111121111111112( k_last_seed.1, r1_in.2, r2_in.2, s_seed.2 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111122[color=#ffffff, process="0", issapicrule,
+                           role='Process']:
+   [ State_111122( k_last_seed.1 ) ] --> [ ]
+
+rule (modulo E) TagTRhkeyklastseed_0_1112[color=#ffffff,
+                                          process="Tag('T', 'R', h(key(k_last_seed.1)))", issapicrule,
+                                          role='Process']:
+   [ State_1112( k_last_seed.1 ) ]
+  -->
+   [ State_11121( k_last_seed.1 ), State_11122( k_last_seed.1 ) ]
+
+rule (modulo E) insrecv_0_11121[color=#40807c, process="in(s_recv.1);",
+                                issapicrule, role='Tag']:
+   [ State_11121( k_last_seed.1 ), In( s_recv.1 ) ]
+  -->
+   [ State_111211( k_last_seed.1, s_recv.1 ) ]
+
+rule (modulo E) newrseed_0_111211[color=#40807c,
+                                  process="new r1_seed.1;", issapicrule, role='Tag']:
+   [ State_111211( k_last_seed.1, s_recv.1 ), Fr( r1_seed.1 ) ]
+  -->
+   [ State_1112111( k_last_seed.1, r1_seed.1, s_recv.1 ) ]
+
+rule (modulo E) eventRunningTAGTRsrecvrvalrseedhsrecvhkeyklastseedrvalrseedhkeyklastseed_0_1112111[color=#40807c,
+                                                                                                   process="event Running_TAG( 'T', 'R', s_recv.1, rval(r1_seed.1),
+             h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1))),
+             h(key(k_last_seed.1))
+);",
+                                                                                                   issapicrule,
+                                                                                                   role='Tag']:
+   [ State_1112111( k_last_seed.1, r1_seed.1, s_recv.1 ) ]
+  --[
+  Running_TAG( 'T', 'R', s_recv.1, rval(r1_seed.1),
+               h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1))),
+               h(key(k_last_seed.1))
+  )
+  ]->
+   [ State_11121111( k_last_seed.1, r1_seed.1, s_recv.1 ) ]
+
+rule (modulo E) eventOUTMrvalrseedhsrecvhkeyklastseedrvalrseed_0_11121111[color=#40807c,
+                                                                          process="event OUT_M2( <rval(r1_seed.1), 
+         h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1)))>
+);",
+                                                                          issapicrule, role='Tag']:
+   [ State_11121111( k_last_seed.1, r1_seed.1, s_recv.1 ) ]
+  --[
+  OUT_M2( <rval(r1_seed.1), 
+           h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1)))>
+  )
+  ]->
+   [ State_111211111( k_last_seed.1, r1_seed.1, s_recv.1 ) ]
+
+rule (modulo E) outrvalrseedhsrecvhkeyklastseedrvalrseed_0_111211111[color=#40807c,
+                                                                     process="out(<rval(r1_seed.1), 
+ h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1)))>);",
+                                                                     issapicrule, role='Tag']:
+   [ State_111211111( k_last_seed.1, r1_seed.1, s_recv.1 ) ]
+  -->
+   [
+   State_1112111111( k_last_seed.1, r1_seed.1, s_recv.1 ),
+   Out( <rval(r1_seed.1), 
+         h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1)))>
+   )
+   ]
+
+rule (modulo E) inrrecv_0_1112111111[color=#40807c,
+                                     process="in(r3_recv.1);", issapicrule, role='Tag']:
+   [ State_1112111111( k_last_seed.1, r1_seed.1, s_recv.1 ), In( r3_recv.1 )
+   ]
+  -->
+   [ State_11121111111( k_last_seed.1, r1_seed.1, r3_recv.1, s_recv.1 ) ]
+
+rule (modulo E) ifrrecvhsrecvhkeyklastseedhsrecvhkeyklastseedrvalrseed_0_11121111111[color=#40807c,
+                                                                                     process="if r3_recv.1=h((s_recv.1⊕h(key(k_last_seed.1))⊕
+   h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1)))))",
+                                                                                     issapicrule, role='Tag']:
+   [ State_11121111111( k_last_seed.1, r1_seed.1, r3_recv.1, s_recv.1 ) ]
+  --[
+  Pred_Eq( r3_recv.1,
+           h((s_recv.1⊕h(key(k_last_seed.1))⊕
+              h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1)))))
+  )
+  ]->
+   [ State_111211111111( k_last_seed.1, r1_seed.1, r3_recv.1, s_recv.1 ) ]
+
+rule (modulo E) ifrrecvhsrecvhkeyklastseedhsrecvhkeyklastseedrvalrseed_1_11121111111[color=#40807c,
+                                                                                     process="if r3_recv.1=h((s_recv.1⊕h(key(k_last_seed.1))⊕
+   h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1)))))",
+                                                                                     issapicrule, role='Tag']:
+   [ State_11121111111( k_last_seed.1, r1_seed.1, r3_recv.1, s_recv.1 ) ]
+  --[
+  Pred_Not_Eq( r3_recv.1,
+               h((s_recv.1⊕h(key(k_last_seed.1))⊕
+                  h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1)))))
+  )
+  ]->
+   [ State_111211111112( k_last_seed.1, r1_seed.1, r3_recv.1, s_recv.1 ) ]
+
+rule (modulo E) eventCommitTAGTRsrecvrvalrseedhsrecvhkeyklastseedrvalrseedhsrecvhkeyklastseedhsrecvhkeyklastseedrvalrseedhkeyklastseed_0_111211111111[color=#40807c,
+                                                                                                                                                      process="event Commit_TAG( 'T', 'R', s_recv.1, rval(r1_seed.1),
+            h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1))),
+            h((s_recv.1⊕h(key(k_last_seed.1))⊕
+               h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1))))),
+            h(key(k_last_seed.1))
+);",
+                                                                                                                                                      issapicrule,
+                                                                                                                                                      role='Tag']:
+   [ State_111211111111( k_last_seed.1, r1_seed.1, r3_recv.1, s_recv.1 ) ]
+  --[
+  Commit_TAG( 'T', 'R', s_recv.1, rval(r1_seed.1),
+              h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1))),
+              h((s_recv.1⊕h(key(k_last_seed.1))⊕
+                 h((s_recv.1⊕h(key(k_last_seed.1))⊕rval(r1_seed.1))))),
+              h(key(k_last_seed.1))
+  )
+  ]->
+   [ State_1112111111111( k_last_seed.1, r1_seed.1, r3_recv.1, s_recv.1 ) ]
+
+rule (modulo E) eventSecretTBhhkeyklastseed_0_1112111111111[color=#40807c,
+                                                            process="event Secret( 'T', 'B', h(h(key(k_last_seed.1))) );",
+                                                            issapicrule, role='Tag']:
+   [ State_1112111111111( k_last_seed.1, r1_seed.1, r3_recv.1, s_recv.1 ) ]
+  --[ Secret( 'T', 'B', h(h(key(k_last_seed.1))) ) ]->
+   [ State_11121111111111( k_last_seed.1, r1_seed.1, r3_recv.1, s_recv.1 ) ]
+
+rule (modulo E) p_0_11121111111111[color=#40807c, process="0",
+                                   issapicrule, role='Tag']:
+   [ State_11121111111111( k_last_seed.1, r1_seed.1, r3_recv.1, s_recv.1 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111211111112[color=#40807c, process="0", issapicrule,
+                                 role='Tag']:
+   [ State_111211111112( k_last_seed.1, r1_seed.1, r3_recv.1, s_recv.1 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11122[color=#ffffff, process="0", issapicrule,
+                          role='Process']:
+   [ State_11122( k_last_seed.1 ) ] --> [ ]
+
+rule (modulo E) PriorTranscriptkeyklastseed_0_112[color=#ffffff,
+                                                  process="PriorTranscript(key(k_last_seed.1))", issapicrule,
+                                                  role='Process']:
+   [ State_112( k_last_seed.1 ) ]
+  -->
+   [ State_1121( k_last_seed.1 ), State_1122( k_last_seed.1 ) ]
+
+rule (modulo E) newoldsseed_0_1121[color=#404780,
+                                   process="new old_s_seed.1;", issapicrule, role='PriorTranscript']:
+   [ State_1121( k_last_seed.1 ), Fr( old_s_seed.1 ) ]
+  -->
+   [ State_11211( k_last_seed.1, old_s_seed.1 ) ]
+
+rule (modulo E) newoldrseed_0_11211[color=#404780,
+                                    process="new old_r1_seed.1;", issapicrule, role='PriorTranscript']:
+   [ State_11211( k_last_seed.1, old_s_seed.1 ), Fr( old_r1_seed.1 ) ]
+  -->
+   [ State_112111( k_last_seed.1, old_r1_seed.1, old_s_seed.1 ) ]
+
+rule (modulo E) outsvaloldsseedrvaloldrseedhkeyklastseedrvaloldrseedsvaloldsseed_0_112111[color=#404780,
+                                                                                          process="out(<sval(old_s_seed.1), rval(old_r1_seed.1), 
+ h((key(k_last_seed.1)⊕rval(old_r1_seed.1)⊕sval(old_s_seed.1)))>);",
+                                                                                          issapicrule,
+                                                                                          role='PriorTranscript']:
+   [ State_112111( k_last_seed.1, old_r1_seed.1, old_s_seed.1 ) ]
+  -->
+   [
+   State_1121111( k_last_seed.1, old_r1_seed.1, old_s_seed.1 ),
+   Out( <sval(old_s_seed.1), rval(old_r1_seed.1), 
+         h((key(k_last_seed.1)⊕rval(old_r1_seed.1)⊕sval(old_s_seed.1)))>
+   )
+   ]
+
+rule (modulo E) p_0_1121111[color=#404780, process="0", issapicrule,
+                            role='PriorTranscript']:
+   [ State_1121111( k_last_seed.1, old_r1_seed.1, old_s_seed.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1122[color=#ffffff, process="0", issapicrule,
+                         role='Process']:
+   [ State_1122( k_last_seed.1 ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/* All wellformedness checks were successful. */
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

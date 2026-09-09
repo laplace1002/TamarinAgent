@@ -1,0 +1,770 @@
+theory Kao_Chow
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: fst/1, pair/2, sdec/2, senc/2, snd/1
+equations:
+    fst(<x.1, x.2>) = x.1,
+    sdec(senc(x.1, x.2), x.2) = x.1,
+    snd(<x.1, x.2>) = x.2
+
+heuristic: p
+
+lemma AUTO_typing [sources]:
+  all-traces
+  "(((∀ m #i.
+       (IN_M1( m ) @ #i) ⇒
+       ((∃ #j. (OUT_M1( m ) @ #j) ∧ (#j < #i)) ∨
+        (∃ #k. (!KU( m ) @ #k) ∧ (#k < #i)))) ∧
+     (∀ m #i.
+       (IN_M2( m ) @ #i) ⇒
+       ((∃ #j. (OUT_M2( m ) @ #j) ∧ (#j < #i)) ∨
+        (∃ #k. (!KU( m ) @ #k) ∧ (#k < #i))))) ∧
+    (∀ m #i.
+      (IN_M3( m ) @ #i) ⇒
+      ((∃ #j. (OUT_M3( m ) @ #j) ∧ (#j < #i)) ∨
+       (∃ #k. (!KU( m ) @ #k) ∧ (#k < #i))))) ∧
+   (∀ m #i.
+     (IN_M4( m ) @ #i) ⇒
+     ((∃ #j. (OUT_M4( m ) @ #j) ∧ (#j < #i)) ∨
+      (∃ #k. (!KU( m ) @ #k) ∧ (#k < #i))))"
+/*
+guarded formula characterizing all counter-examples:
+"((∃ m #i.
+    (IN_M1( m ) @ #i)
+   ∧
+    (∀ #j. (OUT_M1( m ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( m ) @ #k) ⇒ ¬(#k < #i))) ∨
+  (∃ m #i.
+    (IN_M2( m ) @ #i)
+   ∧
+    (∀ #j. (OUT_M2( m ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( m ) @ #k) ⇒ ¬(#k < #i))) ∨
+  (∃ m #i.
+    (IN_M3( m ) @ #i)
+   ∧
+    (∀ #j. (OUT_M3( m ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( m ) @ #k) ⇒ ¬(#k < #i))) ∨
+  (∃ m #i.
+    (IN_M4( m ) @ #i)
+   ∧
+    (∀ #j. (OUT_M4( m ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ #k. (!KU( m ) @ #k) ⇒ ¬(#k < #i))))"
+*/
+by sorry
+
+lemma executability:
+  exists-trace
+  "∃ na nb kab #i #j #k #l #m #n.
+    (((((((((((Start_A( 'A', 'B', na ) @ #i) ∧
+              (Server_Issue( 'S', 'A', 'B', na, kab ) @ #j)) ∧
+             (Running_B( 'A', 'B', na, nb, kab ) @ #k)) ∧
+            (Commit_A( 'A', 'B', na, nb, kab ) @ #l)) ∧
+           (Running_A( 'A', 'B', na, nb, kab ) @ #m)) ∧
+          (Commit_B( 'A', 'B', na, nb, kab ) @ #n)) ∧
+         (#i < #j)) ∧
+        (#j < #k)) ∧
+       (#k < #l)) ∧
+      (#k < #m)) ∧
+     (#l < #n)) ∧
+    (#m < #n)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ na nb kab #i #j #k #l #m #n.
+  (Start_A( 'A', 'B', na ) @ #i) ∧
+  (Server_Issue( 'S', 'A', 'B', na, kab ) @ #j) ∧
+  (Running_B( 'A', 'B', na, nb, kab ) @ #k) ∧
+  (Commit_A( 'A', 'B', na, nb, kab ) @ #l) ∧
+  (Running_A( 'A', 'B', na, nb, kab ) @ #m) ∧
+  (Commit_B( 'A', 'B', na, nb, kab ) @ #n)
+ ∧
+  (#i < #j) ∧ (#j < #k) ∧ (#k < #l) ∧ (#k < #m) ∧ (#l < #n) ∧ (#m < #n)"
+*/
+by sorry
+
+lemma secrecy:
+  all-traces
+  "∀ a b kab #i. (Secret( a, b, kab ) @ #i) ⇒ (¬(∃ #j. K( kab ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b kab #i. (Secret( a, b, kab ) @ #i) ∧ ∃ #j. (K( kab ) @ #j)"
+*/
+by sorry
+
+lemma noninjectiveagreement_B:
+  all-traces
+  "∀ a b na nb kab #i.
+    (Commit_B( a, b, na, nb, kab ) @ #i) ⇒
+    (∃ #j. (Running_A( a, b, na, nb, kab ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b na nb kab #i.
+  (Commit_B( a, b, na, nb, kab ) @ #i)
+ ∧
+  ∀ #j. (Running_A( a, b, na, nb, kab ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma noninjectiveagreement_A:
+  all-traces
+  "∀ a b na nb kab #i.
+    (Commit_A( a, b, na, nb, kab ) @ #i) ⇒
+    (∃ #j. (Running_B( a, b, na, nb, kab ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b na nb kab #i.
+  (Commit_A( a, b, na, nb, kab ) @ #i)
+ ∧
+  ∀ #j. (Running_B( a, b, na, nb, kab ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma injectiveagreement_B:
+  all-traces
+  "∀ a b na nb kab #i.
+    (Commit_B( a, b, na, nb, kab ) @ #i) ⇒
+    (∃ #j.
+      (((Running_A( a, b, na, nb, kab ) @ #j) ∧ (#j < #i)) ∧
+       (∀ #j2. (Running_A( a, b, na, nb, kab ) @ #j2) ⇒ (#j2 = #j))) ∧
+      (∀ #i2. (Commit_B( a, b, na, nb, kab ) @ #i2) ⇒ (#i2 = #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b na nb kab #i.
+  (Commit_B( a, b, na, nb, kab ) @ #i)
+ ∧
+  ∀ #j.
+   (Running_A( a, b, na, nb, kab ) @ #j)
+  ⇒
+   ((¬(#j < #i)) ∨
+    (∃ #j2. (Running_A( a, b, na, nb, kab ) @ #j2) ∧ ¬(#j2 = #j)) ∨
+    (∃ #i2. (Commit_B( a, b, na, nb, kab ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+by sorry
+
+lemma injectiveagreement_A:
+  all-traces
+  "∀ a b na nb kab #i.
+    (Commit_A( a, b, na, nb, kab ) @ #i) ⇒
+    (∃ #j.
+      (((Running_B( a, b, na, nb, kab ) @ #j) ∧ (#j < #i)) ∧
+       (∀ #j2. (Running_B( a, b, na, nb, kab ) @ #j2) ⇒ (#j2 = #j))) ∧
+      (∀ #i2. (Commit_A( a, b, na, nb, kab ) @ #i2) ⇒ (#i2 = #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ a b na nb kab #i.
+  (Commit_A( a, b, na, nb, kab ) @ #i)
+ ∧
+  ∀ #j.
+   (Running_B( a, b, na, nb, kab ) @ #j)
+  ⇒
+   ((¬(#j < #i)) ∨
+    (∃ #j2. (Running_B( a, b, na, nb, kab ) @ #j2) ∧ ¬(#j2 = #j)) ∨
+    (∃ #i2. (Commit_A( a, b, na, nb, kab ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="new kas.1;", issapicrule,
+                     role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) newkas_0_[color=#ffffff, process="new kas.1;",
+                          issapicrule, role='Process']:
+   [ State_( ), Fr( kas.1 ) ] --> [ State_1( kas.1 ) ]
+
+rule (modulo E) newkbs_0_1[color=#ffffff, process="new kbs.1;",
+                           issapicrule, role='Process']:
+   [ State_1( kas.1 ), Fr( kbs.1 ) ] --> [ State_11( kas.1, kbs.1 ) ]
+
+rule (modulo E) p_0_11[color=#ffffff, process="|", issapicrule,
+                       role='Process']:
+   [ State_11( kas.1, kbs.1 ) ]
+  -->
+   [ State_111( kas.1, kbs.1 ), State_112( kas.1, kbs.1 ) ]
+
+rule (modulo E) p_0_111[color=#ffffff, process="|", issapicrule,
+                        role='Process']:
+   [ State_111( kas.1, kbs.1 ) ]
+  -->
+   [ State_1111( kas.1, kbs.1 ), State_1112( kas.1, kbs.1 ) ]
+
+rule (modulo E) InitiatorABkas_0_1111[color=#ffffff,
+                                      process="Initiator('A', 'B', kas.1)", issapicrule, role='Process']:
+   [ State_1111( kas.1, kbs.1 ) ]
+  -->
+   [ State_11111( kas.1, kbs.1 ), State_11112( kas.1, kbs.1 ) ]
+
+rule (modulo E) newna_0_11111[color=#80404f, process="new na.1;",
+                              issapicrule, role='Initiator']:
+   [ State_11111( kas.1, kbs.1 ), Fr( na.1 ) ]
+  -->
+   [ State_111111( kas.1, kbs.1, na.1 ) ]
+
+rule (modulo E) eventStartAABna_0_111111[color=#80404f,
+                                         process="event Start_A( 'A', 'B', na.1 );", issapicrule,
+                                         role='Initiator']:
+   [ State_111111( kas.1, kbs.1, na.1 ) ]
+  --[ Start_A( 'A', 'B', na.1 ) ]->
+   [ State_1111111( kas.1, kbs.1, na.1 ) ]
+
+rule (modulo E) eventOUTMABna_0_1111111[color=#80404f,
+                                        process="event OUT_M1( <'A', 'B', na.1> );", issapicrule,
+                                        role='Initiator']:
+   [ State_1111111( kas.1, kbs.1, na.1 ) ]
+  --[ OUT_M1( <'A', 'B', na.1> ) ]->
+   [ State_11111111( kas.1, kbs.1, na.1 ) ]
+
+rule (modulo E) outABna_0_11111111[color=#80404f,
+                                   process="out(<'A', 'B', na.1>);", issapicrule, role='Initiator']:
+   [ State_11111111( kas.1, kbs.1, na.1 ) ]
+  -->
+   [ State_111111111( kas.1, kbs.1, na.1 ), Out( <'A', 'B', na.1> ) ]
+
+rule (modulo E) inmrecv_0_111111111[color=#80404f,
+                                    process="in(m3_recv.1);", issapicrule, role='Initiator']:
+   [ State_111111111( kas.1, kbs.1, na.1 ), In( m3_recv.1 ) ]
+  -->
+   [ State_1111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) ifmrecvfstmrecvfstsndmrecvsndsndmrecv_0_1111111111[color=#80404f,
+                                                                   process="if m3_recv.1=<fst(m3_recv.1), fst(snd(m3_recv.1)), snd(snd(m3_recv.1))>",
+                                                                   issapicrule, role='Initiator']:
+   [ State_1111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[
+  Pred_Eq( m3_recv.1,
+           <fst(m3_recv.1), fst(snd(m3_recv.1)), snd(snd(m3_recv.1))>
+  )
+  ]->
+   [ State_11111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) ifmrecvfstmrecvfstsndmrecvsndsndmrecv_1_1111111111[color=#80404f,
+                                                                   process="if m3_recv.1=<fst(m3_recv.1), fst(snd(m3_recv.1)), snd(snd(m3_recv.1))>",
+                                                                   issapicrule, role='Initiator']:
+   [ State_1111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[
+  Pred_Not_Eq( m3_recv.1,
+               <fst(m3_recv.1), fst(snd(m3_recv.1)), snd(snd(m3_recv.1))>
+  )
+  ]->
+   [ State_11111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) ifsdecfstmrecvkasfstsdecfstmrecvkasfstsndsdecfstmrecvkasfstsndsndsdecfstmrecvkassndsndsndsdecfstmrecvkas_0_11111111111[color=#80404f,
+                                                                                                                                       process="if sdec(fst(m3_recv.1), kas.1)=<fst(sdec(fst(m3_recv.1), kas.1)), 
+ fst(snd(sdec(fst(m3_recv.1), kas.1))), 
+ fst(snd(snd(sdec(fst(m3_recv.1), kas.1)))), 
+ snd(snd(snd(sdec(fst(m3_recv.1), kas.1))))>",
+                                                                                                                                       issapicrule,
+                                                                                                                                       role='Initiator']:
+   [ State_11111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[
+  Pred_Eq( sdec(fst(m3_recv.1), kas.1),
+           <fst(sdec(fst(m3_recv.1), kas.1)), 
+            fst(snd(sdec(fst(m3_recv.1), kas.1))), 
+            fst(snd(snd(sdec(fst(m3_recv.1), kas.1)))), 
+            snd(snd(snd(sdec(fst(m3_recv.1), kas.1))))>
+  )
+  ]->
+   [ State_111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) ifsdecfstmrecvkasfstsdecfstmrecvkasfstsndsdecfstmrecvkasfstsndsndsdecfstmrecvkassndsndsndsdecfstmrecvkas_1_11111111111[color=#80404f,
+                                                                                                                                       process="if sdec(fst(m3_recv.1), kas.1)=<fst(sdec(fst(m3_recv.1), kas.1)), 
+ fst(snd(sdec(fst(m3_recv.1), kas.1))), 
+ fst(snd(snd(sdec(fst(m3_recv.1), kas.1)))), 
+ snd(snd(snd(sdec(fst(m3_recv.1), kas.1))))>",
+                                                                                                                                       issapicrule,
+                                                                                                                                       role='Initiator']:
+   [ State_11111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[
+  Pred_Not_Eq( sdec(fst(m3_recv.1), kas.1),
+               <fst(sdec(fst(m3_recv.1), kas.1)), 
+                fst(snd(sdec(fst(m3_recv.1), kas.1))), 
+                fst(snd(snd(sdec(fst(m3_recv.1), kas.1)))), 
+                snd(snd(snd(sdec(fst(m3_recv.1), kas.1))))>
+  )
+  ]->
+   [ State_111111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) iffstsdecfstmrecvkasA_0_111111111111[color=#80404f,
+                                                     process="if fst(sdec(fst(m3_recv.1), kas.1))='A'",
+                                                     issapicrule, role='Initiator']:
+   [ State_111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[ Pred_Eq( fst(sdec(fst(m3_recv.1), kas.1)), 'A' ) ]->
+   [ State_1111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) iffstsdecfstmrecvkasA_1_111111111111[color=#80404f,
+                                                     process="if fst(sdec(fst(m3_recv.1), kas.1))='A'",
+                                                     issapicrule, role='Initiator']:
+   [ State_111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[ Pred_Not_Eq( fst(sdec(fst(m3_recv.1), kas.1)), 'A' ) ]->
+   [ State_1111111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) iffstsndsdecfstmrecvkasB_0_1111111111111[color=#80404f,
+                                                         process="if fst(snd(sdec(fst(m3_recv.1), kas.1)))='B'",
+                                                         issapicrule, role='Initiator']:
+   [ State_1111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[ Pred_Eq( fst(snd(sdec(fst(m3_recv.1), kas.1))), 'B' ) ]->
+   [ State_11111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) iffstsndsdecfstmrecvkasB_1_1111111111111[color=#80404f,
+                                                         process="if fst(snd(sdec(fst(m3_recv.1), kas.1)))='B'",
+                                                         issapicrule, role='Initiator']:
+   [ State_1111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[ Pred_Not_Eq( fst(snd(sdec(fst(m3_recv.1), kas.1))), 'B' ) ]->
+   [ State_11111111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) iffstsndsndsdecfstmrecvkasna_0_11111111111111[color=#80404f,
+                                                              process="if fst(snd(snd(sdec(fst(m3_recv.1), kas.1))))=na.1",
+                                                              issapicrule, role='Initiator']:
+   [ State_11111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[ Pred_Eq( fst(snd(snd(sdec(fst(m3_recv.1), kas.1)))), na.1 ) ]->
+   [ State_111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) iffstsndsndsdecfstmrecvkasna_1_11111111111111[color=#80404f,
+                                                              process="if fst(snd(snd(sdec(fst(m3_recv.1), kas.1))))=na.1",
+                                                              issapicrule, role='Initiator']:
+   [ State_11111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[ Pred_Not_Eq( fst(snd(snd(sdec(fst(m3_recv.1), kas.1)))), na.1 ) ]->
+   [ State_111111111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) ifsdecfstsndmrecvsndsndsndsdecfstmrecvkasna_0_111111111111111[color=#80404f,
+                                                                              process="if sdec(fst(snd(m3_recv.1)),
+     snd(snd(snd(sdec(fst(m3_recv.1), kas.1)))))=na.1",
+                                                                              issapicrule, role='Initiator']:
+   [ State_111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[
+  Pred_Eq( sdec(fst(snd(m3_recv.1)),
+                snd(snd(snd(sdec(fst(m3_recv.1), kas.1))))),
+           na.1
+  )
+  ]->
+   [ State_1111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) ifsdecfstsndmrecvsndsndsndsdecfstmrecvkasna_1_111111111111111[color=#80404f,
+                                                                              process="if sdec(fst(snd(m3_recv.1)),
+     snd(snd(snd(sdec(fst(m3_recv.1), kas.1)))))=na.1",
+                                                                              issapicrule, role='Initiator']:
+   [ State_111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[
+  Pred_Not_Eq( sdec(fst(snd(m3_recv.1)),
+                    snd(snd(snd(sdec(fst(m3_recv.1), kas.1))))),
+               na.1
+  )
+  ]->
+   [ State_1111111111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) eventINMmrecv_0_1111111111111111[color=#80404f,
+                                                 process="event IN_M3( m3_recv.1 );", issapicrule,
+                                                 role='Initiator']:
+   [ State_1111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[ IN_M3( m3_recv.1 ) ]->
+   [ State_11111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) eventCommitAABnasndsndmrecvsndsndsndsdecfstmrecvkas_0_11111111111111111[color=#80404f,
+                                                                                        process="event Commit_A( 'A', 'B', na.1, snd(snd(m3_recv.1)),
+          snd(snd(snd(sdec(fst(m3_recv.1), kas.1))))
+);",
+                                                                                        issapicrule,
+                                                                                        role='Initiator']:
+   [ State_11111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[
+  Commit_A( 'A', 'B', na.1, snd(snd(m3_recv.1)),
+            snd(snd(snd(sdec(fst(m3_recv.1), kas.1))))
+  )
+  ]->
+   [ State_111111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) eventRunningAABnasndsndmrecvsndsndsndsdecfstmrecvkas_0_111111111111111111[color=#80404f,
+                                                                                          process="event Running_A( 'A', 'B', na.1, snd(snd(m3_recv.1)),
+           snd(snd(snd(sdec(fst(m3_recv.1), kas.1))))
+);",
+                                                                                          issapicrule,
+                                                                                          role='Initiator']:
+   [ State_111111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[
+  Running_A( 'A', 'B', na.1, snd(snd(m3_recv.1)),
+             snd(snd(snd(sdec(fst(m3_recv.1), kas.1))))
+  )
+  ]->
+   [ State_1111111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) eventOUTMsencsndsndmrecvsndsndsndsdecfstmrecvkas_0_1111111111111111111[color=#80404f,
+                                                                                       process="event OUT_M4( senc(snd(snd(m3_recv.1)),
+             snd(snd(snd(sdec(fst(m3_recv.1), kas.1)))))
+);",
+                                                                                       issapicrule,
+                                                                                       role='Initiator']:
+   [ State_1111111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  --[
+  OUT_M4( senc(snd(snd(m3_recv.1)),
+               snd(snd(snd(sdec(fst(m3_recv.1), kas.1)))))
+  )
+  ]->
+   [ State_11111111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+
+rule (modulo E) outsencsndsndmrecvsndsndsndsdecfstmrecvkas_0_11111111111111111111[color=#80404f,
+                                                                                  process="out(senc(snd(snd(m3_recv.1)),
+     snd(snd(snd(sdec(fst(m3_recv.1), kas.1))))));",
+                                                                                  issapicrule,
+                                                                                  role='Initiator']:
+   [ State_11111111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ]
+  -->
+   [
+   State_111111111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ),
+   Out( senc(snd(snd(m3_recv.1)),
+             snd(snd(snd(sdec(fst(m3_recv.1), kas.1)))))
+   )
+   ]
+
+rule (modulo E) p_0_111111111111111111111[color=#80404f, process="0",
+                                          issapicrule, role='Initiator']:
+   [ State_111111111111111111111( kas.1, kbs.1, m3_recv.1, na.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1111111111111112[color=#80404f, process="0",
+                                     issapicrule, role='Initiator']:
+   [ State_1111111111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ] --> [ ]
+
+rule (modulo E) p_0_111111111111112[color=#80404f, process="0",
+                                    issapicrule, role='Initiator']:
+   [ State_111111111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ] --> [ ]
+
+rule (modulo E) p_0_11111111111112[color=#80404f, process="0",
+                                   issapicrule, role='Initiator']:
+   [ State_11111111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1111111111112[color=#80404f, process="0",
+                                  issapicrule, role='Initiator']:
+   [ State_1111111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ] --> [ ]
+
+rule (modulo E) p_0_111111111112[color=#80404f, process="0", issapicrule,
+                                 role='Initiator']:
+   [ State_111111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ] --> [ ]
+
+rule (modulo E) p_0_11111111112[color=#80404f, process="0", issapicrule,
+                                role='Initiator']:
+   [ State_11111111112( kas.1, kbs.1, m3_recv.1, na.1 ) ] --> [ ]
+
+rule (modulo E) p_0_11112[color=#ffffff, process="0", issapicrule,
+                          role='Process']:
+   [ State_11112( kas.1, kbs.1 ) ] --> [ ]
+
+rule (modulo E) ServerSkaskbs_0_1112[color=#ffffff,
+                                     process="Server('S', kas.1, kbs.1)", issapicrule, role='Process']:
+   [ State_1112( kas.1, kbs.1 ) ]
+  -->
+   [ State_11121( kas.1, kbs.1 ), State_11122( kas.1, kbs.1 ) ]
+
+rule (modulo E) inareqbreqnareq_0_11121[color=#806040,
+                                        process="in(<a_req.1, b_req.1, na_req.1>);", issapicrule,
+                                        role='Server']:
+   [ State_11121( kas.1, kbs.1 ), In( <a_req.1, b_req.1, na_req.1> ) ]
+  -->
+   [ State_111211( a_req.1, b_req.1, kas.1, kbs.1, na_req.1 ) ]
+
+rule (modulo E) eventINMareqbreqnareq_0_111211[color=#806040,
+                                               process="event IN_M1( <a_req.1, b_req.1, na_req.1> );",
+                                               issapicrule, role='Server']:
+   [ State_111211( a_req.1, b_req.1, kas.1, kbs.1, na_req.1 ) ]
+  --[ IN_M1( <a_req.1, b_req.1, na_req.1> ) ]->
+   [ State_1112111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1 ) ]
+
+rule (modulo E) newkab_0_1112111[color=#806040, process="new kab.2;",
+                                 issapicrule, role='Server']:
+   [ State_1112111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1 ), Fr( kab.2 )
+   ]
+  -->
+   [ State_11121111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1, kab.2 ) ]
+
+rule (modulo E) eventServerIssueSareqbreqnareqkab_0_11121111[color=#806040,
+                                                             process="event Server_Issue( 'S', a_req.1, b_req.1, na_req.1, kab.2 );",
+                                                             issapicrule, role='Server']:
+   [ State_11121111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1, kab.2 ) ]
+  --[ Server_Issue( 'S', a_req.1, b_req.1, na_req.1, kab.2 ) ]->
+   [ State_111211111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1, kab.2 ) ]
+
+rule (modulo E) eventSecretareqbreqkab_0_111211111[color=#806040,
+                                                   process="event Secret( a_req.1, b_req.1, kab.2 );",
+                                                   issapicrule, role='Server']:
+   [ State_111211111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1, kab.2 ) ]
+  --[ Secret( a_req.1, b_req.1, kab.2 ) ]->
+   [ State_1112111111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1, kab.2 ) ]
+
+rule (modulo E) eventOUTMsencareqbreqnareqkabkassencareqbreqnareqkabkbs_0_1112111111[color=#806040,
+                                                                                     process="event OUT_M2( <senc(<a_req.1, b_req.1, na_req.1, kab.2>, kas.1), 
+         senc(<a_req.1, b_req.1, na_req.1, kab.2>, kbs.1)>
+);",
+                                                                                     issapicrule,
+                                                                                     role='Server']:
+   [ State_1112111111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1, kab.2 ) ]
+  --[
+  OUT_M2( <senc(<a_req.1, b_req.1, na_req.1, kab.2>, kas.1), 
+           senc(<a_req.1, b_req.1, na_req.1, kab.2>, kbs.1)>
+  )
+  ]->
+   [ State_11121111111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1, kab.2 ) ]
+
+rule (modulo E) outsencareqbreqnareqkabkassencareqbreqnareqkabkbs_0_11121111111[color=#806040,
+                                                                                process="out(<senc(<a_req.1, b_req.1, na_req.1, kab.2>, kas.1), 
+ senc(<a_req.1, b_req.1, na_req.1, kab.2>, kbs.1)>);",
+                                                                                issapicrule, role='Server']:
+   [ State_11121111111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1, kab.2 ) ]
+  -->
+   [
+   State_111211111111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1, kab.2 ),
+   Out( <senc(<a_req.1, b_req.1, na_req.1, kab.2>, kas.1), 
+         senc(<a_req.1, b_req.1, na_req.1, kab.2>, kbs.1)>
+   )
+   ]
+
+rule (modulo E) p_0_111211111111[color=#806040, process="0", issapicrule,
+                                 role='Server']:
+   [ State_111211111111( a_req.1, b_req.1, kas.1, kbs.1, na_req.1, kab.2 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11122[color=#ffffff, process="0", issapicrule,
+                          role='Process']:
+   [ State_11122( kas.1, kbs.1 ) ] --> [ ]
+
+rule (modulo E) ResponderBkbs_0_112[color=#ffffff,
+                                    process="Responder('B', kbs.1)", issapicrule, role='Process']:
+   [ State_112( kas.1, kbs.1 ) ]
+  -->
+   [ State_1121( kas.1, kbs.1 ), State_1122( kas.1, kbs.1 ) ]
+
+rule (modulo E) inmrecv_0_1121[color=#805d40, process="in(m2_recv.1);",
+                               issapicrule, role='Responder']:
+   [ State_1121( kas.1, kbs.1 ), In( m2_recv.1 ) ]
+  -->
+   [ State_11211( kas.1, kbs.1, m2_recv.1 ) ]
+
+rule (modulo E) ifmrecvfstmrecvsndmrecv_0_11211[color=#805d40,
+                                                process="if m2_recv.1=<fst(m2_recv.1), snd(m2_recv.1)>",
+                                                issapicrule, role='Responder']:
+   [ State_11211( kas.1, kbs.1, m2_recv.1 ) ]
+  --[ Pred_Eq( m2_recv.1, <fst(m2_recv.1), snd(m2_recv.1)> ) ]->
+   [ State_112111( kas.1, kbs.1, m2_recv.1 ) ]
+
+rule (modulo E) ifmrecvfstmrecvsndmrecv_1_11211[color=#805d40,
+                                                process="if m2_recv.1=<fst(m2_recv.1), snd(m2_recv.1)>",
+                                                issapicrule, role='Responder']:
+   [ State_11211( kas.1, kbs.1, m2_recv.1 ) ]
+  --[ Pred_Not_Eq( m2_recv.1, <fst(m2_recv.1), snd(m2_recv.1)> ) ]->
+   [ State_112112( kas.1, kbs.1, m2_recv.1 ) ]
+
+rule (modulo E) ifsdecsndmrecvkbsfstsdecsndmrecvkbsfstsndsdecsndmrecvkbsfstsndsndsdecsndmrecvkbssndsndsndsdecsndmrecvkbs_0_112111[color=#805d40,
+                                                                                                                                  process="if sdec(snd(m2_recv.1), kbs.1)=<fst(sdec(snd(m2_recv.1), kbs.1)), 
+ fst(snd(sdec(snd(m2_recv.1), kbs.1))), 
+ fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))), 
+ snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))>",
+                                                                                                                                  issapicrule,
+                                                                                                                                  role='Responder']:
+   [ State_112111( kas.1, kbs.1, m2_recv.1 ) ]
+  --[
+  Pred_Eq( sdec(snd(m2_recv.1), kbs.1),
+           <fst(sdec(snd(m2_recv.1), kbs.1)), 
+            fst(snd(sdec(snd(m2_recv.1), kbs.1))), 
+            fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))), 
+            snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))>
+  )
+  ]->
+   [ State_1121111( kas.1, kbs.1, m2_recv.1 ) ]
+
+rule (modulo E) ifsdecsndmrecvkbsfstsdecsndmrecvkbsfstsndsdecsndmrecvkbsfstsndsndsdecsndmrecvkbssndsndsndsdecsndmrecvkbs_1_112111[color=#805d40,
+                                                                                                                                  process="if sdec(snd(m2_recv.1), kbs.1)=<fst(sdec(snd(m2_recv.1), kbs.1)), 
+ fst(snd(sdec(snd(m2_recv.1), kbs.1))), 
+ fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))), 
+ snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))>",
+                                                                                                                                  issapicrule,
+                                                                                                                                  role='Responder']:
+   [ State_112111( kas.1, kbs.1, m2_recv.1 ) ]
+  --[
+  Pred_Not_Eq( sdec(snd(m2_recv.1), kbs.1),
+               <fst(sdec(snd(m2_recv.1), kbs.1)), 
+                fst(snd(sdec(snd(m2_recv.1), kbs.1))), 
+                fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))), 
+                snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))>
+  )
+  ]->
+   [ State_1121112( kas.1, kbs.1, m2_recv.1 ) ]
+
+rule (modulo E) iffstsndsdecsndmrecvkbsB_0_1121111[color=#805d40,
+                                                   process="if fst(snd(sdec(snd(m2_recv.1), kbs.1)))='B'",
+                                                   issapicrule, role='Responder']:
+   [ State_1121111( kas.1, kbs.1, m2_recv.1 ) ]
+  --[ Pred_Eq( fst(snd(sdec(snd(m2_recv.1), kbs.1))), 'B' ) ]->
+   [ State_11211111( kas.1, kbs.1, m2_recv.1 ) ]
+
+rule (modulo E) iffstsndsdecsndmrecvkbsB_1_1121111[color=#805d40,
+                                                   process="if fst(snd(sdec(snd(m2_recv.1), kbs.1)))='B'",
+                                                   issapicrule, role='Responder']:
+   [ State_1121111( kas.1, kbs.1, m2_recv.1 ) ]
+  --[ Pred_Not_Eq( fst(snd(sdec(snd(m2_recv.1), kbs.1))), 'B' ) ]->
+   [ State_11211112( kas.1, kbs.1, m2_recv.1 ) ]
+
+rule (modulo E) eventINMmrecv_0_11211111[color=#805d40,
+                                         process="event IN_M2( m2_recv.1 );", issapicrule, role='Responder']:
+   [ State_11211111( kas.1, kbs.1, m2_recv.1 ) ]
+  --[ IN_M2( m2_recv.1 ) ]->
+   [ State_112111111( kas.1, kbs.1, m2_recv.1 ) ]
+
+rule (modulo E) newnb_0_112111111[color=#805d40, process="new nb.1;",
+                                  issapicrule, role='Responder']:
+   [ State_112111111( kas.1, kbs.1, m2_recv.1 ), Fr( nb.1 ) ]
+  -->
+   [ State_1121111111( kas.1, kbs.1, m2_recv.1, nb.1 ) ]
+
+rule (modulo E) eventRunningBfstsdecsndmrecvkbsBfstsndsndsdecsndmrecvkbsnbsndsndsndsdecsndmrecvkbs_0_1121111111[color=#805d40,
+                                                                                                                process="event Running_B( fst(sdec(snd(m2_recv.1), kbs.1)), 'B',
+           fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))), nb.1,
+           snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))
+);",
+                                                                                                                issapicrule,
+                                                                                                                role='Responder']:
+   [ State_1121111111( kas.1, kbs.1, m2_recv.1, nb.1 ) ]
+  --[
+  Running_B( fst(sdec(snd(m2_recv.1), kbs.1)), 'B',
+             fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))), nb.1,
+             snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))
+  )
+  ]->
+   [ State_11211111111( kas.1, kbs.1, m2_recv.1, nb.1 ) ]
+
+rule (modulo E) eventOUTMfstmrecvsencfstsndsndsdecsndmrecvkbssndsndsndsdecsndmrecvkbsnb_0_11211111111[color=#805d40,
+                                                                                                      process="event OUT_M3( <fst(m2_recv.1), 
+         senc(fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))),
+              snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))), 
+         nb.1>
+);",
+                                                                                                      issapicrule,
+                                                                                                      role='Responder']:
+   [ State_11211111111( kas.1, kbs.1, m2_recv.1, nb.1 ) ]
+  --[
+  OUT_M3( <fst(m2_recv.1), 
+           senc(fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))),
+                snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))), 
+           nb.1>
+  )
+  ]->
+   [ State_112111111111( kas.1, kbs.1, m2_recv.1, nb.1 ) ]
+
+rule (modulo E) outfstmrecvsencfstsndsndsdecsndmrecvkbssndsndsndsdecsndmrecvkbsnb_0_112111111111[color=#805d40,
+                                                                                                 process="out(<fst(m2_recv.1), 
+ senc(fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))),
+      snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))), 
+ nb.1>);",
+                                                                                                 issapicrule,
+                                                                                                 role='Responder']:
+   [ State_112111111111( kas.1, kbs.1, m2_recv.1, nb.1 ) ]
+  -->
+   [
+   State_1121111111111( kas.1, kbs.1, m2_recv.1, nb.1 ),
+   Out( <fst(m2_recv.1), 
+         senc(fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))),
+              snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))), 
+         nb.1>
+   )
+   ]
+
+rule (modulo E) inmrecv_0_1121111111111[color=#805d40,
+                                        process="in(m4_recv.1);", issapicrule, role='Responder']:
+   [ State_1121111111111( kas.1, kbs.1, m2_recv.1, nb.1 ), In( m4_recv.1 ) ]
+  -->
+   [ State_11211111111111( kas.1, kbs.1, m2_recv.1, m4_recv.1, nb.1 ) ]
+
+rule (modulo E) ifsdecmrecvsndsndsndsdecsndmrecvkbsnb_0_11211111111111[color=#805d40,
+                                                                       process="if sdec(m4_recv.1, snd(snd(snd(sdec(snd(m2_recv.1), kbs.1)))))=nb.1",
+                                                                       issapicrule, role='Responder']:
+   [ State_11211111111111( kas.1, kbs.1, m2_recv.1, m4_recv.1, nb.1 ) ]
+  --[
+  Pred_Eq( sdec(m4_recv.1, snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))),
+           nb.1
+  )
+  ]->
+   [ State_112111111111111( kas.1, kbs.1, m2_recv.1, m4_recv.1, nb.1 ) ]
+
+rule (modulo E) ifsdecmrecvsndsndsndsdecsndmrecvkbsnb_1_11211111111111[color=#805d40,
+                                                                       process="if sdec(m4_recv.1, snd(snd(snd(sdec(snd(m2_recv.1), kbs.1)))))=nb.1",
+                                                                       issapicrule, role='Responder']:
+   [ State_11211111111111( kas.1, kbs.1, m2_recv.1, m4_recv.1, nb.1 ) ]
+  --[
+  Pred_Not_Eq( sdec(m4_recv.1, snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))),
+               nb.1
+  )
+  ]->
+   [ State_112111111111112( kas.1, kbs.1, m2_recv.1, m4_recv.1, nb.1 ) ]
+
+rule (modulo E) eventINMmrecv_0_112111111111111[color=#805d40,
+                                                process="event IN_M4( m4_recv.1 );", issapicrule,
+                                                role='Responder']:
+   [ State_112111111111111( kas.1, kbs.1, m2_recv.1, m4_recv.1, nb.1 ) ]
+  --[ IN_M4( m4_recv.1 ) ]->
+   [ State_1121111111111111( kas.1, kbs.1, m2_recv.1, m4_recv.1, nb.1 ) ]
+
+rule (modulo E) eventCommitBfstsdecsndmrecvkbsBfstsndsndsdecsndmrecvkbsnbsndsndsndsdecsndmrecvkbs_0_1121111111111111[color=#805d40,
+                                                                                                                     process="event Commit_B( fst(sdec(snd(m2_recv.1), kbs.1)), 'B',
+          fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))), nb.1,
+          snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))
+);",
+                                                                                                                     issapicrule,
+                                                                                                                     role='Responder']:
+   [ State_1121111111111111( kas.1, kbs.1, m2_recv.1, m4_recv.1, nb.1 ) ]
+  --[
+  Commit_B( fst(sdec(snd(m2_recv.1), kbs.1)), 'B',
+            fst(snd(snd(sdec(snd(m2_recv.1), kbs.1)))), nb.1,
+            snd(snd(snd(sdec(snd(m2_recv.1), kbs.1))))
+  )
+  ]->
+   [ State_11211111111111111( kas.1, kbs.1, m2_recv.1, m4_recv.1, nb.1 ) ]
+
+rule (modulo E) p_0_11211111111111111[color=#805d40, process="0",
+                                      issapicrule, role='Responder']:
+   [ State_11211111111111111( kas.1, kbs.1, m2_recv.1, m4_recv.1, nb.1 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_112111111111112[color=#805d40, process="0",
+                                    issapicrule, role='Responder']:
+   [ State_112111111111112( kas.1, kbs.1, m2_recv.1, m4_recv.1, nb.1 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11211112[color=#805d40, process="0", issapicrule,
+                             role='Responder']:
+   [ State_11211112( kas.1, kbs.1, m2_recv.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1121112[color=#805d40, process="0", issapicrule,
+                            role='Responder']:
+   [ State_1121112( kas.1, kbs.1, m2_recv.1 ) ] --> [ ]
+
+rule (modulo E) p_0_112112[color=#805d40, process="0", issapicrule,
+                           role='Responder']:
+   [ State_112112( kas.1, kbs.1, m2_recv.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1122[color=#ffffff, process="0", issapicrule,
+                         role='Process']:
+   [ State_1122( kas.1, kbs.1 ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/* All wellformedness checks were successful. */
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

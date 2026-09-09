@@ -1,0 +1,1902 @@
+theory KEMTLS
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: aead_dec/3, aead_enc/3, app_key/1, cert/2, decap/2, fst/1,
+           h/1, hkdf/3, kdf/2, kem_ct/2, kem_pk/1, kem_ss/2, mac/2, mac_verify/3,
+           pair/2, sdec/2, select_alg/2, senc/2, snd/1, transcript_hash/1
+equations:
+    fst(<x.1, x.2>) = x.1,
+    sdec(senc(x.1, x.2), x.2) = x.1,
+    snd(<x.1, x.2>) = x.2
+
+heuristic: p
+
+lemma exec:
+  exists-trace
+  "∃ c s session transcript #i #j.
+    (Commit( c, s, session, transcript ) @ #i) ∧
+    (ServerFinishedVerified( c, s, transcript ) @ #j)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ c s session transcript #i #j.
+  (Commit( c, s, session, transcript ) @ #i) ∧
+  (ServerFinishedVerified( c, s, transcript ) @ #j)"
+*/
+by sorry
+
+lemma execbis:
+  exists-trace
+  "∃ s c tr_cf tr_sf #i #j.
+    ((ClientFinishedVerified( s, c, tr_cf ) @ #i) ∧
+     (ServerFinishedSent( s, c, tr_sf ) @ #j)) ∧
+    (#i < #j)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ s c tr_cf tr_sf #i #j.
+  (ClientFinishedVerified( s, c, tr_cf ) @ #i) ∧
+  (ServerFinishedSent( s, c, tr_sf ) @ #j)
+ ∧
+  #i < #j"
+*/
+by sorry
+
+lemma false_secserv:
+  all-traces
+  "∀ s c app sats #i #k.
+    ((Secret( s, c, sats ) @ #i) ∧
+     (ServerApplicationDataSent( s, c, app, sats ) @ #k)) ⇒
+    (¬(∃ #j. K( sats ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ s c app sats #i #k.
+  (Secret( s, c, sats ) @ #i) ∧
+  (ServerApplicationDataSent( s, c, app, sats ) @ #k)
+ ∧
+  ∃ #j. (K( sats ) @ #j)"
+*/
+by sorry
+
+lemma auth:
+  all-traces
+  "∀ c s session transcript #i.
+    (Commit( c, s, session, transcript ) @ #i) ⇒
+    ((∃ #v. ServerFinishedVerified( c, s, transcript ) @ #v) ∧
+     ((∃ #j. (Running( s, c, session, transcript ) @ #j) ∧ (#j < #i)) ∨
+      (∃ sk #r. (RevealServerLongTermKEMKey( s, sk ) @ #r) ∧ (#r < #i))))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ c s session transcript #i.
+  (Commit( c, s, session, transcript ) @ #i)
+ ∧
+  ((∀ #v. (ServerFinishedVerified( c, s, transcript ) @ #v) ⇒ ⊥) ∨
+   ((∀ #j. (Running( s, c, session, transcript ) @ #j) ⇒ ¬(#j < #i)) ∧
+    (∀ sk #r. (RevealServerLongTermKEMKey( s, sk ) @ #r) ⇒ ¬(#r < #i))))"
+*/
+by sorry
+
+lemma PFS_client:
+  all-traces
+  "∀ cats #i #j.
+    ((Secret( 'C', 'S', cats ) @ #i) ∧ (K( cats ) @ #j)) ⇒
+    (∃ sk #r. (RevealServerLongTermKEMKey( 'S', sk ) @ #r) ∧ (#r < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ cats #i #j.
+  (Secret( 'C', 'S', cats ) @ #i) ∧ (K( cats ) @ #j)
+ ∧
+  ∀ sk #r. (RevealServerLongTermKEMKey( 'S', sk ) @ #r) ⇒ ¬(#r < #i)"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="new sks.1;", issapicrule,
+                     role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) newsks_0_[color=#ffffff, process="new sks.1;",
+                          issapicrule, role='Process']:
+   [ State_( ), Fr( sks.1 ) ] --> [ State_1( sks.1 ) ]
+
+rule (modulo E) outkempksks_0_1[color=#ffffff,
+                                process="out(kem_pk(sks.1));", issapicrule, role='Process']:
+   [ State_1( sks.1 ) ] --> [ State_11( sks.1 ), Out( kem_pk(sks.1) ) ]
+
+rule (modulo E) outcertSkempksks_0_11[color=#ffffff,
+                                      process="out(cert('S', kem_pk(sks.1)));", issapicrule, role='Process']:
+   [ State_11( sks.1 ) ]
+  -->
+   [ State_111( sks.1 ), Out( cert('S', kem_pk(sks.1)) ) ]
+
+rule (modulo E) p_0_111[color=#ffffff, process="|", issapicrule,
+                        role='Process']:
+   [ State_111( sks.1 ) ] --> [ State_1111( sks.1 ), State_1112( sks.1 ) ]
+
+rule (modulo E) p_0_1111[color=#ffffff, process="|", issapicrule,
+                         role='Process']:
+   [ State_1111( sks.1 ) ]
+  -->
+   [ State_11111( sks.1 ), State_11112( sks.1 ) ]
+
+rule (modulo E) p_0_11111[color=#ffffff, process="|", issapicrule,
+                          role='Process']:
+   [ State_11111( sks.1 ) ]
+  -->
+   [ State_111111( sks.1 ), State_111112( sks.1 ) ]
+
+rule (modulo E) HonestNormalCSskskempkskscertSkempksks_0_111111[color=#ffffff,
+                                                                process="HonestNormal('C', 'S', sks.1, kem_pk(sks.1), cert('S', kem_pk(sks.1)))",
+                                                                issapicrule, role='Process']:
+   [ State_111111( sks.1 ) ]
+  -->
+   [ State_1111111( sks.1 ), State_1111112( sks.1 ) ]
+
+rule (modulo E) newrc_0_1111111[color=#80406b, process="new rc.1;",
+                                issapicrule, role='HonestNormal']:
+   [ State_1111111( sks.1 ), Fr( rc.1 ) ]
+  -->
+   [ State_11111111( rc.1, sks.1 ) ]
+
+rule (modulo E) newskec_0_11111111[color=#80406b, process="new skec.1;",
+                                   issapicrule, role='HonestNormal']:
+   [ State_11111111( rc.1, sks.1 ), Fr( skec.1 ) ]
+  -->
+   [ State_111111111( rc.1, skec.1, sks.1 ) ]
+
+rule (modulo E) outClientHelloCrckempkskecauthalgsCkexalgsCaeadalgsC_0_111111111[color=#80406b,
+                                                                                 process="out(<'ClientHello', 'C', rc.1, kem_pk(skec.1), 'auth_algs_C', 
+ 'kex_algs_C', 'aead_algs_C'>);",
+                                                                                 issapicrule,
+                                                                                 role='HonestNormal']:
+   [ State_111111111( rc.1, skec.1, sks.1 ) ]
+  -->
+   [
+   State_1111111111( rc.1, skec.1, sks.1 ),
+   Out( <'ClientHello', 'C', rc.1, kem_pk(skec.1), 'auth_algs_C', 
+         'kex_algs_C', 'aead_algs_C'>
+   )
+   ]
+
+rule (modulo E) eventOUTClientHelloCkempkskecrc_0_1111111111[color=#80406b,
+                                                             process="event OUT_ClientHello( 'C', kem_pk(skec.1), rc.1 );",
+                                                             issapicrule, role='HonestNormal']:
+   [ State_1111111111( rc.1, skec.1, sks.1 ) ]
+  --[ OUT_ClientHello( 'C', kem_pk(skec.1), rc.1 ) ]->
+   [ State_11111111111( rc.1, skec.1, sks.1 ) ]
+
+rule (modulo E) newrs_0_11111111111[color=#80406b, process="new rs.1;",
+                                    issapicrule, role='HonestNormal']:
+   [ State_11111111111( rc.1, skec.1, sks.1 ), Fr( rs.1 ) ]
+  -->
+   [ State_111111111111( rc.1, rs.1, skec.1, sks.1 ) ]
+
+rule (modulo E) newrsse_0_111111111111[color=#80406b,
+                                       process="new r_sse.1;", issapicrule, role='HonestNormal']:
+   [ State_111111111111( rc.1, rs.1, skec.1, sks.1 ), Fr( r_sse.1 ) ]
+  -->
+   [ State_1111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ) ]
+
+rule (modulo E) outServerHelloSrsselectalgauthalgsCauthselectalgkexalgsCkexselectalgaeadalgsCaeadkemctkempkskecrsse_0_1111111111111[color=#80406b,
+                                                                                                                                    process="out(<'ServerHello', 'S', rs.1, select_alg('auth_algs_C', 'auth'), 
+ select_alg('kex_algs_C', 'kex'), 
+ select_alg('aead_algs_C', 'aead'), kem_ct(kem_pk(skec.1), r_sse.1)>);",
+                                                                                                                                    issapicrule,
+                                                                                                                                    role='HonestNormal']:
+   [ State_1111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ) ]
+  -->
+   [
+   State_11111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ),
+   Out( <'ServerHello', 'S', rs.1, select_alg('auth_algs_C', 'auth'), 
+         select_alg('kex_algs_C', 'kex'), select_alg('aead_algs_C', 'aead'), 
+         kem_ct(kem_pk(skec.1), r_sse.1)>
+   )
+   ]
+
+rule (modulo E) eventServerHelloSentSCtranscripthashCHSHrcrskemsskempkskecrsse_0_11111111111111[color=#80406b,
+                                                                                                process="event ServerHelloSent( 'S', 'C', transcript_hash(<'CH_SH', rc.1, rs.1>),
+                 kem_ss(kem_pk(skec.1), r_sse.1)
+);",
+                                                                                                issapicrule,
+                                                                                                role='HonestNormal']:
+   [ State_11111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ) ]
+  --[
+  ServerHelloSent( 'S', 'C', transcript_hash(<'CH_SH', rc.1, rs.1>),
+                   kem_ss(kem_pk(skec.1), r_sse.1)
+  )
+  ]->
+   [ State_111111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ) ]
+
+rule (modulo E) outaeadencCertificateScertSkempkskskempkskshkdfSHTSkemsskempkskecrssetranscripthashCHSHrcrstranscripthashCHSHrcrs_0_111111111111111[color=#80406b,
+                                                                                                                                                    process="out(aead_enc(<'Certificate', 'S', cert('S', kem_pk(sks.1)), 
+          kem_pk(sks.1)>,
+         hkdf('SHTS', kem_ss(kem_pk(skec.1), r_sse.1),
+              transcript_hash(<'CH_SH', rc.1, rs.1>)),
+         transcript_hash(<'CH_SH', rc.1, rs.1>)));",
+                                                                                                                                                    issapicrule,
+                                                                                                                                                    role='HonestNormal']:
+   [ State_111111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ) ]
+  -->
+   [
+   State_1111111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ),
+   Out( aead_enc(<'Certificate', 'S', cert('S', kem_pk(sks.1)), 
+                  kem_pk(sks.1)>,
+                 hkdf('SHTS', kem_ss(kem_pk(skec.1), r_sse.1),
+                      transcript_hash(<'CH_SH', rc.1, rs.1>)),
+                 transcript_hash(<'CH_SH', rc.1, rs.1>))
+   )
+   ]
+
+rule (modulo E) eventServerCertificateSentSCkempkskscertSkempksks_0_1111111111111111[color=#80406b,
+                                                                                     process="event ServerCertificateSent( 'S', 'C', kem_pk(sks.1),
+                       cert('S', kem_pk(sks.1))
+);",
+                                                                                     issapicrule,
+                                                                                     role='HonestNormal']:
+   [ State_1111111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ) ]
+  --[
+  ServerCertificateSent( 'S', 'C', kem_pk(sks.1), cert('S', kem_pk(sks.1))
+  )
+  ]->
+   [ State_11111111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ) ]
+
+rule (modulo E) eventServerCertificateAcceptedCSkempkskscertSkempksks_0_11111111111111111[color=#80406b,
+                                                                                          process="event ServerCertificateAccepted( 'C', 'S', kem_pk(sks.1),
+                           cert('S', kem_pk(sks.1))
+);",
+                                                                                          issapicrule,
+                                                                                          role='HonestNormal']:
+   [ State_11111111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ) ]
+  --[
+  ServerCertificateAccepted( 'C', 'S', kem_pk(sks.1),
+                             cert('S', kem_pk(sks.1))
+  )
+  ]->
+   [ State_111111111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ) ]
+
+rule (modulo E) eventPhaseKeysDerivedCSkemsskempkskecrssehkdfCHTSkemsskempkskecrssetranscripthashCHSHrcrshkdfSHTSkemsskempkskecrssetranscripthashCHSHrcrshkdfdHSkemsskempkskecrssetranscripthashCHSHrcrs_0_111111111111111111[color=#80406b,
+                                                                                                                                                                                                                              process="event Phase1KeysDerived( 'C', 'S', kem_ss(kem_pk(skec.1), r_sse.1),
+                   hkdf('CHTS', kem_ss(kem_pk(skec.1), r_sse.1),
+                        transcript_hash(<'CH_SH', rc.1, rs.1>)),
+                   hkdf('SHTS', kem_ss(kem_pk(skec.1), r_sse.1),
+                        transcript_hash(<'CH_SH', rc.1, rs.1>)),
+                   hkdf('dHS', kem_ss(kem_pk(skec.1), r_sse.1),
+                        transcript_hash(<'CH_SH', rc.1, rs.1>))
+);",
+                                                                                                                                                                                                                              issapicrule,
+                                                                                                                                                                                                                              role='HonestNormal']:
+   [ State_111111111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ) ]
+  --[
+  Phase1KeysDerived( 'C', 'S', kem_ss(kem_pk(skec.1), r_sse.1),
+                     hkdf('CHTS', kem_ss(kem_pk(skec.1), r_sse.1),
+                          transcript_hash(<'CH_SH', rc.1, rs.1>)),
+                     hkdf('SHTS', kem_ss(kem_pk(skec.1), r_sse.1),
+                          transcript_hash(<'CH_SH', rc.1, rs.1>)),
+                     hkdf('dHS', kem_ss(kem_pk(skec.1), r_sse.1),
+                          transcript_hash(<'CH_SH', rc.1, rs.1>))
+  )
+  ]->
+   [ State_1111111111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ) ]
+
+rule (modulo E) newrsss_0_1111111111111111111[color=#80406b,
+                                              process="new r_sss.1;", issapicrule, role='HonestNormal']:
+   [
+   State_1111111111111111111( r_sse.1, rc.1, rs.1, skec.1, sks.1 ),
+   Fr( r_sss.1 )
+   ]
+  -->
+   [
+   State_11111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1 )
+   ]
+
+rule (modulo E) outaeadencClientKemCiphertextkemctkempksksrssshkdfCHTSkemsskempkskecrssetranscripthashCHSHrcrstranscripthashCERTtranscripthashCHSHrcrs_0_11111111111111111111[color=#80406b,
+                                                                                                                                                                              process="out(aead_enc(<'ClientKemCiphertext', kem_ct(kem_pk(sks.1), r_sss.1)>,
+         hkdf('CHTS', kem_ss(kem_pk(skec.1), r_sse.1),
+              transcript_hash(<'CH_SH', rc.1, rs.1>)),
+         transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)>)));",
+                                                                                                                                                                              issapicrule,
+                                                                                                                                                                              role='HonestNormal']:
+   [
+   State_11111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1 )
+   ]
+  -->
+   [
+   State_111111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   ),
+   Out( aead_enc(<'ClientKemCiphertext', kem_ct(kem_pk(sks.1), r_sss.1)>,
+                 hkdf('CHTS', kem_ss(kem_pk(skec.1), r_sse.1),
+                      transcript_hash(<'CH_SH', rc.1, rs.1>)),
+                 transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)>))
+   )
+   ]
+
+rule (modulo E) eventClientKemCiphertextSentCSkemctkempksksrssskemsskempksksrsss_0_111111111111111111111[color=#80406b,
+                                                                                                         process="event ClientKemCiphertextSent( 'C', 'S', kem_ct(kem_pk(sks.1), r_sss.1),
+                         kem_ss(kem_pk(sks.1), r_sss.1)
+);",
+                                                                                                         issapicrule,
+                                                                                                         role='HonestNormal']:
+   [
+   State_111111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+  --[
+  ClientKemCiphertextSent( 'C', 'S', kem_ct(kem_pk(sks.1), r_sss.1),
+                           kem_ss(kem_pk(sks.1), r_sss.1)
+  )
+  ]->
+   [
+   State_1111111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) outaeadencClientFinishedmachkdffkchkdfMShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashtranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssshkdfCAHTShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsss_0_1111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           process="out(aead_enc(<'ClientFinished', 
+          mac(hkdf('fkc',
+                   hkdf('MS',
+                        hkdf('AHS',
+                             kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                 kem_ss(kem_pk(sks.1), r_sss.1)),
+                             transcript_hash(<'CKC', 
+                                              transcript_hash(<'CERT', 
+                                                               transcript_hash(<'CH_SH', rc.1, rs.1
+                                                                               >)
+                                                              >), 
+                                              kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                        transcript_hash(<'CKC', 
+                                         transcript_hash(<'CERT', 
+                                                          transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                         kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                   transcript_hash(<'before_CF', 
+                                    transcript_hash(<'CKC', 
+                                                     transcript_hash(<'CERT', 
+                                                                      transcript_hash(<'CH_SH', 
+                                                                                       rc.1, rs.1>)
+                                                                     >), 
+                                                     kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                   >)),
+              transcript_hash(transcript_hash(<'before_CF', 
+                                               transcript_hash(<'CKC', 
+                                                                transcript_hash(<'CERT', 
+                                                                                 transcript_hash(<
+                                                                                                  'CH_SH', 
+                                                                                                  rc.1, 
+                                                                                                  rs.1
+                                                                                                 >)
+                                                                                >), 
+                                                                kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                              >)))
+         >,
+         hkdf('CAHTS',
+              hkdf('AHS',
+                   kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                       kem_ss(kem_pk(sks.1), r_sss.1)),
+                   transcript_hash(<'CKC', 
+                                    transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                    >), 
+                                    kem_ct(kem_pk(sks.1), r_sss.1)>)),
+              transcript_hash(<'CKC', 
+                               transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                               kem_ct(kem_pk(sks.1), r_sss.1)>)),
+         transcript_hash(<'before_CF', 
+                          transcript_hash(<'CKC', 
+                                           transcript_hash(<'CERT', 
+                                                            transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                           >), 
+                                           kem_ct(kem_pk(sks.1), r_sss.1)>)
+                         >)));",
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           issapicrule,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           role='HonestNormal']:
+   [
+   State_1111111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+  -->
+   [
+   State_11111111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1,
+                                  sks.1
+   ),
+   Out( aead_enc(<'ClientFinished', 
+                  mac(hkdf('fkc',
+                           hkdf('MS',
+                                hkdf('AHS',
+                                     kdf(kem_ss(kem_pk(skec.1), r_sse.1), kem_ss(kem_pk(sks.1), r_sss.1)),
+                                     transcript_hash(<'CKC', 
+                                                      transcript_hash(<'CERT', 
+                                                                       transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                                      >), 
+                                                      kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                transcript_hash(<'CKC', 
+                                                 transcript_hash(<'CERT', 
+                                                                  transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                                 kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                           transcript_hash(<'before_CF', 
+                                            transcript_hash(<'CKC', 
+                                                             transcript_hash(<'CERT', 
+                                                                              transcript_hash(<'CH_SH', rc.1, 
+                                                                                               rs.1>)
+                                                                             >), 
+                                                             kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                           >)),
+                      transcript_hash(transcript_hash(<'before_CF', 
+                                                       transcript_hash(<'CKC', 
+                                                                        transcript_hash(<'CERT', 
+                                                                                         transcript_hash(<
+                                                                                                          'CH_SH', 
+                                                                                                          rc.1, 
+                                                                                                          rs.1
+                                                                                                         >)
+                                                                                        >), 
+                                                                        kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                                      >)))
+                 >,
+                 hkdf('CAHTS',
+                      hkdf('AHS',
+                           kdf(kem_ss(kem_pk(skec.1), r_sse.1), kem_ss(kem_pk(sks.1), r_sss.1)),
+                           transcript_hash(<'CKC', 
+                                            transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                            >), 
+                                            kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                      transcript_hash(<'CKC', 
+                                       transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                       kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                 transcript_hash(<'before_CF', 
+                                  transcript_hash(<'CKC', 
+                                                   transcript_hash(<'CERT', 
+                                                                    transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                                   kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                 >))
+   )
+   ]
+
+rule (modulo E) eventClientFinishedSentCStranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsss_0_11111111111111111111111[color=#80406b,
+                                                                                                                                                                    process="event ClientFinishedSent( 'C', 'S',
+                    transcript_hash(<'before_CF', 
+                                     transcript_hash(<'CKC', 
+                                                      transcript_hash(<'CERT', 
+                                                                       transcript_hash(<'CH_SH', 
+                                                                                        rc.1, rs.1>)
+                                                                      >), 
+                                                      kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                    >)
+);",
+                                                                                                                                                                    issapicrule,
+                                                                                                                                                                    role='HonestNormal']:
+   [
+   State_11111111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1,
+                                  sks.1
+   )
+   ]
+  --[
+  ClientFinishedSent( 'C', 'S',
+                      transcript_hash(<'before_CF', 
+                                       transcript_hash(<'CKC', 
+                                                        transcript_hash(<'CERT', 
+                                                                         transcript_hash(<'CH_SH', rc.1, rs.1
+                                                                                         >)
+                                                                        >), 
+                                                        kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                      >)
+  )
+  ]->
+   [
+   State_111111111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1,
+                                   sks.1
+   )
+   ]
+
+rule (modulo E) eventSecretCShkdfCATShkdfMShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsssthapp_0_111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                                             process="event Secret( 'C', 'S',
+        hkdf('CATS',
+             hkdf('MS',
+                  hkdf('AHS',
+                       kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                           kem_ss(kem_pk(sks.1), r_sss.1)),
+                       transcript_hash(<'CKC', 
+                                        transcript_hash(<'CERT', 
+                                                         transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                        kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                  transcript_hash(<'CKC', 
+                                   transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                   >), 
+                                   kem_ct(kem_pk(sks.1), r_sss.1)>)),
+             'th_app')
+);",
+                                                                                                                                                                                                                                                                             issapicrule,
+                                                                                                                                                                                                                                                                             role='HonestNormal']:
+   [
+   State_111111111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1,
+                                   sks.1
+   )
+   ]
+  --[
+  Secret( 'C', 'S',
+          hkdf('CATS',
+               hkdf('MS',
+                    hkdf('AHS',
+                         kdf(kem_ss(kem_pk(skec.1), r_sse.1), kem_ss(kem_pk(sks.1), r_sss.1)),
+                         transcript_hash(<'CKC', 
+                                          transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                          kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                    transcript_hash(<'CKC', 
+                                     transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                     kem_ct(kem_pk(sks.1), r_sss.1)>)),
+               'th_app')
+  )
+  ]->
+   [
+   State_1111111111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1,
+                                    sks.1
+   )
+   ]
+
+rule (modulo E) newappc_0_1111111111111111111111111[color=#80406b,
+                                                    process="new app_c.1;", issapicrule, role='HonestNormal']:
+   [
+   State_1111111111111111111111111( r_sse.1, r_sss.1, rc.1, rs.1, skec.1,
+                                    sks.1
+   ),
+   Fr( app_c.1 )
+   ]
+  -->
+   [
+   State_11111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1, rs.1,
+                                     skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) outaeadencClientApplicationDataappcappkeyhkdfCATShkdfMShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsssthapptranscripthashafterCFtranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsss_0_11111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                                                                                                                                                                                                process="out(aead_enc(<'ClientApplicationData', app_c.1>,
+         app_key(hkdf('CATS',
+                      hkdf('MS',
+                           hkdf('AHS',
+                                kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                    kem_ss(kem_pk(sks.1), r_sss.1)),
+                                transcript_hash(<'CKC', 
+                                                 transcript_hash(<'CERT', 
+                                                                  transcript_hash(<'CH_SH', rc.1, 
+                                                                                   rs.1>)
+                                                                 >), 
+                                                 kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                           transcript_hash(<'CKC', 
+                                            transcript_hash(<'CERT', 
+                                                             transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                            >), 
+                                            kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                      'th_app')),
+         transcript_hash(<'after_CF', 
+                          transcript_hash(<'before_CF', 
+                                           transcript_hash(<'CKC', 
+                                                            transcript_hash(<'CERT', 
+                                                                             transcript_hash(<
+                                                                                              'CH_SH', 
+                                                                                              rc.1, 
+                                                                                              rs.1>)
+                                                                            >), 
+                                                            kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                          >)
+                         >)));",
+                                                                                                                                                                                                                                                                                                                                                                                                                                issapicrule,
+                                                                                                                                                                                                                                                                                                                                                                                                                                role='HonestNormal']:
+   [
+   State_11111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1, rs.1,
+                                     skec.1, sks.1
+   )
+   ]
+  -->
+   [
+   State_111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1, rs.1,
+                                      skec.1, sks.1
+   ),
+   Out( aead_enc(<'ClientApplicationData', app_c.1>,
+                 app_key(hkdf('CATS',
+                              hkdf('MS',
+                                   hkdf('AHS',
+                                        kdf(kem_ss(kem_pk(skec.1), r_sse.1), kem_ss(kem_pk(sks.1), r_sss.1)),
+                                        transcript_hash(<'CKC', 
+                                                         transcript_hash(<'CERT', 
+                                                                          transcript_hash(<'CH_SH', rc.1, rs.1
+                                                                                          >)
+                                                                         >), 
+                                                         kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                   transcript_hash(<'CKC', 
+                                                    transcript_hash(<'CERT', 
+                                                                     transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                                    >), 
+                                                    kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                              'th_app')),
+                 transcript_hash(<'after_CF', 
+                                  transcript_hash(<'before_CF', 
+                                                   transcript_hash(<'CKC', 
+                                                                    transcript_hash(<'CERT', 
+                                                                                     transcript_hash(<
+                                                                                                      'CH_SH', 
+                                                                                                      rc.1, 
+                                                                                                      rs.1>)
+                                                                                    >), 
+                                                                    kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                                  >)
+                                 >))
+   )
+   ]
+
+rule (modulo E) eventClientApplicationDataSentCSappchkdfCATShkdfMShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsssthapp_0_111111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                                                                       process="event ClientApplicationDataSent( 'C', 'S', app_c.1,
+                           hkdf('CATS',
+                                hkdf('MS',
+                                     hkdf('AHS',
+                                          kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                              kem_ss(kem_pk(sks.1), r_sss.1)),
+                                          transcript_hash(<'CKC', 
+                                                           transcript_hash(<'CERT', 
+                                                                            transcript_hash(<
+                                                                                             'CH_SH', 
+                                                                                             rc.1, 
+                                                                                             rs.1>)
+                                                                           >), 
+                                                           kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                     transcript_hash(<'CKC', 
+                                                      transcript_hash(<'CERT', 
+                                                                       transcript_hash(<'CH_SH', 
+                                                                                        rc.1, rs.1>)
+                                                                      >), 
+                                                      kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                'th_app')
+);",
+                                                                                                                                                                                                                                                                                                       issapicrule,
+                                                                                                                                                                                                                                                                                                       role='HonestNormal']:
+   [
+   State_111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1, rs.1,
+                                      skec.1, sks.1
+   )
+   ]
+  --[
+  ClientApplicationDataSent( 'C', 'S', app_c.1,
+                             hkdf('CATS',
+                                  hkdf('MS',
+                                       hkdf('AHS',
+                                            kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                                kem_ss(kem_pk(sks.1), r_sss.1)),
+                                            transcript_hash(<'CKC', 
+                                                             transcript_hash(<'CERT', 
+                                                                              transcript_hash(<'CH_SH', rc.1, 
+                                                                                               rs.1>)
+                                                                             >), 
+                                                             kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                       transcript_hash(<'CKC', 
+                                                        transcript_hash(<'CERT', 
+                                                                         transcript_hash(<'CH_SH', rc.1, rs.1
+                                                                                         >)
+                                                                        >), 
+                                                        kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                  'th_app')
+  )
+  ]->
+   [
+   State_1111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                       rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) eventClientFinishedVerifiedSCtranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsss_0_1111111111111111111111111111[color=#80406b,
+                                                                                                                                                                             process="event ClientFinishedVerified( 'S', 'C',
+                        transcript_hash(<'before_CF', 
+                                         transcript_hash(<'CKC', 
+                                                          transcript_hash(<'CERT', 
+                                                                           transcript_hash(<
+                                                                                            'CH_SH', 
+                                                                                            rc.1, 
+                                                                                            rs.1>)
+                                                                          >), 
+                                                          kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                        >)
+);",
+                                                                                                                                                                             issapicrule,
+                                                                                                                                                                             role='HonestNormal']:
+   [
+   State_1111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                       rs.1, skec.1, sks.1
+   )
+   ]
+  --[
+  ClientFinishedVerified( 'S', 'C',
+                          transcript_hash(<'before_CF', 
+                                           transcript_hash(<'CKC', 
+                                                            transcript_hash(<'CERT', 
+                                                                             transcript_hash(<'CH_SH', rc.1, 
+                                                                                              rs.1>)
+                                                                            >), 
+                                                            kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                          >)
+  )
+  ]->
+   [
+   State_11111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                        rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) eventClientApplicationDataAcceptedSChkdfCATShkdfMShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsssthapp_0_11111111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                                                                         process="event ClientApplicationDataAccepted( 'S', 'C',
+                               hkdf('CATS',
+                                    hkdf('MS',
+                                         hkdf('AHS',
+                                              kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                                  kem_ss(kem_pk(sks.1), r_sss.1)),
+                                              transcript_hash(<'CKC', 
+                                                               transcript_hash(<'CERT', 
+                                                                                transcript_hash(<
+                                                                                                 'CH_SH', 
+                                                                                                 rc.1, 
+                                                                                                 rs.1
+                                                                                                >)
+                                                                               >), 
+                                                               kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                         transcript_hash(<'CKC', 
+                                                          transcript_hash(<'CERT', 
+                                                                           transcript_hash(<
+                                                                                            'CH_SH', 
+                                                                                            rc.1, 
+                                                                                            rs.1>)
+                                                                          >), 
+                                                          kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                    'th_app')
+);",
+                                                                                                                                                                                                                                                                                                         issapicrule,
+                                                                                                                                                                                                                                                                                                         role='HonestNormal']:
+   [
+   State_11111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                        rs.1, skec.1, sks.1
+   )
+   ]
+  --[
+  ClientApplicationDataAccepted( 'S', 'C',
+                                 hkdf('CATS',
+                                      hkdf('MS',
+                                           hkdf('AHS',
+                                                kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                                    kem_ss(kem_pk(sks.1), r_sss.1)),
+                                                transcript_hash(<'CKC', 
+                                                                 transcript_hash(<'CERT', 
+                                                                                  transcript_hash(<'CH_SH', 
+                                                                                                   rc.1, rs.1
+                                                                                                  >)
+                                                                                 >), 
+                                                                 kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                           transcript_hash(<'CKC', 
+                                                            transcript_hash(<'CERT', 
+                                                                             transcript_hash(<'CH_SH', rc.1, 
+                                                                                              rs.1>)
+                                                                            >), 
+                                                            kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                      'th_app')
+  )
+  ]->
+   [
+   State_111111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                         rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) eventRunningSCkdfkemsskempkskecrssekemsskempksksrssstranscripthashbeforeSFtranscripthashafterCFtranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsss_0_111111111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                 process="event Running( 'S', 'C',
+         kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+             kem_ss(kem_pk(sks.1), r_sss.1)),
+         transcript_hash(<'before_SF', 
+                          transcript_hash(<'after_CF', 
+                                           transcript_hash(<'before_CF', 
+                                                            transcript_hash(<'CKC', 
+                                                                             transcript_hash(<
+                                                                                              'CERT', 
+                                                                                              transcript_hash(<
+                                                                                                               'CH_SH', 
+                                                                                                               rc.1, 
+                                                                                                               rs.1
+                                                                                                              >)
+                                                                                             >), 
+                                                                             kem_ct(kem_pk(sks.1),
+                                                                                    r_sss.1)
+                                                                            >)
+                                                           >)
+                                          >)
+                         >)
+);",
+                                                                                                                                                                                                                                                 issapicrule,
+                                                                                                                                                                                                                                                 role='HonestNormal']:
+   [
+   State_111111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                         rs.1, skec.1, sks.1
+   )
+   ]
+  --[
+  Running( 'S', 'C',
+           kdf(kem_ss(kem_pk(skec.1), r_sse.1), kem_ss(kem_pk(sks.1), r_sss.1)),
+           transcript_hash(<'before_SF', 
+                            transcript_hash(<'after_CF', 
+                                             transcript_hash(<'before_CF', 
+                                                              transcript_hash(<'CKC', 
+                                                                               transcript_hash(<'CERT', 
+                                                                                                transcript_hash(<
+                                                                                                                 'CH_SH', 
+                                                                                                                 rc.1, 
+                                                                                                                 rs.1
+                                                                                                                >)
+                                                                                               >), 
+                                                                               kem_ct(kem_pk(sks.1), r_sss.1)
+                                                                              >)
+                                                             >)
+                                            >)
+                           >)
+  )
+  ]->
+   [
+   State_1111111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                          rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) outaeadencServerFinishedmachkdffkshkdfMShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashbeforeSFtranscripthashafterCFtranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashtranscripthashbeforeSFtranscripthashafterCFtranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssshkdfSAHTShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashbeforeSFtranscripthashafterCFtranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsss_0_1111111111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     process="out(aead_enc(<'ServerFinished', 
+          mac(hkdf('fks',
+                   hkdf('MS',
+                        hkdf('AHS',
+                             kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                 kem_ss(kem_pk(sks.1), r_sss.1)),
+                             transcript_hash(<'CKC', 
+                                              transcript_hash(<'CERT', 
+                                                               transcript_hash(<'CH_SH', rc.1, rs.1
+                                                                               >)
+                                                              >), 
+                                              kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                        transcript_hash(<'CKC', 
+                                         transcript_hash(<'CERT', 
+                                                          transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                         kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                   transcript_hash(<'before_SF', 
+                                    transcript_hash(<'after_CF', 
+                                                     transcript_hash(<'before_CF', 
+                                                                      transcript_hash(<'CKC', 
+                                                                                       transcript_hash(<
+                                                                                                        'CERT', 
+                                                                                                        transcript_hash(<
+                                                                                                                         'CH_SH', 
+                                                                                                                         rc.1, 
+                                                                                                                         rs.1
+                                                                                                                        >)
+                                                                                                       >), 
+                                                                                       kem_ct(kem_pk(sks.1),
+                                                                                              r_sss.1)
+                                                                                      >)
+                                                                     >)
+                                                    >)
+                                   >)),
+              transcript_hash(transcript_hash(<'before_SF', 
+                                               transcript_hash(<'after_CF', 
+                                                                transcript_hash(<'before_CF', 
+                                                                                 transcript_hash(<
+                                                                                                  'CKC', 
+                                                                                                  transcript_hash(<
+                                                                                                                   'CERT', 
+                                                                                                                   transcript_hash(<
+                                                                                                                                    'CH_SH', 
+                                                                                                                                    rc.1, 
+                                                                                                                                    rs.1
+                                                                                                                                   >)
+                                                                                                                  >), 
+                                                                                                  kem_ct(kem_pk(sks.1),
+                                                                                                         r_sss.1)
+                                                                                                 >)
+                                                                                >)
+                                                               >)
+                                              >)))
+         >,
+         hkdf('SAHTS',
+              hkdf('AHS',
+                   kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                       kem_ss(kem_pk(sks.1), r_sss.1)),
+                   transcript_hash(<'CKC', 
+                                    transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                    >), 
+                                    kem_ct(kem_pk(sks.1), r_sss.1)>)),
+              transcript_hash(<'CKC', 
+                               transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                               kem_ct(kem_pk(sks.1), r_sss.1)>)),
+         transcript_hash(<'before_SF', 
+                          transcript_hash(<'after_CF', 
+                                           transcript_hash(<'before_CF', 
+                                                            transcript_hash(<'CKC', 
+                                                                             transcript_hash(<
+                                                                                              'CERT', 
+                                                                                              transcript_hash(<
+                                                                                                               'CH_SH', 
+                                                                                                               rc.1, 
+                                                                                                               rs.1
+                                                                                                              >)
+                                                                                             >), 
+                                                                             kem_ct(kem_pk(sks.1),
+                                                                                    r_sss.1)
+                                                                            >)
+                                                           >)
+                                          >)
+                         >)));",
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     issapicrule,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     role='HonestNormal']:
+   [
+   State_1111111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                          rs.1, skec.1, sks.1
+   )
+   ]
+  -->
+   [
+   State_11111111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                           rs.1, skec.1, sks.1
+   ),
+   Out( aead_enc(<'ServerFinished', 
+                  mac(hkdf('fks',
+                           hkdf('MS',
+                                hkdf('AHS',
+                                     kdf(kem_ss(kem_pk(skec.1), r_sse.1), kem_ss(kem_pk(sks.1), r_sss.1)),
+                                     transcript_hash(<'CKC', 
+                                                      transcript_hash(<'CERT', 
+                                                                       transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                                      >), 
+                                                      kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                transcript_hash(<'CKC', 
+                                                 transcript_hash(<'CERT', 
+                                                                  transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                                 kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                           transcript_hash(<'before_SF', 
+                                            transcript_hash(<'after_CF', 
+                                                             transcript_hash(<'before_CF', 
+                                                                              transcript_hash(<'CKC', 
+                                                                                               transcript_hash(<
+                                                                                                                'CERT', 
+                                                                                                                transcript_hash(<
+                                                                                                                                 'CH_SH', 
+                                                                                                                                 rc.1, 
+                                                                                                                                 rs.1
+                                                                                                                                >)
+                                                                                                               >), 
+                                                                                               kem_ct(kem_pk(sks.1),
+                                                                                                      r_sss.1)
+                                                                                              >)
+                                                                             >)
+                                                            >)
+                                           >)),
+                      transcript_hash(transcript_hash(<'before_SF', 
+                                                       transcript_hash(<'after_CF', 
+                                                                        transcript_hash(<'before_CF', 
+                                                                                         transcript_hash(<
+                                                                                                          'CKC', 
+                                                                                                          transcript_hash(<
+                                                                                                                           'CERT', 
+                                                                                                                           transcript_hash(<
+                                                                                                                                            'CH_SH', 
+                                                                                                                                            rc.1, 
+                                                                                                                                            rs.1
+                                                                                                                                           >)
+                                                                                                                          >), 
+                                                                                                          kem_ct(kem_pk(sks.1),
+                                                                                                                 r_sss.1)
+                                                                                                         >)
+                                                                                        >)
+                                                                       >)
+                                                      >)))
+                 >,
+                 hkdf('SAHTS',
+                      hkdf('AHS',
+                           kdf(kem_ss(kem_pk(skec.1), r_sse.1), kem_ss(kem_pk(sks.1), r_sss.1)),
+                           transcript_hash(<'CKC', 
+                                            transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                            >), 
+                                            kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                      transcript_hash(<'CKC', 
+                                       transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                       kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                 transcript_hash(<'before_SF', 
+                                  transcript_hash(<'after_CF', 
+                                                   transcript_hash(<'before_CF', 
+                                                                    transcript_hash(<'CKC', 
+                                                                                     transcript_hash(<'CERT', 
+                                                                                                      transcript_hash(<
+                                                                                                                       'CH_SH', 
+                                                                                                                       rc.1, 
+                                                                                                                       rs.1
+                                                                                                                      >)
+                                                                                                     >), 
+                                                                                     kem_ct(kem_pk(sks.1),
+                                                                                            r_sss.1)
+                                                                                    >)
+                                                                   >)
+                                                  >)
+                                 >))
+   )
+   ]
+
+rule (modulo E) eventServerFinishedSentSCtranscripthashbeforeSFtranscripthashafterCFtranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsss_0_11111111111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                        process="event ServerFinishedSent( 'S', 'C',
+                    transcript_hash(<'before_SF', 
+                                     transcript_hash(<'after_CF', 
+                                                      transcript_hash(<'before_CF', 
+                                                                       transcript_hash(<'CKC', 
+                                                                                        transcript_hash(<
+                                                                                                         'CERT', 
+                                                                                                         transcript_hash(<
+                                                                                                                          'CH_SH', 
+                                                                                                                          rc.1, 
+                                                                                                                          rs.1
+                                                                                                                         >)
+                                                                                                        >), 
+                                                                                        kem_ct(kem_pk(sks.1),
+                                                                                               r_sss.1)
+                                                                                       >)
+                                                                      >)
+                                                     >)
+                                    >)
+);",
+                                                                                                                                                                                                                        issapicrule,
+                                                                                                                                                                                                                        role='HonestNormal']:
+   [
+   State_11111111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                           rs.1, skec.1, sks.1
+   )
+   ]
+  --[
+  ServerFinishedSent( 'S', 'C',
+                      transcript_hash(<'before_SF', 
+                                       transcript_hash(<'after_CF', 
+                                                        transcript_hash(<'before_CF', 
+                                                                         transcript_hash(<'CKC', 
+                                                                                          transcript_hash(<
+                                                                                                           'CERT', 
+                                                                                                           transcript_hash(<
+                                                                                                                            'CH_SH', 
+                                                                                                                            rc.1, 
+                                                                                                                            rs.1
+                                                                                                                           >)
+                                                                                                          >), 
+                                                                                          kem_ct(kem_pk(sks.1),
+                                                                                                 r_sss.1)
+                                                                                         >)
+                                                                        >)
+                                                       >)
+                                      >)
+  )
+  ]->
+   [
+   State_111111111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                            rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) eventSecretSChkdfSATShkdfMShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsssthapp_0_111111111111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                                                      process="event Secret( 'S', 'C',
+        hkdf('SATS',
+             hkdf('MS',
+                  hkdf('AHS',
+                       kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                           kem_ss(kem_pk(sks.1), r_sss.1)),
+                       transcript_hash(<'CKC', 
+                                        transcript_hash(<'CERT', 
+                                                         transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                        kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                  transcript_hash(<'CKC', 
+                                   transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                   >), 
+                                   kem_ct(kem_pk(sks.1), r_sss.1)>)),
+             'th_app')
+);",
+                                                                                                                                                                                                                                                                                      issapicrule,
+                                                                                                                                                                                                                                                                                      role='HonestNormal']:
+   [
+   State_111111111111111111111111111111111( app_c.1, r_sse.1, r_sss.1, rc.1,
+                                            rs.1, skec.1, sks.1
+   )
+   ]
+  --[
+  Secret( 'S', 'C',
+          hkdf('SATS',
+               hkdf('MS',
+                    hkdf('AHS',
+                         kdf(kem_ss(kem_pk(skec.1), r_sse.1), kem_ss(kem_pk(sks.1), r_sss.1)),
+                         transcript_hash(<'CKC', 
+                                          transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                          kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                    transcript_hash(<'CKC', 
+                                     transcript_hash(<'CERT', transcript_hash(<'CH_SH', rc.1, rs.1>)>), 
+                                     kem_ct(kem_pk(sks.1), r_sss.1)>)),
+               'th_app')
+  )
+  ]->
+   [
+   State_1111111111111111111111111111111111( app_c.1, r_sse.1, r_sss.1,
+                                             rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) newapps_0_1111111111111111111111111111111111[color=#80406b,
+                                                             process="new app_s.1;", issapicrule,
+                                                             role='HonestNormal']:
+   [
+   State_1111111111111111111111111111111111( app_c.1, r_sse.1, r_sss.1,
+                                             rc.1, rs.1, skec.1, sks.1
+   ),
+   Fr( app_s.1 )
+   ]
+  -->
+   [
+   State_11111111111111111111111111111111111( app_c.1, app_s.1, r_sse.1,
+                                              r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) outaeadencServerApplicationDataappsappkeyhkdfSATShkdfMShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsssthapptranscripthashafterSFtranscripthashbeforeSFtranscripthashafterCFtranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsss_0_11111111111111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    process="out(aead_enc(<'ServerApplicationData', app_s.1>,
+         app_key(hkdf('SATS',
+                      hkdf('MS',
+                           hkdf('AHS',
+                                kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                    kem_ss(kem_pk(sks.1), r_sss.1)),
+                                transcript_hash(<'CKC', 
+                                                 transcript_hash(<'CERT', 
+                                                                  transcript_hash(<'CH_SH', rc.1, 
+                                                                                   rs.1>)
+                                                                 >), 
+                                                 kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                           transcript_hash(<'CKC', 
+                                            transcript_hash(<'CERT', 
+                                                             transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                            >), 
+                                            kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                      'th_app')),
+         transcript_hash(<'after_SF', 
+                          transcript_hash(<'before_SF', 
+                                           transcript_hash(<'after_CF', 
+                                                            transcript_hash(<'before_CF', 
+                                                                             transcript_hash(<
+                                                                                              'CKC', 
+                                                                                              transcript_hash(<
+                                                                                                               'CERT', 
+                                                                                                               transcript_hash(<
+                                                                                                                                'CH_SH', 
+                                                                                                                                rc.1, 
+                                                                                                                                rs.1
+                                                                                                                               >)
+                                                                                                              >), 
+                                                                                              kem_ct(kem_pk(sks.1),
+                                                                                                     r_sss.1)
+                                                                                             >)
+                                                                            >)
+                                                           >)
+                                          >)
+                         >)));",
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    issapicrule,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    role='HonestNormal']:
+   [
+   State_11111111111111111111111111111111111( app_c.1, app_s.1, r_sse.1,
+                                              r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+  -->
+   [
+   State_111111111111111111111111111111111111( app_c.1, app_s.1, r_sse.1,
+                                               r_sss.1, rc.1, rs.1, skec.1, sks.1
+   ),
+   Out( aead_enc(<'ServerApplicationData', app_s.1>,
+                 app_key(hkdf('SATS',
+                              hkdf('MS',
+                                   hkdf('AHS',
+                                        kdf(kem_ss(kem_pk(skec.1), r_sse.1), kem_ss(kem_pk(sks.1), r_sss.1)),
+                                        transcript_hash(<'CKC', 
+                                                         transcript_hash(<'CERT', 
+                                                                          transcript_hash(<'CH_SH', rc.1, rs.1
+                                                                                          >)
+                                                                         >), 
+                                                         kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                   transcript_hash(<'CKC', 
+                                                    transcript_hash(<'CERT', 
+                                                                     transcript_hash(<'CH_SH', rc.1, rs.1>)
+                                                                    >), 
+                                                    kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                              'th_app')),
+                 transcript_hash(<'after_SF', 
+                                  transcript_hash(<'before_SF', 
+                                                   transcript_hash(<'after_CF', 
+                                                                    transcript_hash(<'before_CF', 
+                                                                                     transcript_hash(<'CKC', 
+                                                                                                      transcript_hash(<
+                                                                                                                       'CERT', 
+                                                                                                                       transcript_hash(<
+                                                                                                                                        'CH_SH', 
+                                                                                                                                        rc.1, 
+                                                                                                                                        rs.1
+                                                                                                                                       >)
+                                                                                                                      >), 
+                                                                                                      kem_ct(kem_pk(sks.1),
+                                                                                                             r_sss.1)
+                                                                                                     >)
+                                                                                    >)
+                                                                   >)
+                                                  >)
+                                 >))
+   )
+   ]
+
+rule (modulo E) eventServerApplicationDataSentSCappshkdfSATShkdfMShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsssthapp_0_111111111111111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                                                                                process="event ServerApplicationDataSent( 'S', 'C', app_s.1,
+                           hkdf('SATS',
+                                hkdf('MS',
+                                     hkdf('AHS',
+                                          kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                              kem_ss(kem_pk(sks.1), r_sss.1)),
+                                          transcript_hash(<'CKC', 
+                                                           transcript_hash(<'CERT', 
+                                                                            transcript_hash(<
+                                                                                             'CH_SH', 
+                                                                                             rc.1, 
+                                                                                             rs.1>)
+                                                                           >), 
+                                                           kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                     transcript_hash(<'CKC', 
+                                                      transcript_hash(<'CERT', 
+                                                                       transcript_hash(<'CH_SH', 
+                                                                                        rc.1, rs.1>)
+                                                                      >), 
+                                                      kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                'th_app')
+);",
+                                                                                                                                                                                                                                                                                                                issapicrule,
+                                                                                                                                                                                                                                                                                                                role='HonestNormal']:
+   [
+   State_111111111111111111111111111111111111( app_c.1, app_s.1, r_sse.1,
+                                               r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+  --[
+  ServerApplicationDataSent( 'S', 'C', app_s.1,
+                             hkdf('SATS',
+                                  hkdf('MS',
+                                       hkdf('AHS',
+                                            kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                                kem_ss(kem_pk(sks.1), r_sss.1)),
+                                            transcript_hash(<'CKC', 
+                                                             transcript_hash(<'CERT', 
+                                                                              transcript_hash(<'CH_SH', rc.1, 
+                                                                                               rs.1>)
+                                                                             >), 
+                                                             kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                       transcript_hash(<'CKC', 
+                                                        transcript_hash(<'CERT', 
+                                                                         transcript_hash(<'CH_SH', rc.1, rs.1
+                                                                                         >)
+                                                                        >), 
+                                                        kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                  'th_app')
+  )
+  ]->
+   [
+   State_1111111111111111111111111111111111111( app_c.1, app_s.1, r_sse.1,
+                                                r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) eventServerFinishedVerifiedCStranscripthashbeforeSFtranscripthashafterCFtranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsss_0_1111111111111111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                 process="event ServerFinishedVerified( 'C', 'S',
+                        transcript_hash(<'before_SF', 
+                                         transcript_hash(<'after_CF', 
+                                                          transcript_hash(<'before_CF', 
+                                                                           transcript_hash(<'CKC', 
+                                                                                            transcript_hash(<
+                                                                                                             'CERT', 
+                                                                                                             transcript_hash(<
+                                                                                                                              'CH_SH', 
+                                                                                                                              rc.1, 
+                                                                                                                              rs.1
+                                                                                                                             >)
+                                                                                                            >), 
+                                                                                            kem_ct(kem_pk(sks.1),
+                                                                                                   r_sss.1)
+                                                                                           >)
+                                                                          >)
+                                                         >)
+                                        >)
+);",
+                                                                                                                                                                                                                                 issapicrule,
+                                                                                                                                                                                                                                 role='HonestNormal']:
+   [
+   State_1111111111111111111111111111111111111( app_c.1, app_s.1, r_sse.1,
+                                                r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+  --[
+  ServerFinishedVerified( 'C', 'S',
+                          transcript_hash(<'before_SF', 
+                                           transcript_hash(<'after_CF', 
+                                                            transcript_hash(<'before_CF', 
+                                                                             transcript_hash(<'CKC', 
+                                                                                              transcript_hash(<
+                                                                                                               'CERT', 
+                                                                                                               transcript_hash(<
+                                                                                                                                'CH_SH', 
+                                                                                                                                rc.1, 
+                                                                                                                                rs.1
+                                                                                                                               >)
+                                                                                                              >), 
+                                                                                              kem_ct(kem_pk(sks.1),
+                                                                                                     r_sss.1)
+                                                                                             >)
+                                                                            >)
+                                                           >)
+                                          >)
+  )
+  ]->
+   [
+   State_11111111111111111111111111111111111111( app_c.1, app_s.1, r_sse.1,
+                                                 r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) eventCommitCSkdfkemsskempkskecrssekemsskempksksrssstranscripthashbeforeSFtranscripthashafterCFtranscripthashbeforeCFtranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsss_0_11111111111111111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                        process="event Commit( 'C', 'S',
+        kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+            kem_ss(kem_pk(sks.1), r_sss.1)),
+        transcript_hash(<'before_SF', 
+                         transcript_hash(<'after_CF', 
+                                          transcript_hash(<'before_CF', 
+                                                           transcript_hash(<'CKC', 
+                                                                            transcript_hash(<
+                                                                                             'CERT', 
+                                                                                             transcript_hash(<
+                                                                                                              'CH_SH', 
+                                                                                                              rc.1, 
+                                                                                                              rs.1
+                                                                                                             >)
+                                                                                            >), 
+                                                                            kem_ct(kem_pk(sks.1),
+                                                                                   r_sss.1)
+                                                                           >)
+                                                          >)
+                                         >)
+                        >)
+);",
+                                                                                                                                                                                                                                                        issapicrule,
+                                                                                                                                                                                                                                                        role='HonestNormal']:
+   [
+   State_11111111111111111111111111111111111111( app_c.1, app_s.1, r_sse.1,
+                                                 r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+  --[
+  Commit( 'C', 'S',
+          kdf(kem_ss(kem_pk(skec.1), r_sse.1), kem_ss(kem_pk(sks.1), r_sss.1)),
+          transcript_hash(<'before_SF', 
+                           transcript_hash(<'after_CF', 
+                                            transcript_hash(<'before_CF', 
+                                                             transcript_hash(<'CKC', 
+                                                                              transcript_hash(<'CERT', 
+                                                                                               transcript_hash(<
+                                                                                                                'CH_SH', 
+                                                                                                                rc.1, 
+                                                                                                                rs.1
+                                                                                                               >)
+                                                                                              >), 
+                                                                              kem_ct(kem_pk(sks.1), r_sss.1)>)
+                                                            >)
+                                           >)
+                          >)
+  )
+  ]->
+   [
+   State_111111111111111111111111111111111111111( app_c.1, app_s.1, r_sse.1,
+                                                  r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) eventServerExplicitlyAuthenticatedCSkdfkemsskempkskecrssekemsskempksksrsss_0_111111111111111111111111111111111111111[color=#80406b,
+                                                                                                                                     process="event ServerExplicitlyAuthenticated( 'C', 'S',
+                               kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                   kem_ss(kem_pk(sks.1), r_sss.1))
+);",
+                                                                                                                                     issapicrule,
+                                                                                                                                     role='HonestNormal']:
+   [
+   State_111111111111111111111111111111111111111( app_c.1, app_s.1, r_sse.1,
+                                                  r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+  --[
+  ServerExplicitlyAuthenticated( 'C', 'S',
+                                 kdf(kem_ss(kem_pk(skec.1), r_sse.1), kem_ss(kem_pk(sks.1), r_sss.1))
+  )
+  ]->
+   [
+   State_1111111111111111111111111111111111111111( app_c.1, app_s.1,
+                                                   r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) eventServerApplicationDataAcceptedCShkdfSATShkdfMShkdfAHSkdfkemsskempkskecrssekemsskempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrssstranscripthashCKCtranscripthashCERTtranscripthashCHSHrcrskemctkempksksrsssthapp_0_1111111111111111111111111111111111111111[color=#80406b,
+                                                                                                                                                                                                                                                                                                                    process="event ServerApplicationDataAccepted( 'C', 'S',
+                               hkdf('SATS',
+                                    hkdf('MS',
+                                         hkdf('AHS',
+                                              kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                                  kem_ss(kem_pk(sks.1), r_sss.1)),
+                                              transcript_hash(<'CKC', 
+                                                               transcript_hash(<'CERT', 
+                                                                                transcript_hash(<
+                                                                                                 'CH_SH', 
+                                                                                                 rc.1, 
+                                                                                                 rs.1
+                                                                                                >)
+                                                                               >), 
+                                                               kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                         transcript_hash(<'CKC', 
+                                                          transcript_hash(<'CERT', 
+                                                                           transcript_hash(<
+                                                                                            'CH_SH', 
+                                                                                            rc.1, 
+                                                                                            rs.1>)
+                                                                          >), 
+                                                          kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                    'th_app')
+);",
+                                                                                                                                                                                                                                                                                                                    issapicrule,
+                                                                                                                                                                                                                                                                                                                    role='HonestNormal']:
+   [
+   State_1111111111111111111111111111111111111111( app_c.1, app_s.1,
+                                                   r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+  --[
+  ServerApplicationDataAccepted( 'C', 'S',
+                                 hkdf('SATS',
+                                      hkdf('MS',
+                                           hkdf('AHS',
+                                                kdf(kem_ss(kem_pk(skec.1), r_sse.1),
+                                                    kem_ss(kem_pk(sks.1), r_sss.1)),
+                                                transcript_hash(<'CKC', 
+                                                                 transcript_hash(<'CERT', 
+                                                                                  transcript_hash(<'CH_SH', 
+                                                                                                   rc.1, rs.1
+                                                                                                  >)
+                                                                                 >), 
+                                                                 kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                           transcript_hash(<'CKC', 
+                                                            transcript_hash(<'CERT', 
+                                                                             transcript_hash(<'CH_SH', rc.1, 
+                                                                                              rs.1>)
+                                                                            >), 
+                                                            kem_ct(kem_pk(sks.1), r_sss.1)>)),
+                                      'th_app')
+  )
+  ]->
+   [
+   State_11111111111111111111111111111111111111111( app_c.1, app_s.1,
+                                                    r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) eventRevealServerLongTermKEMKeySsks_0_11111111111111111111111111111111111111111[color=#80406b,
+                                                                                                process="event RevealServerLongTermKEMKey( 'S', sks.1 );",
+                                                                                                issapicrule,
+                                                                                                role='HonestNormal']:
+   [
+   State_11111111111111111111111111111111111111111( app_c.1, app_s.1,
+                                                    r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+  --[ RevealServerLongTermKEMKey( 'S', sks.1 ) ]->
+   [
+   State_111111111111111111111111111111111111111111( app_c.1, app_s.1,
+                                                     r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+
+rule (modulo E) outsks_0_111111111111111111111111111111111111111111[color=#80406b,
+                                                                    process="out(sks.1);", issapicrule,
+                                                                    role='HonestNormal']:
+   [
+   State_111111111111111111111111111111111111111111( app_c.1, app_s.1,
+                                                     r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+  -->
+   [
+   State_1111111111111111111111111111111111111111111( app_c.1, app_s.1,
+                                                      r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   ),
+   Out( sks.1 )
+   ]
+
+rule (modulo E) p_0_1111111111111111111111111111111111111111111[color=#80406b,
+                                                                process="0", issapicrule,
+                                                                role='HonestNormal']:
+   [
+   State_1111111111111111111111111111111111111111111( app_c.1, app_s.1,
+                                                      r_sse.1, r_sss.1, rc.1, rs.1, skec.1, sks.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111112[color=#ffffff, process="0", issapicrule,
+                            role='Process']:
+   [ State_1111112( sks.1 ) ] --> [ ]
+
+rule (modulo E) ServerUnauthenticatedAttackS_0_111112[color=#ffffff,
+                                                      process="ServerUnauthenticatedAttack('S')", issapicrule,
+                                                      role='Process']:
+   [ State_111112( sks.1 ) ]
+  -->
+   [ State_1111121( sks.1 ), State_1111122( sks.1 ) ]
+
+rule (modulo E) incpeer_0_1111121[color=#804060, process="in(c_peer.1);",
+                                  issapicrule, role='ServerUnauthenticatedAttack']:
+   [ State_1111121( sks.1 ), In( c_peer.1 ) ]
+  -->
+   [ State_11111211( c_peer.1, sks.1 ) ]
+
+rule (modulo E) eventClientFinishedVerifiedScpeertranscripthashScpeerattackertranscript_0_11111211[color=#804060,
+                                                                                                   process="event ClientFinishedVerified( 'S', c_peer.1,
+                        transcript_hash(<'S', c_peer.1, 'attacker_transcript'>)
+);",
+                                                                                                   issapicrule,
+                                                                                                   role='ServerUnauthenticatedAttack']:
+   [ State_11111211( c_peer.1, sks.1 ) ]
+  --[
+  ClientFinishedVerified( 'S', c_peer.1,
+                          transcript_hash(<'S', c_peer.1, 'attacker_transcript'>)
+  )
+  ]->
+   [ State_111112111( c_peer.1, sks.1 ) ]
+
+rule (modulo E) eventRunningScpeerkdfScpeerattackersessiontranscripthashScpeerattackertranscript_0_111112111[color=#804060,
+                                                                                                             process="event Running( 'S', c_peer.1, kdf(<'S', c_peer.1>, 'attacker_session'),
+         transcript_hash(<'S', c_peer.1, 'attacker_transcript'>)
+);",
+                                                                                                             issapicrule,
+                                                                                                             role='ServerUnauthenticatedAttack']:
+   [ State_111112111( c_peer.1, sks.1 ) ]
+  --[
+  Running( 'S', c_peer.1, kdf(<'S', c_peer.1>, 'attacker_session'),
+           transcript_hash(<'S', c_peer.1, 'attacker_transcript'>)
+  )
+  ]->
+   [ State_1111121111( c_peer.1, sks.1 ) ]
+
+rule (modulo E) eventServerFinishedSentScpeertranscripthashScpeerattackertranscript_0_1111121111[color=#804060,
+                                                                                                 process="event ServerFinishedSent( 'S', c_peer.1,
+                    transcript_hash(<'S', c_peer.1, 'attacker_transcript'>)
+);",
+                                                                                                 issapicrule,
+                                                                                                 role='ServerUnauthenticatedAttack']:
+   [ State_1111121111( c_peer.1, sks.1 ) ]
+  --[
+  ServerFinishedSent( 'S', c_peer.1,
+                      transcript_hash(<'S', c_peer.1, 'attacker_transcript'>)
+  )
+  ]->
+   [ State_11111211111( c_peer.1, sks.1 ) ]
+
+rule (modulo E) eventSecretScpeerkdfkdfScpeerattackersessionSATS_0_11111211111[color=#804060,
+                                                                               process="event Secret( 'S', c_peer.1,
+        kdf(kdf(<'S', c_peer.1>, 'attacker_session'), 'SATS')
+);",
+                                                                               issapicrule,
+                                                                               role='ServerUnauthenticatedAttack']:
+   [ State_11111211111( c_peer.1, sks.1 ) ]
+  --[
+  Secret( 'S', c_peer.1,
+          kdf(kdf(<'S', c_peer.1>, 'attacker_session'), 'SATS')
+  )
+  ]->
+   [ State_111112111111( c_peer.1, sks.1 ) ]
+
+rule (modulo E) outkdfkdfScpeerattackersessionSATS_0_111112111111[color=#804060,
+                                                                  process="out(kdf(kdf(<'S', c_peer.1>, 'attacker_session'), 'SATS'));",
+                                                                  issapicrule,
+                                                                  role='ServerUnauthenticatedAttack']:
+   [ State_111112111111( c_peer.1, sks.1 ) ]
+  -->
+   [
+   State_1111121111111( c_peer.1, sks.1 ),
+   Out( kdf(kdf(<'S', c_peer.1>, 'attacker_session'), 'SATS') )
+   ]
+
+rule (modulo E) eventServerApplicationDataSentScpeerattackerappkdfkdfScpeerattackersessionSATS_0_1111121111111[color=#804060,
+                                                                                                               process="event ServerApplicationDataSent( 'S', c_peer.1, 'attacker_app',
+                           kdf(kdf(<'S', c_peer.1>, 'attacker_session'), 'SATS')
+);",
+                                                                                                               issapicrule,
+                                                                                                               role='ServerUnauthenticatedAttack']:
+   [ State_1111121111111( c_peer.1, sks.1 ) ]
+  --[
+  ServerApplicationDataSent( 'S', c_peer.1, 'attacker_app',
+                             kdf(kdf(<'S', c_peer.1>, 'attacker_session'), 'SATS')
+  )
+  ]->
+   [ State_11111211111111( c_peer.1, sks.1 ) ]
+
+rule (modulo E) p_0_11111211111111[color=#804060, process="0",
+                                   issapicrule, role='ServerUnauthenticatedAttack']:
+   [ State_11111211111111( c_peer.1, sks.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1111122[color=#ffffff, process="0", issapicrule,
+                            role='Process']:
+   [ State_1111122( sks.1 ) ] --> [ ]
+
+rule (modulo E) ServerRetryOnlyS_0_11112[color=#ffffff,
+                                         process="ServerRetryOnly('S')", issapicrule, role='Process']:
+   [ State_11112( sks.1 ) ]
+  -->
+   [ State_111121( sks.1 ), State_111122( sks.1 ) ]
+
+rule (modulo E) intagchrecvcrecvrcrecvpkecrecvauthalgsrecvkexalgsrecvaeadalgsrecv_0_111121[color=#407180,
+                                                                                           process="in(<tag_ch_recv.1, c_recv.1, rc_recv.1, pkec_recv.1, 
+ auth_algs_recv.1, kex_algs_recv.1, aead_algs_recv.1>);",
+                                                                                           issapicrule,
+                                                                                           role='ServerRetryOnly']:
+   [
+   State_111121( sks.1 ),
+   In( <tag_ch_recv.1, c_recv.1, rc_recv.1, pkec_recv.1, auth_algs_recv.1, 
+        kex_algs_recv.1, aead_algs_recv.1>
+   )
+   ]
+  -->
+   [
+   State_1111211( aead_algs_recv.1, auth_algs_recv.1, c_recv.1,
+                  kex_algs_recv.1, pkec_recv.1, rc_recv.1, sks.1, tag_ch_recv.1
+   )
+   ]
+
+rule (modulo E) iftagchrecvClientHello_0_1111211[color=#407180,
+                                                 process="if tag_ch_recv.1='ClientHello'", issapicrule,
+                                                 role='ServerRetryOnly']:
+   [
+   State_1111211( aead_algs_recv.1, auth_algs_recv.1, c_recv.1,
+                  kex_algs_recv.1, pkec_recv.1, rc_recv.1, sks.1, tag_ch_recv.1
+   )
+   ]
+  --[ Pred_Eq( tag_ch_recv.1, 'ClientHello' ) ]->
+   [
+   State_11112111( aead_algs_recv.1, auth_algs_recv.1, c_recv.1,
+                   kex_algs_recv.1, pkec_recv.1, rc_recv.1, sks.1, tag_ch_recv.1
+   )
+   ]
+
+rule (modulo E) iftagchrecvClientHello_1_1111211[color=#407180,
+                                                 process="if tag_ch_recv.1='ClientHello'", issapicrule,
+                                                 role='ServerRetryOnly']:
+   [
+   State_1111211( aead_algs_recv.1, auth_algs_recv.1, c_recv.1,
+                  kex_algs_recv.1, pkec_recv.1, rc_recv.1, sks.1, tag_ch_recv.1
+   )
+   ]
+  --[ Pred_Not_Eq( tag_ch_recv.1, 'ClientHello' ) ]->
+   [
+   State_11112112( aead_algs_recv.1, auth_algs_recv.1, c_recv.1,
+                   kex_algs_recv.1, pkec_recv.1, rc_recv.1, sks.1, tag_ch_recv.1
+   )
+   ]
+
+rule (modulo E) outHelloRetryRequestSselectalgkexalgsrecvretry_0_11112111[color=#407180,
+                                                                          process="out(<'HelloRetryRequest', 'S', select_alg(kex_algs_recv.1, 'retry')>);",
+                                                                          issapicrule,
+                                                                          role='ServerRetryOnly']:
+   [
+   State_11112111( aead_algs_recv.1, auth_algs_recv.1, c_recv.1,
+                   kex_algs_recv.1, pkec_recv.1, rc_recv.1, sks.1, tag_ch_recv.1
+   )
+   ]
+  -->
+   [
+   State_111121111( aead_algs_recv.1, auth_algs_recv.1, c_recv.1,
+                    kex_algs_recv.1, pkec_recv.1, rc_recv.1, sks.1, tag_ch_recv.1
+   ),
+   Out( <'HelloRetryRequest', 'S', select_alg(kex_algs_recv.1, 'retry')> )
+   ]
+
+rule (modulo E) eventOUTHelloRetryRequestScrecvselectalgkexalgsrecvretry_0_111121111[color=#407180,
+                                                                                     process="event OUT_HelloRetryRequest( 'S', c_recv.1,
+                       select_alg(kex_algs_recv.1, 'retry')
+);",
+                                                                                     issapicrule,
+                                                                                     role='ServerRetryOnly']:
+   [
+   State_111121111( aead_algs_recv.1, auth_algs_recv.1, c_recv.1,
+                    kex_algs_recv.1, pkec_recv.1, rc_recv.1, sks.1, tag_ch_recv.1
+   )
+   ]
+  --[
+  OUT_HelloRetryRequest( 'S', c_recv.1,
+                         select_alg(kex_algs_recv.1, 'retry')
+  )
+  ]->
+   [
+   State_1111211111( aead_algs_recv.1, auth_algs_recv.1, c_recv.1,
+                     kex_algs_recv.1, pkec_recv.1, rc_recv.1, sks.1, tag_ch_recv.1
+   )
+   ]
+
+rule (modulo E) p_0_1111211111[color=#407180, process="0", issapicrule,
+                               role='ServerRetryOnly']:
+   [
+   State_1111211111( aead_algs_recv.1, auth_algs_recv.1, c_recv.1,
+                     kex_algs_recv.1, pkec_recv.1, rc_recv.1, sks.1, tag_ch_recv.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11112112[color=#407180, process="0", issapicrule,
+                             role='ServerRetryOnly']:
+   [
+   State_11112112( aead_algs_recv.1, auth_algs_recv.1, c_recv.1,
+                   kex_algs_recv.1, pkec_recv.1, rc_recv.1, sks.1, tag_ch_recv.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111122[color=#ffffff, process="0", issapicrule,
+                           role='Process']:
+   [ State_111122( sks.1 ) ] --> [ ]
+
+rule (modulo E) ClientRetryOnlyCS_0_1112[color=#ffffff,
+                                         process="ClientRetryOnly('C', 'S')", issapicrule, role='Process']:
+   [ State_1112( sks.1 ) ]
+  -->
+   [ State_11121( sks.1 ), State_11122( sks.1 ) ]
+
+rule (modulo E) intaghrrrecvsrecvselectedkexalg_0_11121[color=#424080,
+                                                        process="in(<tag_hrr_recv.1, s_recv.1, selected_kex_alg.3>);",
+                                                        issapicrule, role='ClientRetryOnly']:
+   [
+   State_11121( sks.1 ),
+   In( <tag_hrr_recv.1, s_recv.1, selected_kex_alg.3> )
+   ]
+  -->
+   [ State_111211( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ) ]
+
+rule (modulo E) iftaghrrrecvHelloRetryRequest_0_111211[color=#424080,
+                                                       process="if tag_hrr_recv.1='HelloRetryRequest'",
+                                                       issapicrule, role='ClientRetryOnly']:
+   [ State_111211( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ) ]
+  --[ Pred_Eq( tag_hrr_recv.1, 'HelloRetryRequest' ) ]->
+   [ State_1112111( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ) ]
+
+rule (modulo E) iftaghrrrecvHelloRetryRequest_1_111211[color=#424080,
+                                                       process="if tag_hrr_recv.1='HelloRetryRequest'",
+                                                       issapicrule, role='ClientRetryOnly']:
+   [ State_111211( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ) ]
+  --[ Pred_Not_Eq( tag_hrr_recv.1, 'HelloRetryRequest' ) ]->
+   [ State_1112112( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ) ]
+
+rule (modulo E) ifsrecvS_0_1112111[color=#424080,
+                                   process="if s_recv.1='S'", issapicrule, role='ClientRetryOnly']:
+   [ State_1112111( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ) ]
+  --[ Pred_Eq( s_recv.1, 'S' ) ]->
+   [ State_11121111( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ) ]
+
+rule (modulo E) ifsrecvS_1_1112111[color=#424080,
+                                   process="if s_recv.1='S'", issapicrule, role='ClientRetryOnly']:
+   [ State_1112111( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ) ]
+  --[ Pred_Not_Eq( s_recv.1, 'S' ) ]->
+   [ State_11121112( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ) ]
+
+rule (modulo E) newrcretry_0_11121111[color=#424080,
+                                      process="new rc_retry.1;", issapicrule, role='ClientRetryOnly']:
+   [
+   State_11121111( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ),
+   Fr( rc_retry.1 )
+   ]
+  -->
+   [
+   State_111211111( rc_retry.1, s_recv.1, sks.1, tag_hrr_recv.1,
+                    selected_kex_alg.3
+   )
+   ]
+
+rule (modulo E) newskecretry_0_111211111[color=#424080,
+                                         process="new skec_retry.1;", issapicrule, role='ClientRetryOnly']:
+   [
+   State_111211111( rc_retry.1, s_recv.1, sks.1, tag_hrr_recv.1,
+                    selected_kex_alg.3
+   ),
+   Fr( skec_retry.1 )
+   ]
+  -->
+   [
+   State_1112111111( rc_retry.1, s_recv.1, skec_retry.1, sks.1,
+                     tag_hrr_recv.1, selected_kex_alg.3
+   )
+   ]
+
+rule (modulo E) outClientHelloCrcretrykempkskecretryauthalgsCselectedkexalgaeadalgsC_0_1112111111[color=#424080,
+                                                                                                  process="out(<'ClientHello', 'C', rc_retry.1, kem_pk(skec_retry.1), 
+ 'auth_algs_C', selected_kex_alg.3, 'aead_algs_C'>);",
+                                                                                                  issapicrule,
+                                                                                                  role='ClientRetryOnly']:
+   [
+   State_1112111111( rc_retry.1, s_recv.1, skec_retry.1, sks.1,
+                     tag_hrr_recv.1, selected_kex_alg.3
+   )
+   ]
+  -->
+   [
+   State_11121111111( rc_retry.1, s_recv.1, skec_retry.1, sks.1,
+                      tag_hrr_recv.1, selected_kex_alg.3
+   ),
+   Out( <'ClientHello', 'C', rc_retry.1, kem_pk(skec_retry.1), 
+         'auth_algs_C', selected_kex_alg.3, 'aead_algs_C'>
+   )
+   ]
+
+rule (modulo E) eventOUTClientHelloRetryCkempkskecretryselectedkexalg_0_11121111111[color=#424080,
+                                                                                    process="event OUT_ClientHelloRetry( 'C', kem_pk(skec_retry.1), selected_kex_alg.3
+);",
+                                                                                    issapicrule,
+                                                                                    role='ClientRetryOnly']:
+   [
+   State_11121111111( rc_retry.1, s_recv.1, skec_retry.1, sks.1,
+                      tag_hrr_recv.1, selected_kex_alg.3
+   )
+   ]
+  --[ OUT_ClientHelloRetry( 'C', kem_pk(skec_retry.1), selected_kex_alg.3 )
+  ]->
+   [
+   State_111211111111( rc_retry.1, s_recv.1, skec_retry.1, sks.1,
+                       tag_hrr_recv.1, selected_kex_alg.3
+   )
+   ]
+
+rule (modulo E) p_0_111211111111[color=#424080, process="0", issapicrule,
+                                 role='ClientRetryOnly']:
+   [
+   State_111211111111( rc_retry.1, s_recv.1, skec_retry.1, sks.1,
+                       tag_hrr_recv.1, selected_kex_alg.3
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11121112[color=#424080, process="0", issapicrule,
+                             role='ClientRetryOnly']:
+   [ State_11121112( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1112112[color=#424080, process="0", issapicrule,
+                            role='ClientRetryOnly']:
+   [ State_1112112( s_recv.1, sks.1, tag_hrr_recv.1, selected_kex_alg.3 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11122[color=#ffffff, process="0", issapicrule,
+                          role='Process']:
+   [ State_11122( sks.1 ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/* All wellformedness checks were successful. */
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

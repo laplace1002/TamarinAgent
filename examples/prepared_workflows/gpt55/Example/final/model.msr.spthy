@@ -1,0 +1,236 @@
+theory Example
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: adec/2, aenc/2, fst/1, h/1, pair/2, pk/1, sdec/2, senc/2,
+           snd/1
+equations:
+    adec(aenc(x.1, pk(x.2)), x.2) = x.1,
+    fst(<x.1, x.2>) = x.1,
+    sdec(senc(x.1, x.2), x.2) = x.1,
+    snd(<x.1, x.2>) = x.2
+
+heuristic: p
+
+lemma Client_session_key_secrecy:
+  all-traces
+  "∀ c s k #i. (Secret( c, s, k ) @ #i) ⇒ (¬(∃ #j. K( k ) @ #j))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ c s k #i. (Secret( c, s, k ) @ #i) ∧ ∃ #j. (K( k ) @ #j)"
+*/
+by sorry
+
+lemma Client_auth:
+  all-traces
+  "∀ c s k #i.
+    (Commit( c, s, k ) @ #i) ⇒
+    (∃ #j. (ServerConfirm( s, k ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ c s k #i.
+  (Commit( c, s, k ) @ #i)
+ ∧
+  ∀ #j. (ServerConfirm( s, k ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma Client_auth_injective:
+  all-traces
+  "(∀ c s k #i.
+     (Commit( c, s, k ) @ #i) ⇒
+     (∃ #j. (ServerConfirm( s, k ) @ #j) ∧ (#j < #i))) ∧
+   (∀ c s k #i #i2.
+     ((Commit( c, s, k ) @ #i) ∧ (Commit( c, s, k ) @ #i2)) ⇒ (#i = #i2))"
+/*
+guarded formula characterizing all counter-examples:
+"((∃ c s k #i.
+    (Commit( c, s, k ) @ #i)
+   ∧
+    ∀ #j. (ServerConfirm( s, k ) @ #j) ⇒ ¬(#j < #i)) ∨
+  (∃ c s k #i #i2.
+    (Commit( c, s, k ) @ #i) ∧ (Commit( c, s, k ) @ #i2) ∧ ¬(#i = #i2)))"
+*/
+by sorry
+
+lemma Client_session_key_honest_setup:
+  exists-trace
+  "∃ k #i #j #l #m.
+    (((((SessionKeyGenerated( 'C', 'S', k ) @ #i) ∧
+        (ServerConfirm( 'S', k ) @ #j)) ∧
+       (Commit( 'C', 'S', k ) @ #l)) ∧
+      (Secret( 'C', 'S', k ) @ #m)) ∧
+     (#i < #j)) ∧
+    (#j < #l)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ k #i #j #l #m.
+  (SessionKeyGenerated( 'C', 'S', k ) @ #i) ∧
+  (ServerConfirm( 'S', k ) @ #j) ∧
+  (Commit( 'C', 'S', k ) @ #l) ∧
+  (Secret( 'C', 'S', k ) @ #m)
+ ∧
+  (#i < #j) ∧ (#j < #l)"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="new ltkS.1;", issapicrule,
+                     role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) newltkS_0_[color=#ffffff, process="new ltkS.1;",
+                           issapicrule, role='Process']:
+   [ State_( ), Fr( ltkS.1 ) ] --> [ State_1( ltkS.1 ) ]
+
+rule (modulo E) outpkltkS_0_1[color=#ffffff, process="out(pk(ltkS.1));",
+                              issapicrule, role='Process']:
+   [ State_1( ltkS.1 ) ] --> [ State_11( ltkS.1 ), Out( pk(ltkS.1) ) ]
+
+rule (modulo E) p_0_11[color=#ffffff, process="!", issapicrule,
+                       role='Process']:
+   [ State_11( ltkS.1 ) ] --> [ !Semistate_111( ltkS.1 ) ]
+
+rule (modulo E) p_1_11[color=#ffffff, process="!", issapicrule,
+                       role='Process']:
+   [ !Semistate_111( ltkS.1 ) ] --> [ State_111( ltkS.1 ) ]
+
+rule (modulo E) p_0_111[color=#ffffff, process="|", issapicrule,
+                        role='Process']:
+   [ State_111( ltkS.1 ) ]
+  -->
+   [ State_1111( ltkS.1 ), State_1112( ltkS.1 ) ]
+
+rule (modulo E) ClientpkltkS_0_1111[color=#ffffff,
+                                    process="Client(pk(ltkS.1))", issapicrule, role='Process']:
+   [ State_1111( ltkS.1 ) ]
+  -->
+   [ State_11111( ltkS.1 ), State_11112( ltkS.1 ) ]
+
+rule (modulo E) newk_0_11111[color=#518040, process="new k.1;",
+                             issapicrule, role='Client']:
+   [ State_11111( ltkS.1 ), Fr( k.1 ) ] --> [ State_111111( k.1, ltkS.1 ) ]
+
+rule (modulo E) eventSessionKeyGeneratedCSk_0_111111[color=#518040,
+                                                     process="event SessionKeyGenerated( 'C', 'S', k.1 );",
+                                                     issapicrule, role='Client']:
+   [ State_111111( k.1, ltkS.1 ) ]
+  --[ SessionKeyGenerated( 'C', 'S', k.1 ) ]->
+   [ State_1111111( k.1, ltkS.1 ) ]
+
+rule (modulo E) outaenckpkltkS_0_1111111[color=#518040,
+                                         process="out(aenc(k.1, pk(ltkS.1)));", issapicrule, role='Client']:
+   [ State_1111111( k.1, ltkS.1 ) ]
+  -->
+   [ State_11111111( k.1, ltkS.1 ), Out( aenc(k.1, pk(ltkS.1)) ) ]
+
+rule (modulo E) inm_0_11111111[color=#518040, process="in(m2.1);",
+                               issapicrule, role='Client']:
+   [ State_11111111( k.1, ltkS.1 ), In( m2.1 ) ]
+  -->
+   [ State_111111111( k.1, ltkS.1, m2.1 ) ]
+
+rule (modulo E) ifmhk_0_111111111[color=#518040,
+                                  process="if m2.1=h(k.1)", issapicrule, role='Client']:
+   [ State_111111111( k.1, ltkS.1, m2.1 ) ]
+  --[ Pred_Eq( m2.1, h(k.1) ) ]->
+   [ State_1111111111( k.1, ltkS.1, m2.1 ) ]
+
+rule (modulo E) ifmhk_1_111111111[color=#518040,
+                                  process="if m2.1=h(k.1)", issapicrule, role='Client']:
+   [ State_111111111( k.1, ltkS.1, m2.1 ) ]
+  --[ Pred_Not_Eq( m2.1, h(k.1) ) ]->
+   [ State_1111111112( k.1, ltkS.1, m2.1 ) ]
+
+rule (modulo E) eventCommitCSk_0_1111111111[color=#518040,
+                                            process="event Commit( 'C', 'S', k.1 );", issapicrule,
+                                            role='Client']:
+   [ State_1111111111( k.1, ltkS.1, m2.1 ) ]
+  --[ Commit( 'C', 'S', k.1 ) ]->
+   [ State_11111111111( k.1, ltkS.1, m2.1 ) ]
+
+rule (modulo E) eventSecretCSk_0_11111111111[color=#518040,
+                                             process="event Secret( 'C', 'S', k.1 );", issapicrule,
+                                             role='Client']:
+   [ State_11111111111( k.1, ltkS.1, m2.1 ) ]
+  --[ Secret( 'C', 'S', k.1 ) ]->
+   [ State_111111111111( k.1, ltkS.1, m2.1 ) ]
+
+rule (modulo E) p_0_111111111111[color=#518040, process="0", issapicrule,
+                                 role='Client']:
+   [ State_111111111111( k.1, ltkS.1, m2.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1111111112[color=#518040, process="0", issapicrule,
+                               role='Client']:
+   [ State_1111111112( k.1, ltkS.1, m2.1 ) ] --> [ ]
+
+rule (modulo E) p_0_11112[color=#ffffff, process="0", issapicrule,
+                          role='Process']:
+   [ State_11112( ltkS.1 ) ] --> [ ]
+
+rule (modulo E) p_0_1112[color=#ffffff, process="!", issapicrule,
+                         role='Process']:
+   [ State_1112( ltkS.1 ) ] --> [ !Semistate_11121( ltkS.1 ) ]
+
+rule (modulo E) p_1_1112[color=#ffffff, process="!", issapicrule,
+                         role='Process']:
+   [ !Semistate_11121( ltkS.1 ) ] --> [ State_11121( ltkS.1 ) ]
+
+rule (modulo E) ServerltkS_0_11121[color=#ffffff,
+                                   process="Server(ltkS.1)", issapicrule, role='Process']:
+   [ State_11121( ltkS.1 ) ]
+  -->
+   [ State_111211( ltkS.1 ), State_111212( ltkS.1 ) ]
+
+rule (modulo E) incipher_0_111211[color=#806040, process="in(cipher.1);",
+                                  issapicrule, role='Server']:
+   [ State_111211( ltkS.1 ), In( cipher.1 ) ]
+  -->
+   [ State_1112111( cipher.1, ltkS.1 ) ]
+
+rule (modulo E) eventServerConfirmSadeccipherltkS_0_1112111[color=#806040,
+                                                            process="event ServerConfirm( 'S', adec(cipher.1, ltkS.1) );",
+                                                            issapicrule, role='Server']:
+   [ State_1112111( cipher.1, ltkS.1 ) ]
+  --[ ServerConfirm( 'S', adec(cipher.1, ltkS.1) ) ]->
+   [ State_11121111( cipher.1, ltkS.1 ) ]
+
+rule (modulo E) outhadeccipherltkS_0_11121111[color=#806040,
+                                              process="out(h(adec(cipher.1, ltkS.1)));", issapicrule,
+                                              role='Server']:
+   [ State_11121111( cipher.1, ltkS.1 ) ]
+  -->
+   [ State_111211111( cipher.1, ltkS.1 ), Out( h(adec(cipher.1, ltkS.1)) ) ]
+
+rule (modulo E) p_0_111211111[color=#806040, process="0", issapicrule,
+                              role='Server']:
+   [ State_111211111( cipher.1, ltkS.1 ) ] --> [ ]
+
+rule (modulo E) p_0_111212[color=#ffffff, process="0", issapicrule,
+                           role='Process']:
+   [ State_111212( ltkS.1 ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/* All wellformedness checks were successful. */
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

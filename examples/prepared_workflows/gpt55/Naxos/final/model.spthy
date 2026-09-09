@@ -1,0 +1,51 @@
+theory Naxos
+begin
+
+builtins: diffie-hellman, hashing
+functions: h1/2, h2/1
+
+let Initiator(iid, rid, lk_i, pk_i, pk_r) =
+  new esk_i;
+  let ex_i = h1(esk_i, lk_i) in
+  let x_share = 'g'^ex_i in
+  event InitSend(iid, rid, x_share);
+  out(x_share);
+  in(y_share);
+  let dh_i = y_share^ex_i in
+  let k_i = h2(<dh_i, iid, rid, pk_i, pk_r, x_share, y_share>) in
+  event SessionKey(iid, rid, k_i);
+  event CompleteInit(iid, rid, k_i, x_share, y_share)
+
+let Responder(rid, iid, lk_r, pk_r, pk_i) =
+  in(x_share);
+  new esk_r;
+  let ex_r = h1(esk_r, lk_r) in
+  let y_share = 'g'^ex_r in
+  let dh_r = x_share^ex_r in
+  let k_r = h2(<dh_r, iid, rid, pk_i, pk_r, x_share, y_share>) in
+  out(y_share);
+  event SessionKey(rid, iid, k_r);
+  event CompleteResp(rid, iid, k_r, x_share, y_share)
+
+process:
+  new lk_i;
+  new lk_r;
+  let pk_i = 'g'^lk_i in
+  let pk_r = 'g'^lk_r in
+  out(pk_i);
+  out(pk_r);
+  (Initiator('I', 'R', lk_i, pk_i, pk_r) | Responder('R', 'I', lk_r, pk_r, pk_i))
+
+lemma exists_session:
+  exists-trace
+  "Ex k x y #s #sr #si #r #i. InitSend('I', 'R', x) @ #s & SessionKey('R', 'I', k) @ #sr & CompleteResp('R', 'I', k, x, y) @ #r & SessionKey('I', 'R', k) @ #si & CompleteInit('I', 'R', k, x, y) @ #i & #s < #r & #r < #i"
+
+lemma CompleteResp:
+  exists-trace
+  "Ex k x y #s #r. InitSend('I', 'R', x) @ #s & CompleteResp('R', 'I', k, x, y) @ #r & #s < #r"
+
+lemma CompleteInit:
+  exists-trace
+  "Ex ki kr x y #s #r #i. InitSend('I', 'R', x) @ #s & CompleteResp('R', 'I', kr, x, y) @ #r & CompleteInit('I', 'R', ki, x, y) @ #i & #s < #r & #r < #i"
+
+end

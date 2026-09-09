@@ -1,0 +1,100 @@
+theory LAK06
+begin
+
+builtins: hashing,xor
+functions: key/1, sval/1, rval/1
+
+let ReaderBackendCurrent(reader, tag, backend, k_current) =
+  new s_seed;
+  let s = sval(s_seed) in
+  event Start_READER(reader, tag, s);
+  event OUT_M1(s);
+  out(s);
+  in(<r1_in, r2_in>);
+  event Forward_READER_TO_BACKEND(reader, backend, s, r1_in, r2_in);
+  event OUT_M3(<s, r1_in, r2_in>);
+  out(<s, r1_in, r2_in>);
+  let expected_r2 = h(r1_in XOR k_current XOR s) in
+  if r2_in = expected_r2 then (
+    let r3 = h(r2_in XOR k_current XOR s) in
+    event DB_Found(backend, tag, k_current, s, r1_in, r2_in);
+    event Commit_READER(reader, tag, s, r1_in, r2_in, r3, k_current);
+    event Running_READER(reader, tag, s, r1_in, r2_in, r3, k_current);
+    event OUT_M4(r3);
+    out(r3);
+    event OUT_M5(r3);
+    out(r3)
+  )
+
+let ReaderBackendLast(reader, tag, backend, k_last) =
+  new s_seed;
+  let s = sval(s_seed) in
+  event Start_READER(reader, tag, s);
+  event OUT_M1(s);
+  out(s);
+  in(<r1_in, r2_in>);
+  event Forward_READER_TO_BACKEND(reader, backend, s, r1_in, r2_in);
+  event OUT_M3(<s, r1_in, r2_in>);
+  out(<s, r1_in, r2_in>);
+  let expected_r2 = h(r1_in XOR k_last XOR s) in
+  if r2_in = expected_r2 then (
+    let r3 = h(r2_in XOR k_last XOR s) in
+    event DB_Found(backend, tag, k_last, s, r1_in, r2_in);
+    event Commit_READER(reader, tag, s, r1_in, r2_in, r3, k_last);
+    event Running_READER(reader, tag, s, r1_in, r2_in, r3, k_last);
+    event OUT_M4(r3);
+    out(r3);
+    event OUT_M5(r3);
+    out(r3)
+  )
+
+let Tag(tag, reader, k) =
+  in(s_recv);
+  new r1_seed;
+  let r1 = rval(r1_seed) in
+  let r2 = h(r1 XOR k XOR s_recv) in
+  event Running_TAG(tag, reader, s_recv, r1, r2, k);
+  event OUT_M2(<r1, r2>);
+  out(<r1, r2>);
+  in(r3_recv);
+  let r3 = h(r2 XOR k XOR s_recv) in
+  if r3_recv = r3 then (
+    event Commit_TAG(tag, reader, s_recv, r1, r2, r3, k);
+    let k_next = h(k) in
+    event Secret(tag, 'B', k_next)
+  )
+
+let PriorTranscript(k_last) =
+  new old_s_seed;
+  let old_s = sval(old_s_seed) in
+  new old_r1_seed;
+  let old_r1 = rval(old_r1_seed) in
+  let old_r2 = h(old_r1 XOR k_last XOR old_s) in
+  out(<old_s, old_r1, old_r2>)
+
+process:
+  new k_last_seed;
+  let k_last = key(k_last_seed) in
+  let k_current = h(k_last) in
+  event Secret('T', 'B', k_current);
+  (
+    ReaderBackendCurrent('R', 'T', 'B', k_current)
+  | ReaderBackendLast('R', 'T', 'B', k_last)
+  | Tag('T', 'R', k_current)
+  | PriorTranscript(k_last)
+  )
+
+lemma executable:
+  exists-trace
+  "Ex reader tag backend s r1 r2 r3 k #i #j #l #m #n. Start_READER(reader, tag, s) @ i & Running_TAG(tag, reader, s, r1, r2, k) @ j & DB_Found(backend, tag, k, s, r1, r2) @ l & Running_READER(reader, tag, s, r1, r2, r3, k) @ m & Commit_TAG(tag, reader, s, r1, r2, r3, k) @ n & i < j & j < l & l < m & m < n"
+
+lemma helpingSecrecy:
+  "All tag backend k #i. Secret(tag, backend, k) @ i ==> not (Ex #j. K(k) @ j)"
+
+lemma noninjectiveagreementTAG:
+  "All tag reader s r1 r2 r3 k #i. Commit_TAG(tag, reader, s, r1, r2, r3, k) @ i ==> (Ex #j. Running_READER(reader, tag, s, r1, r2, r3, k) @ j & j < i)"
+
+lemma noninjectiveagreementREADER:
+  "All reader tag s r1 r2 r3 k #i. Commit_READER(reader, tag, s, r1, r2, r3, k) @ i ==> (Ex #j. Running_TAG(tag, reader, s, r1, r2, k) @ j & j < i)"
+
+end

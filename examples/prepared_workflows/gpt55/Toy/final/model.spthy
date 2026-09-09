@@ -1,0 +1,50 @@
+theory Toy
+begin
+
+builtins: hashing
+functions: kdf/2
+
+let A() =
+  new aNonce;
+  event OUT_M1(aNonce);
+  out(aNonce);
+  in(bNonce);
+  event IN_M2(bNonce);
+  let sk = kdf(aNonce,bNonce) in
+  let ack = 'ACK' in
+  event A_Install('A','B',sk,aNonce,bNonce);
+  event A_Secret('A','B',sk);
+  event OUT_M3(ack);
+  out(ack);
+  event A_Done('A','B',sk)
+
+let B() =
+  in(aNonce);
+  event IN_M1(aNonce);
+  new bNonce;
+  event OUT_M2(bNonce);
+  out(bNonce);
+  in(ack_recv);
+  let ackExpected = 'ACK' in
+  if ack_recv = ackExpected then (
+    event IN_M3(ackExpected);
+    let sk = kdf(aNonce,bNonce) in
+    event B_Install('A','B',sk,aNonce,bNonce);
+    event B_Secret('A','B',sk);
+    event B_Done('A','B',sk)
+  )
+
+process:
+  (A() | B())
+
+lemma successful_run:
+  exists-trace
+  "Ex sk #i #j. A_Done('A','B',sk) @ #i & B_Done('A','B',sk) @ #j"
+
+lemma sk_secret_a:
+  "All sk #i. A_Secret('A','B',sk) @ #i ==> not (Ex #j. K(sk) @ #j)"
+
+lemma sk_secret_b:
+  "All sk #i. B_Secret('A','B',sk) @ #i ==> not (Ex #j. K(sk) @ #j)"
+
+end

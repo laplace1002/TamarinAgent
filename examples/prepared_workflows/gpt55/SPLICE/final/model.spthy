@@ -1,0 +1,182 @@
+theory SPLICE
+begin
+
+builtins: asymmetric-encryption, signing
+functions: privenc/2, pubdec/2, plus1/1, valid_lifetime/2
+equations: pubdec(privenc(m, sk), pk(sk)) = m
+
+let Client(C, Peer, AS, ltkC, pkAS) =
+  new id;
+  event Secret(C, Peer, id);
+  let m2a = <C, Peer, id> in
+  event C_RequestServerKey(C, Peer, id);
+  event OUT_M2a_C_AS_ServerKeyRequest(m2a);
+  out(m2a);
+  in(<as_hdr, sig_reply>);
+  let m2b = <as_hdr, sig_reply> in
+  let reply_plain = pubdec(sig_reply, pkAS) in
+  let r_as = fst(reply_plain) in
+  let reply_tail1 = snd(reply_plain) in
+  let r_c = fst(reply_tail1) in
+  let reply_tail2 = snd(reply_tail1) in
+  let r_id = fst(reply_tail2) in
+  let pk_peer = snd(reply_tail2) in
+  if as_hdr = AS then
+  (
+    if r_as = AS then
+    (
+      if r_c = C then
+      (
+        if r_id = id then
+        (
+          event IN_M2b_AS_C_ServerKeyReply(m2b);
+          event C_AcceptsServerKey(C, Peer, id, pk_peer);
+          new tsC;
+          let lifeC = 'lifeC' in
+          let cid = aenc(id, pk_peer) in
+          let auth_plain = <C, tsC, lifeC, cid> in
+          let auth_outer = privenc(auth_plain, ltkC) in
+          let m2c = <C, Peer, auth_outer> in
+          event Running_A(C, Peer, id);
+          event C_SendAuthenticator(C, Peer, id, tsC, lifeC);
+          event OUT_M2c_C_S_Authenticator(m2c);
+          out(m2c);
+          in(<s_outer, c_outer, cipher6>);
+          let m2f = <s_outer, c_outer, cipher6> in
+          let reply6_plain = adec(cipher6, ltkC) in
+          let idplus_recv = snd(reply6_plain) in
+          let expected_plus = plus1(id) in
+          if idplus_recv = expected_plus then
+          (
+            event IN_M2f_S_C_ReturnIdPlusOne(m2f);
+            event Commit_A(C, Peer, id);
+            event C_AcceptsServer(C, Peer, id)
+          )
+        )
+      )
+    )
+  )
+
+let AuthServerServerKey(AS, ServerName, ltkAS, pkServer) =
+  in(<req, target, reqid>);
+  let m2a = <req, target, reqid> in
+  if target = ServerName then
+  (
+    event IN_M2a_C_AS_ServerKeyRequest(m2a);
+    let payload = <AS, req, reqid, pkServer> in
+    let sig = privenc(payload, ltkAS) in
+    let m2b = <AS, sig> in
+    event AS_IssuesServerKey(AS, req, target, reqid, pkServer);
+    event OUT_M2b_AS_C_ServerKeyReply(m2b);
+    out(m2b)
+  )
+
+let AuthServerClientKey(AS, ClientName, ltkAS, pkClient) =
+  in(<req, target, reqid>);
+  let m2d = <req, target, reqid> in
+  if target = ClientName then
+  (
+    event IN_M2d_S_AS_ClientKeyRequest(m2d);
+    let payload = <AS, req, reqid, pkClient> in
+    let sig = privenc(payload, ltkAS) in
+    let m2e = <AS, sig> in
+    event AS_IssuesClientKey(AS, req, target, reqid, pkClient);
+    event OUT_M2e_AS_S_ClientKeyReply(m2e);
+    out(m2e)
+  )
+
+let Server(S, AS, ltkS, pkAS) =
+  in(<c_hdr, s_hdr, auth_outer>);
+  let m2c = <c_hdr, s_hdr, auth_outer> in
+  new sidS;
+  let m2d = <S, c_hdr, sidS> in
+  event S_RequestsClientKey(S, c_hdr, sidS);
+  event OUT_M2d_S_AS_ClientKeyRequest(m2d);
+  out(m2d);
+  in(<as_hdr, sig_key>);
+  let m2e = <as_hdr, sig_key> in
+  let key_plain = pubdec(sig_key, pkAS) in
+  let k_as = fst(key_plain) in
+  let key_tail1 = snd(key_plain) in
+  let k_req = fst(key_tail1) in
+  let key_tail2 = snd(key_tail1) in
+  let k_sid = fst(key_tail2) in
+  let pkC_recv = snd(key_tail2) in
+  if as_hdr = AS then
+  (
+    if k_as = AS then
+    (
+      if k_req = S then
+      (
+        if k_sid = sidS then
+        (
+          event IN_M2e_AS_S_ClientKeyReply(m2e);
+          let auth_plain = pubdec(auth_outer, pkC_recv) in
+          let c_inner = fst(auth_plain) in
+          let auth_tail1 = snd(auth_plain) in
+          let ts_dec = fst(auth_tail1) in
+          let auth_tail2 = snd(auth_tail1) in
+          let life_dec = fst(auth_tail2) in
+          let cid_dec = snd(auth_tail2) in
+          if c_inner = c_hdr then
+          (
+            let expected_life = 'lifeC' in
+            if life_dec = expected_life then
+            (
+              let id_dec = adec(cid_dec, ltkS) in
+              event IN_M2c_C_S_Authenticator(m2c);
+              event Commit_B(S, c_hdr, id_dec);
+              event S_AcceptsClient(S, c_hdr, id_dec, ts_dec, life_dec);
+              let reply_body = <S, plus1(id_dec)> in
+              let cipher6 = aenc(reply_body, pkC_recv) in
+              let m2f = <S, c_hdr, cipher6> in
+              event Running_B(S, c_hdr, id_dec);
+              event OUT_M2f_S_C_ReturnIdPlusOne(m2f);
+              out(m2f)
+            )
+          )
+        )
+      )
+    )
+  )
+
+process:
+  new ltkC;
+  new ltkS;
+  new ltkAS;
+  let pkC = pk(ltkC) in
+  let pkS = pk(ltkS) in
+  let pkAS = pk(ltkAS) in
+  out(pkC);
+  out(pkS);
+  out(pkAS);
+  ( !Client('C', 'S', 'AS', ltkC, pkAS)
+  | !Client('C', 'AS', 'AS', ltkC, pkAS)
+  | !Server('S', 'AS', ltkS, pkAS)
+  | !AuthServerServerKey('AS', 'S', ltkAS, pkS)
+  | !AuthServerClientKey('AS', 'C', ltkAS, pkC)
+  )
+
+lemma executability:
+  exists-trace
+  "Ex C S id ts life #i #j #k #l. C_RequestServerKey(C, S, id) @ #i & C_SendAuthenticator(C, S, id, ts, life) @ #j & S_AcceptsClient(S, C, id, ts, life) @ #k & C_AcceptsServer(C, S, id) @ #l & #i < #j & #j < #k & #k < #l"
+
+lemma Secrecy:
+  "not (Ex C S id #i #j. Secret(C, S, id) @ #i & K(id) @ #j)"
+
+lemma injectiveagreement_B:
+  "All S C id #i. Commit_B(S, C, id) @ #i ==> ((Ex #j. Running_A(C, S, id) @ #j & #j < #i) & (All #i2. Commit_B(S, C, id) @ #i2 ==> #i2 = #i))"
+
+lemma agreement_B:
+  "All S C id #i. Commit_B(S, C, id) @ #i ==> (Ex #j. Running_A(C, S, id) @ #j & #j < #i)"
+
+lemma injectiveagreement_A:
+  "All C S id #i. Commit_A(C, S, id) @ #i ==> ((Ex #j. Running_B(S, C, id) @ #j & #j < #i) & (All #i2. Commit_A(C, S, id) @ #i2 ==> #i2 = #i))"
+
+lemma agreement_A:
+  "All C S id #i. Commit_A(C, S, id) @ #i ==> (Ex #j. Running_B(S, C, id) @ #j & #j < #i)"
+
+lemma AUTO_typing [sources]:
+  "(All m #i. IN_M2a_C_AS_ServerKeyRequest(m) @ #i ==> ((Ex #j. OUT_M2a_C_AS_ServerKeyRequest(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) & (All m #i. IN_M2b_AS_C_ServerKeyReply(m) @ #i ==> ((Ex #j. OUT_M2b_AS_C_ServerKeyReply(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) & (All m #i. IN_M2c_C_S_Authenticator(m) @ #i ==> ((Ex #j. OUT_M2c_C_S_Authenticator(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) & (All m #i. IN_M2d_S_AS_ClientKeyRequest(m) @ #i ==> ((Ex #j. OUT_M2d_S_AS_ClientKeyRequest(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) & (All m #i. IN_M2e_AS_S_ClientKeyReply(m) @ #i ==> ((Ex #j. OUT_M2e_AS_S_ClientKeyReply(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) & (All m #i. IN_M2f_S_C_ReturnIdPlusOne(m) @ #i ==> ((Ex #j. OUT_M2f_S_C_ReturnIdPlusOne(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i)))"
+
+end

@@ -1,0 +1,138 @@
+theory Yahalom
+begin
+
+builtins: symmetric-encryption
+
+let RoleA(a, b, kas) =
+  new na;
+  let m1 = <a, na> in
+  event A_Begin(a, b, na);
+  event OUT_M1(m1);
+  out(m1);
+  in(<cas, ticket_b>);
+  let plain_m3 = sdec(cas, kas) in
+  let b_m3 = fst(plain_m3) in
+  let rest_m3_1 = snd(plain_m3) in
+  let kab_m3 = fst(rest_m3_1) in
+  let rest_m3_2 = snd(rest_m3_1) in
+  let na_m3 = fst(rest_m3_2) in
+  let nb_m3 = snd(rest_m3_2) in
+  if na_m3 = na then (
+    let m3 = <cas, ticket_b> in
+    let cnb = senc(nb_m3, kab_m3) in
+    let m4 = <ticket_b, cnb> in
+    event IN_M3(m3);
+    event A_Commit(a, b_m3, kab_m3, na, nb_m3);
+    event A_Running(a, b_m3, kab_m3, na, nb_m3);
+    event Secret(a, b_m3, kab_m3);
+    event OUT_M4(m4);
+    out(m4)
+  )
+
+let RoleB(b, kbs) =
+  in(<a_m1, na_m1>);
+  let m1 = <a_m1, na_m1> in
+  event IN_M1(m1);
+  new nb;
+  event B_Running(b, a_m1, na_m1, nb);
+  let cbs = senc(<a_m1, na_m1, nb>, kbs) in
+  let m2 = <b, cbs> in
+  event OUT_M2(m2);
+  out(m2);
+  in(<ticket_b, cnb>);
+  let plain_ticket = sdec(ticket_b, kbs) in
+  let a_ticket = fst(plain_ticket) in
+  let kab_ticket = snd(plain_ticket) in
+  let nb_echo = sdec(cnb, kab_ticket) in
+  if nb_echo = nb then (
+    let m4 = <ticket_b, cnb> in
+    event IN_M4(m4);
+    event B_Commit(b, a_ticket, kab_ticket, na_m1, nb);
+    event Secret(a_ticket, b, kab_ticket)
+  )
+
+let RoleS(a, b, kas, kbs) =
+  in(<b_m2, cbs>);
+  let plain_m2 = sdec(cbs, kbs) in
+  let a_m2 = fst(plain_m2) in
+  let rest_m2 = snd(plain_m2) in
+  let na_m2 = fst(rest_m2) in
+  let nb_m2 = snd(rest_m2) in
+  if b_m2 = b then (
+    if a_m2 = a then (
+      let m2 = <b_m2, cbs> in
+      event IN_M2(m2);
+      new kab;
+      let cas = senc(<b_m2, kab, na_m2, nb_m2>, kas) in
+      let ticket_b = senc(<a_m2, kab>, kbs) in
+      let m3 = <cas, ticket_b> in
+      event S_Issue(a_m2, b_m2, kab, na_m2, nb_m2);
+      event Secret(a_m2, b_m2, kab);
+      event OUT_M3(m3);
+      out(m3)
+    )
+  )
+
+process:
+  new kas;
+  new kbs;
+  (RoleA('A', 'B', kas) | RoleB('B', kbs) | RoleS('A', 'B', kas, kbs))
+
+lemma AUTO_typing [sources]:
+  "(All m #i. IN_M1(m) @ i ==> ((Ex #j. OUT_M1(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i))) &
+   (All m #i. IN_M2(m) @ i ==> ((Ex #j. OUT_M2(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i))) &
+   (All m #i. IN_M3(m) @ i ==> ((Ex #j. OUT_M3(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i))) &
+   (All m #i. IN_M4(m) @ i ==> ((Ex #j. OUT_M4(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i)))"
+
+lemma executability:
+  exists-trace
+  "Ex a b na nb kab #i #j #k #l #m.
+     A_Begin(a, b, na) @ i &
+     B_Running(b, a, na, nb) @ j &
+     S_Issue(a, b, kab, na, nb) @ k &
+     A_Commit(a, b, kab, na, nb) @ l &
+     B_Commit(b, a, kab, na, nb) @ m &
+     i < j & j < k & k < l & l < m"
+
+lemma secrecy:
+  "All a b kab #i.
+     Secret(a, b, kab) @ i
+     ==> not (Ex #j. K(kab) @ j)"
+
+lemma noninjectiveagreement_B:
+  "All a b kab na nb #i.
+     B_Commit(b, a, kab, na, nb) @ i
+     ==> (Ex #j #k.
+           A_Commit(a, b, kab, na, nb) @ j &
+           S_Issue(a, b, kab, na, nb) @ k &
+           k < j & j < i)"
+
+lemma noninjectiveagreement_A:
+  "All a b kab na nb #i.
+     A_Commit(a, b, kab, na, nb) @ i
+     ==> (Ex #j #k.
+           B_Running(b, a, na, nb) @ j &
+           S_Issue(a, b, kab, na, nb) @ k &
+           j < k & k < i)"
+
+lemma injectiveagreement_B:
+  "All a b kab na nb #i.
+     B_Commit(b, a, kab, na, nb) @ i
+     ==> (Ex #j #k.
+           A_Commit(a, b, kab, na, nb) @ j &
+           S_Issue(a, b, kab, na, nb) @ k &
+           k < j & j < i &
+           (All #j2. A_Commit(a, b, kab, na, nb) @ j2 ==> #j2 = #j) &
+           (All #k2. S_Issue(a, b, kab, na, nb) @ k2 ==> #k2 = #k))"
+
+lemma injectiveagreement_A:
+  "All a b kab na nb #i.
+     A_Commit(a, b, kab, na, nb) @ i
+     ==> (Ex #j #k.
+           B_Running(b, a, na, nb) @ j &
+           S_Issue(a, b, kab, na, nb) @ k &
+           j < k & k < i &
+           (All #j2. B_Running(b, a, na, nb) @ j2 ==> #j2 = #j) &
+           (All #k2. S_Issue(a, b, kab, na, nb) @ k2 ==> #k2 = #k))"
+
+end

@@ -1,0 +1,152 @@
+theory EDHOC
+begin
+
+builtins: diffie-hellman,hashing,signing
+
+functions: edhoc_kdf/4, len/1, optional/1, omit_if/3, corr/1, selected_suite/1, prk_2e/2, prk_3e2m/4, prk_4x3m/4, xor_box/2, aead_enc/4, aead_tag/4, cose_encrypt0_aad/4, cose_sign1_msg/5, kid_or_id/1, edhoc_error/2
+
+let HonestEDHOC(init, resp, ltkI_sig, ltkR_sig, pkI_sig, pkR_sig, ltkI_dh, ltkR_dh, pkI_dh, pkR_dh) =
+  new x;
+  new ci;
+  let gx = 'g'^x in
+  let method_corr = 'MC0' in
+  let suites = 'SUITES_I' in
+  let ad1 = 'AD_1' in
+  let m1 = <method_corr,<suites,<gx,<ci,optional(ad1)>>>> in
+  event I_Start(init,resp,method_corr,suites,gx,ci);
+  event OUT_M1(m1);
+  out(m1);
+  new y;
+  new cr;
+  let gy = 'g'^y in
+  let ci2 = omit_if(corr(method_corr),ci,'C_I') in
+  let data2 = <ci2,<gy,cr>> in
+  let th2v = h(<m1,data2>) in
+  let sharedI = gy^x in
+  let sharedR = gx^y in
+  let prk2v = prk_2e(sharedI,th2v) in
+  let authR = 'sigR' in
+  let prk3v = prk_3e2m(prk2v,authR,th2v,method_corr) in
+  let idcredR = kid_or_id('ID_CRED_R') in
+  let ad2 = 'AD_2' in
+  let aad_mac2 = cose_encrypt0_aad(idcredR,th2v,'CRED_R',optional(ad2)) in
+  let k2m = edhoc_kdf(prk3v,th2v,'K_2m','LEN_MAC2') in
+  let iv2m = edhoc_kdf(prk3v,th2v,'IV_2m','LEN_IV2') in
+  let mac2v = aead_tag(k2m,iv2m,'empty',aad_mac2) in
+  let signmsg2 = cose_sign1_msg(idcredR,th2v,'CRED_R',optional(ad2),mac2v) in
+  let sigmac2 = sign(signmsg2,ltkR_sig) in
+  let plain2 = <idcredR,<sigmac2,optional(ad2)>> in
+  let k2e = edhoc_kdf(prk2v,th2v,'K_2e',len(plain2)) in
+  let cipher2 = xor_box(plain2,k2e) in
+  let m2 = <data2,cipher2> in
+  event R_Accept_M1(resp,'unknown_peer',th2v,gx,gy,ci,cr,selected_suite(suites));
+  event OUT_M2(m2);
+  out(m2);
+  if verify(sigmac2,signmsg2,pkR_sig) = true then (
+    let data3 = omit_if(corr(method_corr),'C_R',cr) in
+    let th3v = h(<th2v,<cipher2,data3>>) in
+    let authI = 'sigI' in
+    let prk4v = prk_4x3m(prk3v,authI,th3v,method_corr) in
+    let idcredI = kid_or_id('ID_CRED_I') in
+    let ad3 = 'AD_3' in
+    let aad_mac3 = cose_encrypt0_aad(idcredI,th3v,'CRED_I',optional(ad3)) in
+    let k3m = edhoc_kdf(prk4v,th3v,'K_3m','LEN_MAC3') in
+    let iv3m = edhoc_kdf(prk4v,th3v,'IV_3m','LEN_IV3') in
+    let mac3v = aead_tag(k3m,iv3m,'empty',aad_mac3) in
+    let signmsg3 = cose_sign1_msg(idcredI,th3v,'CRED_I',optional(ad3),mac3v) in
+    let sigmac3 = sign(signmsg3,ltkI_sig) in
+    let plain3 = <idcredI,<sigmac3,optional(ad3)>> in
+    let k3ae = edhoc_kdf(prk3v,th3v,'K_3ae',len(plain3)) in
+    let iv3ae = edhoc_kdf(prk3v,th3v,'IV_3ae','LEN_IV3AE') in
+    let aad3outer = <'Encrypt0',<'empty',th3v>> in
+    let cipher3 = aead_enc(k3ae,iv3ae,plain3,aad3outer) in
+    let m3 = <data3,cipher3> in
+    event I_Verified_R(init,resp,th2v,th3v,idcredR);
+    event OUT_M3(m3);
+    out(m3);
+    event I_ImplicitCommit_IR(init,resp,prk4v,th3v);
+    event I_Secret(init,resp,prk4v,th3v);
+    if verify(sigmac3,signmsg3,pkI_sig) = true then (
+      event R_Verified_I(resp,init,th3v,idcredI);
+      event R_ExplicitCommit_RI(resp,init,prk4v,th3v);
+      event R_Secret(resp,init,prk4v,th3v)
+    )
+  )
+
+let AbortRole() =
+  in(failed_check);
+  event Abort_Error('role_detecting_verification_failure','peer',failed_check);
+  out(edhoc_error(optional('SUITES_R'),optional(failed_check)))
+
+let NoAuthRI() =
+  in(<tag_recv,<prk_in,th_in>>);
+  if tag_recv = 'NOAUTH_RI' then (
+    event R_ExplicitCommit_RI('R','peer',prk_in,th_in)
+  )
+
+let NoAuthIR() =
+  in(<tag_recv,<prk_in,th_in>>);
+  if tag_recv = 'NOAUTH_IR' then (
+    event I_ImplicitCommit_IR('peer','R',prk_in,th_in)
+  )
+
+process:
+  new ltkI_sig;
+  new ltkR_sig;
+  new ltkI_dh;
+  new ltkR_dh;
+  let pkI_sig = pk(ltkI_sig) in
+  let pkR_sig = pk(ltkR_sig) in
+  let pkI_dh = 'g'^ltkI_dh in
+  let pkR_dh = 'g'^ltkR_dh in
+  out(pkI_sig);
+  out(pkR_sig);
+  out(pkI_dh);
+  out(pkR_dh);
+  event Honest('I');
+  event Honest('R');
+  (
+    HonestEDHOC('I','R',ltkI_sig,ltkR_sig,pkI_sig,pkR_sig,ltkI_dh,ltkR_dh,pkI_dh,pkR_dh)
+    |
+    AbortRole()
+    |
+    NoAuthRI()
+    |
+    NoAuthIR()
+  )
+
+lemma secretR:
+  "All r i prk th #t. R_Secret(r,i,prk,th) @ t ==> not (Ex #j. K(prk) @ j)"
+
+lemma secretI:
+  "All i r prk th #t. I_Secret(i,r,prk,th) @ t ==> not (Ex #j. K(prk) @ j)"
+
+lemma executableR:
+  exists-trace
+  "Ex r i prk th #t. R_ExplicitCommit_RI(r,i,prk,th) @ t"
+
+lemma executableI:
+  exists-trace
+  "Ex i r prk th #t. I_ImplicitCommit_IR(i,r,prk,th) @ t"
+
+lemma executableIhonnest:
+  exists-trace
+  "Ex i r prk th #t #hi #hr. I_ImplicitCommit_IR(i,r,prk,th) @ t & Honest(i) @ hi & Honest(r) @ hr"
+
+lemma executableRhonnest:
+  exists-trace
+  "Ex r i prk th #t #hi #hr. R_ExplicitCommit_RI(r,i,prk,th) @ t & Honest(i) @ hi & Honest(r) @ hr"
+
+lemma false_dishonnestnoauthRI:
+  "All r i prk th #t. R_ExplicitCommit_RI(r,i,prk,th) @ t ==> (Ex #j. I_ImplicitCommit_IR(i,r,prk,th) @ j & j < t)"
+
+lemma false_dishonnestnoauthIR:
+  "All i r prk th #t. I_ImplicitCommit_IR(i,r,prk,th) @ t ==> (Ex th2 gx gy ci cr suite #j. R_Accept_M1(r,'unknown_peer',th2,gx,gy,ci,cr,suite) @ j & j < t)"
+
+lemma honnestauthRI:
+  "All r i prk th #t #hi #hr. (R_ExplicitCommit_RI(r,i,prk,th) @ t & Honest(i) @ hi & Honest(r) @ hr) ==> (Ex #j. I_ImplicitCommit_IR(i,r,prk,th) @ j & j < t)"
+
+lemma honnestauthIR:
+  "All i r prk th #t #hi #hr. (I_ImplicitCommit_IR(i,r,prk,th) @ t & Honest(i) @ hi & Honest(r) @ hr) ==> (Ex th2 gx gy ci cr suite #j. R_Accept_M1(r,'unknown_peer',th2,gx,gy,ci,cr,suite) @ j & j < t)"
+
+end

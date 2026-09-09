@@ -1,0 +1,86 @@
+theory Denning_Sacco
+begin
+
+builtins: symmetric-encryption
+
+let InitiatorA(ksa) =
+  let m1 = <'A','B'> in
+  event Request_A('A','B');
+  event OUT_M1(m1);
+  out(m1);
+  in(cipher);
+  let payload = sdec(cipher, ksa) in
+  let b_recv = fst(payload) in
+  let rest1 = snd(payload) in
+  let kab = fst(rest1) in
+  let rest2 = snd(rest1) in
+  let t = fst(rest2) in
+  let ticket = snd(rest2) in
+  let rebuilt = <b_recv,kab,t,ticket> in
+  if payload = rebuilt then (
+    if b_recv = 'B' then (
+      event IN_M2(cipher);
+      event Running_A('A','B',kab,t);
+      event A_Forward('A','B',kab,t,ticket);
+      event Secret('A','B',kab);
+      event OUT_M3(ticket);
+      out(ticket)
+    )
+  )
+
+let ServerS(ksa, ksb) =
+  in(<a_req,b_req>);
+  let m1 = <a_req,b_req> in
+  if a_req = 'A' then (
+    if b_req = 'B' then (
+      event IN_M1(m1);
+      new kab;
+      new t;
+      let ticket = senc(<kab,'A',t>, ksb) in
+      let m2 = senc(<'B',kab,t,ticket>, ksa) in
+      event ServerIssue('S','A','B',kab,t);
+      event Secret('A','B',kab);
+      event OUT_M2(m2);
+      out(m2)
+    )
+  )
+
+let ResponderB(ksb) =
+  in(ticket);
+  let payload = sdec(ticket, ksb) in
+  let kab = fst(payload) in
+  let rest = snd(payload) in
+  let a_recv = fst(rest) in
+  let t = snd(rest) in
+  let rebuilt = <kab,a_recv,t> in
+  if payload = rebuilt then (
+    if a_recv = 'A' then (
+      event IN_M3(ticket);
+      event Commit_B('B','A',kab,t);
+      event B_Accept('B','A',kab,t);
+      event Secret('A','B',kab)
+    )
+  )
+
+process:
+  new ksa;
+  new ksb;
+  (InitiatorA(ksa) | ServerS(ksa, ksb) | !ResponderB(ksb))
+
+lemma AUTO_typing [sources]:
+  "(All m #i. IN_M1(m) @ i ==> ((Ex #j. OUT_M1(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i))) & (All m #i. IN_M2(m) @ i ==> ((Ex #j. OUT_M2(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i))) & (All m #i. IN_M3(m) @ i ==> ((Ex #j. OUT_M3(m) @ j & j < i) | (Ex #k. KU(m) @ k & k < i)))"
+
+lemma executability:
+  exists-trace
+  "Ex kab t #i #j #k #l. Request_A('A','B') @ i & ServerIssue('S','A','B',kab,t) @ j & Running_A('A','B',kab,t) @ k & Commit_B('B','A',kab,t) @ l & i < j & j < k & k < l"
+
+lemma secrecy:
+  "not (Ex a b kab #i #j. Secret(a,b,kab) @ i & K(kab) @ j)"
+
+lemma noninjectiveagreement_B:
+  "All kab t #i. Commit_B('B','A',kab,t) @ i ==> (Ex #j #k. Running_A('A','B',kab,t) @ j & ServerIssue('S','A','B',kab,t) @ k & k < j & j < i)"
+
+lemma injectiveagreement_B:
+  "All kab t #i. Commit_B('B','A',kab,t) @ i ==> (Ex ticket #j #k. A_Forward('A','B',kab,t,ticket) @ j & ServerIssue('S','A','B',kab,t) @ k & k < j & j < i & (All #i2. Commit_B('B','A',kab,t) @ i2 ==> #i2 = #i))"
+
+end

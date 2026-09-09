@@ -1,0 +1,158 @@
+theory NSSK
+begin
+
+builtins: symmetric-encryption
+functions: pred/1
+
+let InitiatorA(kas) =
+  let a = 'A' in
+  let b = 'B' in
+  new na;
+  let m1 = <a,b,na> in
+  event Start_A(a,b,na);
+  event OUT_M1(m1);
+  out(m1);
+  in(m2);
+  let p2 = sdec(m2,kas) in
+  let na_recv = fst(p2) in
+  let p2_tail1 = snd(p2) in
+  let kab = fst(p2_tail1) in
+  let p2_tail2 = snd(p2_tail1) in
+  let b_recv = fst(p2_tail2) in
+  let ticket = snd(p2_tail2) in
+  if na_recv = na then (
+    if b_recv = b then (
+      let m2_check = senc(<na_recv,kab,b_recv,ticket>,kas) in
+      if m2 = m2_check then (
+        event IN_M2(m2);
+        event Running_A(a,b,kab,na);
+        event OUT_M3(ticket);
+        out(ticket);
+        in(m4);
+        let nb_recv = sdec(m4,kab) in
+        let m4_check = senc(nb_recv,kab) in
+        if m4 = m4_check then (
+          event IN_M4(m4);
+          let m5 = senc(pred(nb_recv),kab) in
+          event Commit_A(a,b,kab,nb_recv);
+          event OUT_M5(m5);
+          out(m5)
+        )
+      )
+    )
+  )
+
+let ServerS(kas,kbs) =
+  let s = 'S' in
+  let a = 'A' in
+  let b = 'B' in
+  in(<a_req,b_req,na_req>);
+  let m1 = <a_req,b_req,na_req> in
+  if a_req = a then (
+    if b_req = b then (
+      event IN_M1(m1);
+      new kab;
+      let ticket = senc(<kab,a>,kbs) in
+      let p2 = <na_req,kab,b,ticket> in
+      let m2 = senc(p2,kas) in
+      event S_Issue(s,a,b,na_req,kab);
+      event Secret(a,b,kab);
+      event OUT_M2(m2);
+      out(m2)
+    )
+  )
+
+let ResponderB(kbs) =
+  let b = 'B' in
+  in(ticket);
+  let p3 = sdec(ticket,kbs) in
+  let kab = fst(p3) in
+  let a_ticket = snd(p3) in
+  let ticket_check = senc(<kab,a_ticket>,kbs) in
+  if ticket = ticket_check then (
+    event IN_M3(ticket);
+    new nb;
+    let m4 = senc(nb,kab) in
+    event Running_B(b,a_ticket,kab,nb);
+    event OUT_M4(m4);
+    out(m4);
+    in(m5);
+    let expected = pred(nb) in
+    let m5_check = senc(expected,kab) in
+    if m5 = m5_check then (
+      event IN_M5(m5);
+      event Commit_B(b,a_ticket,kab,nb)
+    )
+  )
+
+process:
+  new kas;
+  new kbs;
+  (
+    InitiatorA(kas)
+    |
+    ServerS(kas,kbs)
+    |
+    ResponderB(kbs)
+  )
+
+lemma AUTO_typing [sources]:
+  "(All m #i. IN_M1(m) @ #i ==> ((Ex #j. OUT_M1(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) &
+   (All m #i. IN_M2(m) @ #i ==> ((Ex #j. OUT_M2(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) &
+   (All m #i. IN_M3(m) @ #i ==> ((Ex #j. OUT_M3(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) &
+   (All m #i. IN_M4(m) @ #i ==> ((Ex #j. OUT_M4(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i))) &
+   (All m #i. IN_M5(m) @ #i ==> ((Ex #j. OUT_M5(m) @ #j & #j < #i) | (Ex #k. KU(m) @ #k & #k < #i)))"
+
+lemma executability:
+  exists-trace
+  "Ex na kab nb #i #j #k #l #m #n.
+     Start_A('A','B',na) @ #i &
+     S_Issue('S','A','B',na,kab) @ #j &
+     Running_A('A','B',kab,na) @ #k &
+     Running_B('B','A',kab,nb) @ #l &
+     Commit_A('A','B',kab,nb) @ #m &
+     Commit_B('B','A',kab,nb) @ #n &
+     #i < #j & #j < #k & #k < #l & #l < #m & #m < #n"
+
+lemma Secrecy:
+  "All a b kab #i.
+     Secret(a,b,kab) @ #i ==> not (Ex #j. K(kab) @ #j)"
+
+lemma injectiveagreement_B:
+  "All b a kab nb #i.
+     Commit_B(b,a,kab,nb) @ #i ==>
+       ((Ex s na #j #k #l.
+           Running_A(a,b,kab,na) @ #j &
+           Commit_A(a,b,kab,nb) @ #k &
+           S_Issue(s,a,b,na,kab) @ #l &
+           #l < #j & #j < #k & #k < #i)
+        &
+        (All #i2. Commit_B(b,a,kab,nb) @ #i2 ==> #i2 = #i))"
+
+lemma agreement_B:
+  "All b a kab nb #i.
+     Commit_B(b,a,kab,nb) @ #i ==>
+       (Ex s na #j #k.
+          Commit_A(a,b,kab,nb) @ #j &
+          S_Issue(s,a,b,na,kab) @ #k &
+          #k < #i & #j < #i)"
+
+lemma injectiveagreement_A:
+  "All a b kab nb #i.
+     Commit_A(a,b,kab,nb) @ #i ==>
+       ((Ex s na #j #k.
+           Running_B(b,a,kab,nb) @ #j &
+           S_Issue(s,a,b,na,kab) @ #k &
+           #k < #i & #j < #i)
+        &
+        (All #i2. Commit_A(a,b,kab,nb) @ #i2 ==> #i2 = #i))"
+
+lemma agreement_A:
+  "All a b kab nb #i.
+     Commit_A(a,b,kab,nb) @ #i ==>
+       (Ex s na #j #k.
+          Running_B(b,a,kab,nb) @ #j &
+          S_Issue(s,a,b,na,kab) @ #k &
+          #k < #i & #j < #i)"
+
+end

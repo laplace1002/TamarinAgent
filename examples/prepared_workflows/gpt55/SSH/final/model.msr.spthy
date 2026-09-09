@@ -1,0 +1,1274 @@
+theory SSH
+
+begin
+
+// Function signature and definition of the equational theory E
+
+builtins: diffie-hellman
+functions: HASH/1, fst/1, h/1, kdf_extend/3, kdf_initial/4, pair/2, pk/1,
+           sdec/2, senc/2, sign/2, snd/1, take_prefix/2, true/0, verify/3
+equations:
+    fst(<x.1, x.2>) = x.1,
+    sdec(senc(x.1, x.2), x.2) = x.1,
+    snd(<x.1, x.2>) = x.2,
+    verify(sign(x.1, x.2), x.1, pk(x.2)) = true
+
+heuristic: p
+
+lemma secretP:
+  all-traces
+  "∀ c s k hval sid kmat #i.
+    (Secret_C( c, s, k, hval, sid, kmat, 'verified_hostkey' ) @ #i) ⇒
+    ((((¬(∃ #j. K( k ) @ #j)) ∧ (¬(∃ #j. K( hval ) @ #j))) ∧
+      (¬(∃ #j. K( sid ) @ #j))) ∧
+     (¬(∃ #j. K( kmat ) @ #j)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ c s k hval sid kmat #i.
+  (Secret_C( c, s, k, hval, sid, kmat, 'verified_hostkey' ) @ #i)
+ ∧
+  ((∃ #j. (K( k ) @ #j)) ∨
+   (∃ #j. (K( hval ) @ #j)) ∨
+   (∃ #j. (K( sid ) @ #j)) ∨
+   (∃ #j. (K( kmat ) @ #j)))"
+*/
+by sorry
+
+lemma injPS:
+  all-traces
+  "∀ c s hval k sid pks #i.
+    (Commit_C_ServerAuth( c, s, hval, k, sid, pks ) @ #i) ⇒
+    (∃ e f #j.
+      ((ServerSendsSignedExchange( s, c, hval, k, pks, e, f ) @ #j) ∧
+       (#j < #i)) ∧
+      (∀ #i2.
+        (Commit_C_ServerAuth( c, s, hval, k, sid, pks ) @ #i2) ⇒ (#i2 = #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ c s hval k sid pks #i.
+  (Commit_C_ServerAuth( c, s, hval, k, sid, pks ) @ #i)
+ ∧
+  ∀ e f #j.
+   (ServerSendsSignedExchange( s, c, hval, k, pks, e, f ) @ #j)
+  ⇒
+   ((¬(#j < #i)) ∨
+    (∃ #i2.
+      (Commit_C_ServerAuth( c, s, hval, k, sid, pks ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+by sorry
+
+lemma injSP:
+  all-traces
+  "∀ s c hval k e f #i.
+    (ServerFinishedKeyExchange( s, c, hval, k, e, f ) @ #i) ⇒
+    (∃ vc vs ic isval #j.
+      ((ClientEphemeralSent( c, s, e, vc, vs, ic, isval ) @ #j) ∧ (#j < #i)) ∧
+      (∀ #i2.
+        (ServerFinishedKeyExchange( s, c, hval, k, e, f ) @ #i2) ⇒ (#i2 = #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ s c hval k e f #i.
+  (ServerFinishedKeyExchange( s, c, hval, k, e, f ) @ #i)
+ ∧
+  ∀ vc vs ic isval #j.
+   (ClientEphemeralSent( c, s, e, vc, vs, ic, isval ) @ #j)
+  ⇒
+   ((¬(#j < #i)) ∨
+    (∃ #i2.
+      (ServerFinishedKeyExchange( s, c, hval, k, e, f ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+by sorry
+
+lemma secretS:
+  all-traces
+  "∀ s c k hval sid kmat #i.
+    (Secret_S( s, c, k, hval, sid, kmat ) @ #i) ⇒
+    ((((¬(∃ #j. K( k ) @ #j)) ∧ (¬(∃ #j. K( hval ) @ #j))) ∧
+      (¬(∃ #j. K( sid ) @ #j))) ∧
+     (¬(∃ #j. K( kmat ) @ #j)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ s c k hval sid kmat #i.
+  (Secret_S( s, c, k, hval, sid, kmat ) @ #i)
+ ∧
+  ((∃ #j. (K( k ) @ #j)) ∨
+   (∃ #j. (K( hval ) @ #j)) ∨
+   (∃ #j. (K( sid ) @ #j)) ∨
+   (∃ #j. (K( kmat ) @ #j)))"
+*/
+by sorry
+
+lemma executableS2:
+  exists-trace
+  "∃ c s k hval sid iv_c2s iv_s2c enc_c2s enc_s2c mac_c2s mac_s2c #i #j.
+    ((ServerKeysDerived( s, c, k, hval, sid, iv_c2s, iv_s2c, enc_c2s,
+                         enc_s2c, mac_c2s, mac_s2c
+      ) @ #i) ∧
+     (ClientKeysDerived( c, s, k, hval, sid, iv_c2s, iv_s2c, enc_c2s, enc_s2c,
+                         mac_c2s, mac_s2c
+      ) @ #j)) ∧
+    (#i < #j)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ c s k hval sid iv_c2s iv_s2c enc_c2s enc_s2c mac_c2s mac_s2c #i #j.
+  (ServerKeysDerived( s, c, k, hval, sid, iv_c2s, iv_s2c, enc_c2s, enc_s2c,
+                      mac_c2s, mac_s2c
+   ) @ #i) ∧
+  (ClientKeysDerived( c, s, k, hval, sid, iv_c2s, iv_s2c, enc_c2s, enc_s2c,
+                      mac_c2s, mac_s2c
+   ) @ #j)
+ ∧
+  #i < #j"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="new host_ltkS.1;",
+                     issapicrule, role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) newhostltkS_0_[color=#ffffff, process="new host_ltkS.1;",
+                               issapicrule, role='Process']:
+   [ State_( ), Fr( host_ltkS.1 ) ] --> [ State_1( host_ltkS.1 ) ]
+
+rule (modulo E) newattackerltk_0_1[color=#ffffff,
+                                   process="new attacker_ltk.1;", issapicrule, role='Process']:
+   [ State_1( host_ltkS.1 ), Fr( attacker_ltk.1 ) ]
+  -->
+   [ State_11( attacker_ltk.1, host_ltkS.1 ) ]
+
+rule (modulo E) outpkhostltkS_0_11[color=#ffffff,
+                                   process="out(pk(host_ltkS.1));", issapicrule, role='Process']:
+   [ State_11( attacker_ltk.1, host_ltkS.1 ) ]
+  -->
+   [ State_111( attacker_ltk.1, host_ltkS.1 ), Out( pk(host_ltkS.1) ) ]
+
+rule (modulo E) outattackerltk_0_111[color=#ffffff,
+                                     process="out(attacker_ltk.1);", issapicrule, role='Process']:
+   [ State_111( attacker_ltk.1, host_ltkS.1 ) ]
+  -->
+   [ State_1111( attacker_ltk.1, host_ltkS.1 ), Out( attacker_ltk.1 ) ]
+
+rule (modulo E) outpkattackerltk_0_1111[color=#ffffff,
+                                        process="out(pk(attacker_ltk.1));", issapicrule, role='Process']:
+   [ State_1111( attacker_ltk.1, host_ltkS.1 ) ]
+  -->
+   [ State_11111( attacker_ltk.1, host_ltkS.1 ), Out( pk(attacker_ltk.1) ) ]
+
+rule (modulo E) HonestVerifiedCShostltkSpkhostltkS_0_111111[color=#ffffff,
+                                                            process="HonestVerified('C', 'S', host_ltkS.1, pk(host_ltkS.1))",
+                                                            issapicrule, role='Process']:
+   [ State_11111( attacker_ltk.1, host_ltkS.1 ) ]
+  -->
+   [
+   State_1111111( attacker_ltk.1, host_ltkS.1 ),
+   State_1111112( attacker_ltk.1, host_ltkS.1 )
+   ]
+
+rule (modulo E) newvc_0_1111111[color=#804540, process="new vc.1;",
+                                issapicrule, role='HonestVerified']:
+   [ State_1111111( attacker_ltk.1, host_ltkS.1 ), Fr( vc.1 ) ]
+  -->
+   [ State_11111111( attacker_ltk.1, host_ltkS.1, vc.1 ) ]
+
+rule (modulo E) newic_0_11111111[color=#804540, process="new ic.1;",
+                                 issapicrule, role='HonestVerified']:
+   [ State_11111111( attacker_ltk.1, host_ltkS.1, vc.1 ), Fr( ic.1 ) ]
+  -->
+   [ State_111111111( attacker_ltk.1, host_ltkS.1, ic.1, vc.1 ) ]
+
+rule (modulo E) outvcic_0_111111111[color=#804540,
+                                    process="out(<vc.1, ic.1>);", issapicrule, role='HonestVerified']:
+   [ State_111111111( attacker_ltk.1, host_ltkS.1, ic.1, vc.1 ) ]
+  -->
+   [
+   State_1111111111( attacker_ltk.1, host_ltkS.1, ic.1, vc.1 ),
+   Out( <vc.1, ic.1> )
+   ]
+
+rule (modulo E) newvs_0_1111111111[color=#804540, process="new vs.1;",
+                                   issapicrule, role='HonestVerified']:
+   [ State_1111111111( attacker_ltk.1, host_ltkS.1, ic.1, vc.1 ), Fr( vs.1 )
+   ]
+  -->
+   [ State_11111111111( attacker_ltk.1, host_ltkS.1, ic.1, vc.1, vs.1 ) ]
+
+rule (modulo E) newis_0_11111111111[color=#804540, process="new i_s.1;",
+                                    issapicrule, role='HonestVerified']:
+   [
+   State_11111111111( attacker_ltk.1, host_ltkS.1, ic.1, vc.1, vs.1 ),
+   Fr( i_s.1 )
+   ]
+  -->
+   [
+   State_111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1, vs.1
+   )
+   ]
+
+rule (modulo E) outvsis_0_111111111111[color=#804540,
+                                       process="out(<vs.1, i_s.1>);", issapicrule, role='HonestVerified']:
+   [
+   State_111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1, vs.1
+   )
+   ]
+  -->
+   [
+   State_1111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1, vs.1
+   ),
+   Out( <vs.1, i_s.1> )
+   ]
+
+rule (modulo E) eventContextCCSvcvsicis_0_1111111111111[color=#804540,
+                                                        process="event Context_C( 'C', 'S', vc.1, vs.1, ic.1, i_s.1 );",
+                                                        issapicrule, role='HonestVerified']:
+   [
+   State_1111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1, vs.1
+   )
+   ]
+  --[ Context_C( 'C', 'S', vc.1, vs.1, ic.1, i_s.1 ) ]->
+   [
+   State_11111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1,
+                         vs.1
+   )
+   ]
+
+rule (modulo E) eventContextSSCvcvsicis_0_11111111111111[color=#804540,
+                                                         process="event Context_S( 'S', 'C', vc.1, vs.1, ic.1, i_s.1 );",
+                                                         issapicrule, role='HonestVerified']:
+   [
+   State_11111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1,
+                         vs.1
+   )
+   ]
+  --[ Context_S( 'S', 'C', vc.1, vs.1, ic.1, i_s.1 ) ]->
+   [
+   State_111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1,
+                          vs.1
+   )
+   ]
+
+rule (modulo E) newx_0_111111111111111[color=#804540, process="new x.1;",
+                                       issapicrule, role='HonestVerified']:
+   [
+   State_111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1,
+                          vs.1
+   ),
+   Fr( x.1 )
+   ]
+  -->
+   [
+   State_1111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1,
+                           vs.1, x.1
+   )
+   ]
+
+rule (modulo E) eventClientEphemeralSentCSgxvcvsicis_0_1111111111111111[color=#804540,
+                                                                        process="event ClientEphemeralSent( 'C', 'S', 'g'^x.1, vc.1, vs.1, ic.1, i_s.1 );",
+                                                                        issapicrule, role='HonestVerified']:
+   [
+   State_1111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1,
+                           vs.1, x.1
+   )
+   ]
+  --[ ClientEphemeralSent( 'C', 'S', 'g'^x.1, vc.1, vs.1, ic.1, i_s.1 ) ]->
+   [
+   State_11111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1,
+                            vs.1, x.1
+   )
+   ]
+
+rule (modulo E) outgx_0_11111111111111111[color=#804540,
+                                          process="out('g'^x.1);", issapicrule, role='HonestVerified']:
+   [
+   State_11111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1,
+                            vs.1, x.1
+   )
+   ]
+  -->
+   [
+   State_111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1,
+                             vs.1, x.1
+   ),
+   Out( 'g'^x.1 )
+   ]
+
+rule (modulo E) newy_0_111111111111111111[color=#804540,
+                                          process="new y.1;", issapicrule, role='HonestVerified']:
+   [
+   State_111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1, vc.1,
+                             vs.1, x.1
+   ),
+   Fr( y.1 )
+   ]
+  -->
+   [
+   State_1111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                              vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) eventRunningSSCHASHvcvsicispkhostltkSgxgygxygxypkhostltkSgxgy_0_1111111111111111111[color=#804540,
+                                                                                                    process="event Running_S( 'S', 'C',
+           HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                 'g'^x.1^y.1>),
+           'g'^x.1^y.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1
+);",
+                                                                                                    issapicrule,
+                                                                                                    role='HonestVerified']:
+   [
+   State_1111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                              vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[
+  Running_S( 'S', 'C',
+             HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                   'g'^x.1^y.1>),
+             'g'^x.1^y.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1
+  )
+  ]->
+   [
+   State_11111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                               vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) eventServerSendsSignedExchangeSCHASHvcvsicispkhostltkSgxgygxygxypkhostltkSgxgy_0_11111111111111111111[color=#804540,
+                                                                                                                      process="event ServerSendsSignedExchange( 'S', 'C',
+                           HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                 'g'^x.1^y.1>),
+                           'g'^x.1^y.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1
+);",
+                                                                                                                      issapicrule,
+                                                                                                                      role='HonestVerified']:
+   [
+   State_11111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                               vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[
+  ServerSendsSignedExchange( 'S', 'C',
+                             HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                   'g'^x.1^y.1>),
+                             'g'^x.1^y.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1
+  )
+  ]->
+   [
+   State_111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                                vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) outpkhostltkSgysignHASHvcvsicispkhostltkSgxgygxyhostltkS_0_111111111111111111111[color=#804540,
+                                                                                                 process="out(<pk(host_ltkS.1), 'g'^y.1, 
+ sign(HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 
+            'g'^y.1, 'g'^x.1^y.1>),
+      host_ltkS.1)
+>);",
+                                                                                                 issapicrule,
+                                                                                                 role='HonestVerified']:
+   [
+   State_111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                                vc.1, vs.1, x.1, y.1
+   )
+   ]
+  -->
+   [
+   State_1111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                                 vc.1, vs.1, x.1, y.1
+   ),
+   Out( <pk(host_ltkS.1), 'g'^y.1, 
+         sign(HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                    'g'^x.1^y.1>),
+              host_ltkS.1)
+        >
+   )
+   ]
+
+rule (modulo E) eventServerKeysDerivedSCgxyHASHvcvsicispkhostltkSgxgygxyHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyAHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyBHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyCHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyDHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyEHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyFHASHvcvsicispkhostltkSgxgygxy_0_1111111111111111111111[color=#804540,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               process="event ServerKeysDerived( 'S', 'C', 'g'^x.1^y.1,
+                   HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                         'g'^x.1^y.1>),
+                   HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                         'g'^x.1^y.1>),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'A',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>)),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'B',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>)),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'C',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>)),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'D',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>)),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'E',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>)),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'F',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>))
+);",
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               issapicrule,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               role='HonestVerified']:
+   [
+   State_1111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                                 vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[
+  ServerKeysDerived( 'S', 'C', 'g'^x.1^y.1,
+                     HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                           'g'^x.1^y.1>),
+                     HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                           'g'^x.1^y.1>),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'A',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>)),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'B',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>)),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'C',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>)),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'D',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>)),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'E',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>)),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'F',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>))
+  )
+  ]->
+   [
+   State_11111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                                  vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) eventSecretSSCgxyHASHvcvsicispkhostltkSgxgygxyHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyMHASHvcvsicispkhostltkSgxgygxy_0_11111111111111111111111[color=#804540,
+                                                                                                                                                                                              process="event Secret_S( 'S', 'C', 'g'^x.1^y.1,
+          HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                'g'^x.1^y.1>),
+          HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                'g'^x.1^y.1>),
+          kdf_initial('g'^x.1^y.1,
+                      HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                            'g'^x.1^y.1>),
+                      'M',
+                      HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                            'g'^x.1^y.1>))
+);",
+                                                                                                                                                                                              issapicrule,
+                                                                                                                                                                                              role='HonestVerified']:
+   [
+   State_11111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                                  vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[
+  Secret_S( 'S', 'C', 'g'^x.1^y.1,
+            HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                  'g'^x.1^y.1>),
+            HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                  'g'^x.1^y.1>),
+            kdf_initial('g'^x.1^y.1,
+                        HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                              'g'^x.1^y.1>),
+                        'M',
+                        HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                              'g'^x.1^y.1>))
+  )
+  ]->
+   [
+   State_111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                                   vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) eventServerFinishedKeyExchangeSCHASHvcvsicispkhostltkSgxgygxygxygxgy_0_111111111111111111111111[color=#804540,
+                                                                                                                process="event ServerFinishedKeyExchange( 'S', 'C',
+                           HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                 'g'^x.1^y.1>),
+                           'g'^x.1^y.1, 'g'^x.1, 'g'^y.1
+);",
+                                                                                                                issapicrule,
+                                                                                                                role='HonestVerified']:
+   [
+   State_111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1, ic.1,
+                                   vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[
+  ServerFinishedKeyExchange( 'S', 'C',
+                             HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                   'g'^x.1^y.1>),
+                             'g'^x.1^y.1, 'g'^x.1, 'g'^y.1
+  )
+  ]->
+   [
+   State_1111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                    ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) ifpkhostltkSpkhostltkS_0_1111111111111111111111111[color=#804540,
+                                                                   process="if pk(host_ltkS.1)=pk(host_ltkS.1)",
+                                                                   issapicrule, role='HonestVerified']:
+   [
+   State_1111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                    ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[ Pred_Eq( pk(host_ltkS.1), pk(host_ltkS.1) ) ]->
+   [
+   State_11111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                     ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) ifpkhostltkSpkhostltkS_1_1111111111111111111111111[color=#804540,
+                                                                   process="if pk(host_ltkS.1)=pk(host_ltkS.1)",
+                                                                   issapicrule, role='HonestVerified']:
+   [
+   State_1111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                    ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[ Pred_Not_Eq( pk(host_ltkS.1), pk(host_ltkS.1) ) ]->
+   [
+   State_11111111111111111111111112( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                     ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) ifverifysignHASHvcvsicispkhostltkSgxgygxyhostltkSHASHvcvsicispkhostltkSgxgygxypkhostltkStrue_0_11111111111111111111111111[color=#804540,
+                                                                                                                                          process="if verify(sign(HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 
+                  'g'^x.1, 'g'^y.1, 'g'^x.1^y.1>),
+            host_ltkS.1),
+       HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+             'g'^x.1^y.1>),
+       pk(host_ltkS.1))=true",
+                                                                                                                                          issapicrule,
+                                                                                                                                          role='HonestVerified']:
+   [
+   State_11111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                     ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[
+  Pred_Eq( verify(sign(HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 
+                             'g'^x.1, 'g'^y.1, 'g'^x.1^y.1>),
+                       host_ltkS.1),
+                  HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                        'g'^x.1^y.1>),
+                  pk(host_ltkS.1)),
+           true
+  )
+  ]->
+   [
+   State_111111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                      ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) ifverifysignHASHvcvsicispkhostltkSgxgygxyhostltkSHASHvcvsicispkhostltkSgxgygxypkhostltkStrue_1_11111111111111111111111111[color=#804540,
+                                                                                                                                          process="if verify(sign(HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 
+                  'g'^x.1, 'g'^y.1, 'g'^x.1^y.1>),
+            host_ltkS.1),
+       HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+             'g'^x.1^y.1>),
+       pk(host_ltkS.1))=true",
+                                                                                                                                          issapicrule,
+                                                                                                                                          role='HonestVerified']:
+   [
+   State_11111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                     ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[
+  Pred_Not_Eq( verify(sign(HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 
+                                 'g'^x.1, 'g'^y.1, 'g'^x.1^y.1>),
+                           host_ltkS.1),
+                      HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                            'g'^x.1^y.1>),
+                      pk(host_ltkS.1)),
+               true
+  )
+  ]->
+   [
+   State_111111111111111111111111112( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                      ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) eventClientAcceptVerifiedCSgxyHASHvcvsicispkhostltkSgxgygxyHASHvcvsicispkhostltkSgxgygxypkhostltkS_0_111111111111111111111111111[color=#804540,
+                                                                                                                                                 process="event ClientAcceptVerified( 'C', 'S', 'g'^x.1^y.1,
+                      HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                            'g'^x.1^y.1>),
+                      HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                            'g'^x.1^y.1>),
+                      pk(host_ltkS.1)
+);",
+                                                                                                                                                 issapicrule,
+                                                                                                                                                 role='HonestVerified']:
+   [
+   State_111111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                      ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[
+  ClientAcceptVerified( 'C', 'S', 'g'^x.1^y.1,
+                        HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                              'g'^x.1^y.1>),
+                        HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                              'g'^x.1^y.1>),
+                        pk(host_ltkS.1)
+  )
+  ]->
+   [
+   State_1111111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                       ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) eventClientKeysDerivedCSgxyHASHvcvsicispkhostltkSgxgygxyHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyAHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyBHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyCHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyDHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyEHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyFHASHvcvsicispkhostltkSgxgygxy_0_1111111111111111111111111111[color=#804540,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     process="event ClientKeysDerived( 'C', 'S', 'g'^x.1^y.1,
+                   HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                         'g'^x.1^y.1>),
+                   HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                         'g'^x.1^y.1>),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'A',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>)),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'B',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>)),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'C',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>)),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'D',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>)),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'E',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>)),
+                   kdf_initial('g'^x.1^y.1,
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>),
+                               'F',
+                               HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                     'g'^x.1^y.1>))
+);",
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     issapicrule,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     role='HonestVerified']:
+   [
+   State_1111111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                       ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[
+  ClientKeysDerived( 'C', 'S', 'g'^x.1^y.1,
+                     HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                           'g'^x.1^y.1>),
+                     HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                           'g'^x.1^y.1>),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'A',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>)),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'B',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>)),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'C',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>)),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'D',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>)),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'E',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>)),
+                     kdf_initial('g'^x.1^y.1,
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>),
+                                 'F',
+                                 HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                                       'g'^x.1^y.1>))
+  )
+  ]->
+   [
+   State_11111111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                        ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) eventSecretCCSgxyHASHvcvsicispkhostltkSgxgygxyHASHvcvsicispkhostltkSgxgygxykdfinitialgxyHASHvcvsicispkhostltkSgxgygxyMHASHvcvsicispkhostltkSgxgygxyverifiedhostkey_0_11111111111111111111111111111[color=#804540,
+                                                                                                                                                                                                                   process="event Secret_C( 'C', 'S', 'g'^x.1^y.1,
+          HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                'g'^x.1^y.1>),
+          HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                'g'^x.1^y.1>),
+          kdf_initial('g'^x.1^y.1,
+                      HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                            'g'^x.1^y.1>),
+                      'M',
+                      HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                            'g'^x.1^y.1>)),
+          'verified_hostkey'
+);",
+                                                                                                                                                                                                                   issapicrule,
+                                                                                                                                                                                                                   role='HonestVerified']:
+   [
+   State_11111111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                        ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[
+  Secret_C( 'C', 'S', 'g'^x.1^y.1,
+            HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                  'g'^x.1^y.1>),
+            HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                  'g'^x.1^y.1>),
+            kdf_initial('g'^x.1^y.1,
+                        HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                              'g'^x.1^y.1>),
+                        'M',
+                        HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                              'g'^x.1^y.1>)),
+            'verified_hostkey'
+  )
+  ]->
+   [
+   State_111111111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                         ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) eventCommitCServerAuthCSHASHvcvsicispkhostltkSgxgygxygxyHASHvcvsicispkhostltkSgxgygxypkhostltkS_0_111111111111111111111111111111[color=#804540,
+                                                                                                                                                 process="event Commit_C_ServerAuth( 'C', 'S',
+                     HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                           'g'^x.1^y.1>),
+                     'g'^x.1^y.1,
+                     HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                           'g'^x.1^y.1>),
+                     pk(host_ltkS.1)
+);",
+                                                                                                                                                 issapicrule,
+                                                                                                                                                 role='HonestVerified']:
+   [
+   State_111111111111111111111111111111( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                         ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+  --[
+  Commit_C_ServerAuth( 'C', 'S',
+                       HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                             'g'^x.1^y.1>),
+                       'g'^x.1^y.1,
+                       HASH(<vc.1, vs.1, ic.1, i_s.1, pk(host_ltkS.1), 'g'^x.1, 'g'^y.1, 
+                             'g'^x.1^y.1>),
+                       pk(host_ltkS.1)
+  )
+  ]->
+   [
+   State_1111111111111111111111111111111( attacker_ltk.1, host_ltkS.1,
+                                          i_s.1, ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+
+rule (modulo E) p_0_1111111111111111111111111111111[color=#804540,
+                                                    process="0", issapicrule, role='HonestVerified']:
+   [
+   State_1111111111111111111111111111111( attacker_ltk.1, host_ltkS.1,
+                                          i_s.1, ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_111111111111111111111111112[color=#804540,
+                                                process="0", issapicrule, role='HonestVerified']:
+   [
+   State_111111111111111111111111112( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                      ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111111111111111111111112[color=#804540,
+                                               process="0", issapicrule, role='HonestVerified']:
+   [
+   State_11111111111111111111111112( attacker_ltk.1, host_ltkS.1, i_s.1,
+                                     ic.1, vc.1, vs.1, x.1, y.1
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111112[color=#ffffff, process="0", issapicrule,
+                            role='Process']:
+   [ State_1111112( attacker_ltk.1, host_ltkS.1 ) ] --> [ ]
+
+rule (modulo E) ClientUnverifiedCS_0_111112[color=#ffffff,
+                                            process="ClientUnverified('C', 'S')", issapicrule,
+                                            role='Process']:
+   [ State_11111( attacker_ltk.1, host_ltkS.1 ) ]
+  -->
+   [
+   State_1111121( attacker_ltk.1, host_ltkS.1 ),
+   State_1111122( attacker_ltk.1, host_ltkS.1 )
+   ]
+
+rule (modulo E) newvc_0_1111121[color=#40804e, process="new vc.2;",
+                                issapicrule, role='ClientUnverified']:
+   [ State_1111121( attacker_ltk.1, host_ltkS.1 ), Fr( vc.2 ) ]
+  -->
+   [ State_11111211( attacker_ltk.1, host_ltkS.1, vc.2 ) ]
+
+rule (modulo E) newic_0_11111211[color=#40804e, process="new ic.2;",
+                                 issapicrule, role='ClientUnverified']:
+   [ State_11111211( attacker_ltk.1, host_ltkS.1, vc.2 ), Fr( ic.2 ) ]
+  -->
+   [ State_111112111( attacker_ltk.1, host_ltkS.1, ic.2, vc.2 ) ]
+
+rule (modulo E) outvcic_0_111112111[color=#40804e,
+                                    process="out(<vc.2, ic.2>);", issapicrule, role='ClientUnverified']:
+   [ State_111112111( attacker_ltk.1, host_ltkS.1, ic.2, vc.2 ) ]
+  -->
+   [
+   State_1111121111( attacker_ltk.1, host_ltkS.1, ic.2, vc.2 ),
+   Out( <vc.2, ic.2> )
+   ]
+
+rule (modulo E) invsis_0_1111121111[color=#40804e,
+                                    process="in(<vs.2, i_s.2>);", issapicrule, role='ClientUnverified']:
+   [
+   State_1111121111( attacker_ltk.1, host_ltkS.1, ic.2, vc.2 ),
+   In( <vs.2, i_s.2> )
+   ]
+  -->
+   [
+   State_11111211111( attacker_ltk.1, host_ltkS.1, i_s.2, ic.2, vc.2, vs.2 )
+   ]
+
+rule (modulo E) eventContextCCSvcvsicis_0_11111211111[color=#40804e,
+                                                      process="event Context_C( 'C', 'S', vc.2, vs.2, ic.2, i_s.2 );",
+                                                      issapicrule, role='ClientUnverified']:
+   [
+   State_11111211111( attacker_ltk.1, host_ltkS.1, i_s.2, ic.2, vc.2, vs.2 )
+   ]
+  --[ Context_C( 'C', 'S', vc.2, vs.2, ic.2, i_s.2 ) ]->
+   [
+   State_111112111111( attacker_ltk.1, host_ltkS.1, i_s.2, ic.2, vc.2, vs.2
+   )
+   ]
+
+rule (modulo E) newx_0_111112111111[color=#40804e, process="new x.2;",
+                                    issapicrule, role='ClientUnverified']:
+   [
+   State_111112111111( attacker_ltk.1, host_ltkS.1, i_s.2, ic.2, vc.2, vs.2
+   ),
+   Fr( x.2 )
+   ]
+  -->
+   [
+   State_1111121111111( attacker_ltk.1, host_ltkS.1, i_s.2, ic.2, vc.2,
+                        vs.2, x.2
+   )
+   ]
+
+rule (modulo E) eventClientEphemeralSentCSgxvcvsicis_0_1111121111111[color=#40804e,
+                                                                     process="event ClientEphemeralSent( 'C', 'S', 'g'^x.2, vc.2, vs.2, ic.2, i_s.2 );",
+                                                                     issapicrule, role='ClientUnverified']:
+   [
+   State_1111121111111( attacker_ltk.1, host_ltkS.1, i_s.2, ic.2, vc.2,
+                        vs.2, x.2
+   )
+   ]
+  --[ ClientEphemeralSent( 'C', 'S', 'g'^x.2, vc.2, vs.2, ic.2, i_s.2 ) ]->
+   [
+   State_11111211111111( attacker_ltk.1, host_ltkS.1, i_s.2, ic.2, vc.2,
+                         vs.2, x.2
+   )
+   ]
+
+rule (modulo E) outgx_0_11111211111111[color=#40804e,
+                                       process="out('g'^x.2);", issapicrule, role='ClientUnverified']:
+   [
+   State_11111211111111( attacker_ltk.1, host_ltkS.1, i_s.2, ic.2, vc.2,
+                         vs.2, x.2
+   )
+   ]
+  -->
+   [
+   State_111112111111111( attacker_ltk.1, host_ltkS.1, i_s.2, ic.2, vc.2,
+                          vs.2, x.2
+   ),
+   Out( 'g'^x.2 )
+   ]
+
+rule (modulo E) inksrecvfrecvsigrecv_0_111112111111111[color=#40804e,
+                                                       process="in(<ks_recv.2, f_recv.2, sig_recv.2>);",
+                                                       issapicrule, role='ClientUnverified']:
+   [
+   State_111112111111111( attacker_ltk.1, host_ltkS.1, i_s.2, ic.2, vc.2,
+                          vs.2, x.2
+   ),
+   In( <ks_recv.2, f_recv.2, sig_recv.2> )
+   ]
+  -->
+   [
+   State_1111121111111111( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                           ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+
+rule (modulo E) ifverifysigrecvHASHvcvsicisksrecvgxfrecvfrecvxksrecvtrue_0_1111121111111111[color=#40804e,
+                                                                                            process="if verify(sig_recv.2,
+       HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+             f_recv.2^x.2>),
+       ks_recv.2)=true",
+                                                                                            issapicrule,
+                                                                                            role='ClientUnverified']:
+   [
+   State_1111121111111111( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                           ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+  --[
+  Pred_Eq( verify(sig_recv.2,
+                  HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                       >),
+                  ks_recv.2),
+           true
+  )
+  ]->
+   [
+   State_11111211111111111( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                            ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+
+rule (modulo E) ifverifysigrecvHASHvcvsicisksrecvgxfrecvfrecvxksrecvtrue_1_1111121111111111[color=#40804e,
+                                                                                            process="if verify(sig_recv.2,
+       HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+             f_recv.2^x.2>),
+       ks_recv.2)=true",
+                                                                                            issapicrule,
+                                                                                            role='ClientUnverified']:
+   [
+   State_1111121111111111( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                           ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+  --[
+  Pred_Not_Eq( verify(sig_recv.2,
+                      HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                           >),
+                      ks_recv.2),
+               true
+  )
+  ]->
+   [
+   State_11111211111111112( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                            ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+
+rule (modulo E) eventClientAcceptUnverifiedCSfrecvxHASHvcvsicisksrecvgxfrecvfrecvxHASHvcvsicisksrecvgxfrecvfrecvxksrecv_0_11111211111111111[color=#40804e,
+                                                                                                                                            process="event ClientAcceptUnverified( 'C', 'S', f_recv.2^x.2,
+                        HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                              f_recv.2^x.2>),
+                        HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                              f_recv.2^x.2>),
+                        ks_recv.2
+);",
+                                                                                                                                            issapicrule,
+                                                                                                                                            role='ClientUnverified']:
+   [
+   State_11111211111111111( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                            ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+  --[
+  ClientAcceptUnverified( 'C', 'S', f_recv.2^x.2,
+                          HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                               >),
+                          HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                               >),
+                          ks_recv.2
+  )
+  ]->
+   [
+   State_111112111111111111( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                             ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+
+rule (modulo E) eventClientKeysDerivedCSfrecvxHASHvcvsicisksrecvgxfrecvfrecvxHASHvcvsicisksrecvgxfrecvfrecvxkdfinitialfrecvxHASHvcvsicisksrecvgxfrecvfrecvxAHASHvcvsicisksrecvgxfrecvfrecvxkdfinitialfrecvxHASHvcvsicisksrecvgxfrecvfrecvxBHASHvcvsicisksrecvgxfrecvfrecvxkdfinitialfrecvxHASHvcvsicisksrecvgxfrecvfrecvxCHASHvcvsicisksrecvgxfrecvfrecvxkdfinitialfrecvxHASHvcvsicisksrecvgxfrecvfrecvxDHASHvcvsicisksrecvgxfrecvfrecvxkdfinitialfrecvxHASHvcvsicisksrecvgxfrecvfrecvxEHASHvcvsicisksrecvgxfrecvfrecvxkdfinitialfrecvxHASHvcvsicisksrecvgxfrecvfrecvxFHASHvcvsicisksrecvgxfrecvfrecvx_0_111112111111111111[color=#40804e,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            process="event ClientKeysDerived( 'C', 'S', f_recv.2^x.2,
+                   HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                         f_recv.2^x.2>),
+                   HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                         f_recv.2^x.2>),
+                   kdf_initial(f_recv.2^x.2,
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>),
+                               'A',
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>)),
+                   kdf_initial(f_recv.2^x.2,
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>),
+                               'B',
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>)),
+                   kdf_initial(f_recv.2^x.2,
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>),
+                               'C',
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>)),
+                   kdf_initial(f_recv.2^x.2,
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>),
+                               'D',
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>)),
+                   kdf_initial(f_recv.2^x.2,
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>),
+                               'E',
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>)),
+                   kdf_initial(f_recv.2^x.2,
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>),
+                               'F',
+                               HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                                     f_recv.2^x.2>))
+);",
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            issapicrule,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            role='ClientUnverified']:
+   [
+   State_111112111111111111( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                             ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+  --[
+  ClientKeysDerived( 'C', 'S', f_recv.2^x.2,
+                     HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                          >),
+                     HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                          >),
+                     kdf_initial(f_recv.2^x.2,
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >),
+                                 'A',
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >)),
+                     kdf_initial(f_recv.2^x.2,
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >),
+                                 'B',
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >)),
+                     kdf_initial(f_recv.2^x.2,
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >),
+                                 'C',
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >)),
+                     kdf_initial(f_recv.2^x.2,
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >),
+                                 'D',
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >)),
+                     kdf_initial(f_recv.2^x.2,
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >),
+                                 'E',
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >)),
+                     kdf_initial(f_recv.2^x.2,
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >),
+                                 'F',
+                                 HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                                      >))
+  )
+  ]->
+   [
+   State_1111121111111111111( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                              ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+
+rule (modulo E) eventSecretCCSfrecvxHASHvcvsicisksrecvgxfrecvfrecvxHASHvcvsicisksrecvgxfrecvfrecvxkdfinitialfrecvxHASHvcvsicisksrecvgxfrecvfrecvxMHASHvcvsicisksrecvgxfrecvfrecvxunverifiedhostkey_0_1111121111111111111[color=#40804e,
+                                                                                                                                                                                                                         process="event Secret_C( 'C', 'S', f_recv.2^x.2,
+          HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                f_recv.2^x.2>),
+          HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                f_recv.2^x.2>),
+          kdf_initial(f_recv.2^x.2,
+                      HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                            f_recv.2^x.2>),
+                      'M',
+                      HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, 
+                            f_recv.2^x.2>)),
+          'unverified_hostkey'
+);",
+                                                                                                                                                                                                                         issapicrule,
+                                                                                                                                                                                                                         role='ClientUnverified']:
+   [
+   State_1111121111111111111( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                              ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+  --[
+  Secret_C( 'C', 'S', f_recv.2^x.2,
+            HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                 >),
+            HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                 >),
+            kdf_initial(f_recv.2^x.2,
+                        HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                             >),
+                        'M',
+                        HASH(<vc.2, vs.2, ic.2, i_s.2, ks_recv.2, 'g'^x.2, f_recv.2, f_recv.2^x.2
+                             >)),
+            'unverified_hostkey'
+  )
+  ]->
+   [
+   State_11111211111111111111( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                               ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+
+rule (modulo E) p_0_11111211111111111111[color=#40804e, process="0",
+                                         issapicrule, role='ClientUnverified']:
+   [
+   State_11111211111111111111( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                               ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111211111111112[color=#40804e, process="0",
+                                      issapicrule, role='ClientUnverified']:
+   [
+   State_11111211111111112( attacker_ltk.1, host_ltkS.1, f_recv.2, i_s.2,
+                            ic.2, ks_recv.2, sig_recv.2, vc.2, vs.2, x.2
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111122[color=#ffffff, process="0", issapicrule,
+                            role='Process']:
+   [ State_1111122( attacker_ltk.1, host_ltkS.1 ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/*
+WARNING: the following wellformedness checks failed!
+
+Derivation Checks
+=================
+
+  Derivation checks timed out.
+  Use --derivcheck-timeout=INT to configure timeout.
+  Set to 0 to deactivate for no timeout.
+*/
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

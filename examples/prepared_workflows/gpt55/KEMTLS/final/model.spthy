@@ -1,0 +1,158 @@
+theory KEMTLS
+begin
+
+builtins: hashing, symmetric-encryption
+
+functions: kem_pk/1, kem_ct/2, kem_ss/2, decap/2, hkdf/3, transcript_hash/1, aead_enc/3, aead_dec/3, mac/2, mac_verify/3, app_key/1, cert/2, select_alg/2, kdf/2
+
+let HonestNormal(c_id, s_id, sks, pks, cert_s) =
+  new rc;
+  new skec;
+  let pkec = kem_pk(skec) in
+  let auth_algs_c = 'auth_algs_C' in
+  let kex_algs_c = 'kex_algs_C' in
+  let aead_algs_c = 'aead_algs_C' in
+  let m1 = <'ClientHello', c_id, rc, pkec, auth_algs_c, kex_algs_c, aead_algs_c> in
+  out(m1);
+  event OUT_ClientHello(c_id, pkec, rc);
+
+  new rs;
+  new r_sse;
+  let selected_auth_alg = select_alg(auth_algs_c, 'auth') in
+  let selected_kex_alg = select_alg(kex_algs_c, 'kex') in
+  let selected_aead_alg = select_alg(aead_algs_c, 'aead') in
+  let cte = kem_ct(pkec, r_sse) in
+  let sse = kem_ss(pkec, r_sse) in
+  let m2 = <'ServerHello', s_id, rs, selected_auth_alg, selected_kex_alg, selected_aead_alg, cte> in
+  let th_ch_sh = transcript_hash(<'CH_SH', rc, rs>) in
+  out(m2);
+  event ServerHelloSent(s_id, c_id, th_ch_sh, sse);
+
+  let chts = hkdf('CHTS', sse, th_ch_sh) in
+  let shts = hkdf('SHTS', sse, th_ch_sh) in
+  let dhs = hkdf('dHS', sse, th_ch_sh) in
+  let cert_plain = <'Certificate', s_id, cert_s, pks> in
+  let cert_cipher = aead_enc(cert_plain, shts, th_ch_sh) in
+  out(cert_cipher);
+  event ServerCertificateSent(s_id, c_id, pks, cert_s);
+  event ServerCertificateAccepted(c_id, s_id, pks, cert_s);
+  event Phase1KeysDerived(c_id, s_id, sse, chts, shts, dhs);
+
+  let th_after_cert = transcript_hash(<'CERT', th_ch_sh>) in
+  new r_sss;
+  let cts = kem_ct(pks, r_sss) in
+  let sss = kem_ss(pks, r_sss) in
+  let m4 = aead_enc(<'ClientKemCiphertext', cts>, chts, th_after_cert) in
+  out(m4);
+  event ClientKemCiphertextSent(c_id, s_id, cts, sss);
+
+  let th_after_ckc = transcript_hash(<'CKC', th_after_cert, cts>) in
+  let session = kdf(sse, sss) in
+  let ahs = hkdf('AHS', session, th_after_ckc) in
+  let cahts = hkdf('CAHTS', ahs, th_after_ckc) in
+  let sahts = hkdf('SAHTS', ahs, th_after_ckc) in
+  let ms = hkdf('MS', ahs, th_after_ckc) in
+  let cats = hkdf('CATS', ms, 'th_app') in
+  let sats = hkdf('SATS', ms, 'th_app') in
+
+  let th_before_cf = transcript_hash(<'before_CF', th_after_ckc>) in
+  let fkc = hkdf('fkc', ms, th_before_cf) in
+  let cf_mac = mac(fkc, transcript_hash(th_before_cf)) in
+  let m5 = aead_enc(<'ClientFinished', cf_mac>, cahts, th_before_cf) in
+  out(m5);
+  event ClientFinishedSent(c_id, s_id, th_before_cf);
+  event Secret(c_id, s_id, cats);
+
+  new app_c;
+  let th_after_cf = transcript_hash(<'after_CF', th_before_cf>) in
+  let m6 = aead_enc(<'ClientApplicationData', app_c>, app_key(cats), th_after_cf) in
+  out(m6);
+  event ClientApplicationDataSent(c_id, s_id, app_c, cats);
+  event ClientFinishedVerified(s_id, c_id, th_before_cf);
+  event ClientApplicationDataAccepted(s_id, c_id, cats);
+
+  let th_before_sf = transcript_hash(<'before_SF', th_after_cf>) in
+  event Running(s_id, c_id, session, th_before_sf);
+  let fks = hkdf('fks', ms, th_before_sf) in
+  let sf_mac = mac(fks, transcript_hash(th_before_sf)) in
+  let m7 = aead_enc(<'ServerFinished', sf_mac>, sahts, th_before_sf) in
+  out(m7);
+  event ServerFinishedSent(s_id, c_id, th_before_sf);
+  event Secret(s_id, c_id, sats);
+
+  new app_s;
+  let th_after_sf = transcript_hash(<'after_SF', th_before_sf>) in
+  let m8 = aead_enc(<'ServerApplicationData', app_s>, app_key(sats), th_after_sf) in
+  out(m8);
+  event ServerApplicationDataSent(s_id, c_id, app_s, sats);
+  event ServerFinishedVerified(c_id, s_id, th_before_sf);
+  event Commit(c_id, s_id, session, th_before_sf);
+  event ServerExplicitlyAuthenticated(c_id, s_id, session);
+  event ServerApplicationDataAccepted(c_id, s_id, sats);
+  event RevealServerLongTermKEMKey(s_id, sks);
+  out(sks)
+
+let ServerUnauthenticatedAttack(s_id) =
+  in(c_peer);
+  let transcript = transcript_hash(<s_id, c_peer, 'attacker_transcript'>) in
+  let session = kdf(<s_id, c_peer>, 'attacker_session') in
+  let sats = kdf(session, 'SATS') in
+  event ClientFinishedVerified(s_id, c_peer, transcript);
+  event Running(s_id, c_peer, session, transcript);
+  event ServerFinishedSent(s_id, c_peer, transcript);
+  event Secret(s_id, c_peer, sats);
+  out(sats);
+  event ServerApplicationDataSent(s_id, c_peer, 'attacker_app', sats)
+
+let ServerRetryOnly(s_id) =
+  in(<tag_ch_recv, c_recv, rc_recv, pkec_recv, auth_algs_recv, kex_algs_recv, aead_algs_recv>);
+  let expected_ch = 'ClientHello' in
+  if tag_ch_recv = expected_ch then (
+    let selected_kex_alg = select_alg(kex_algs_recv, 'retry') in
+    let hrr = <'HelloRetryRequest', s_id, selected_kex_alg> in
+    out(hrr);
+    event OUT_HelloRetryRequest(s_id, c_recv, selected_kex_alg)
+  )
+
+let ClientRetryOnly(c_id, s_id) =
+  in(<tag_hrr_recv, s_recv, selected_kex_alg>);
+  let expected_hrr = 'HelloRetryRequest' in
+  if tag_hrr_recv = expected_hrr then (
+    if s_recv = s_id then (
+      new rc_retry;
+      new skec_retry;
+      let pkec_retry = kem_pk(skec_retry) in
+      let auth_algs_c = 'auth_algs_C' in
+      let aead_algs_c = 'aead_algs_C' in
+      let retry_ch = <'ClientHello', c_id, rc_retry, pkec_retry, auth_algs_c, selected_kex_alg, aead_algs_c> in
+      out(retry_ch);
+      event OUT_ClientHelloRetry(c_id, pkec_retry, selected_kex_alg)
+    )
+  )
+
+process:
+  new sks;
+  let pks = kem_pk(sks) in
+  let cert_s = cert('S', pks) in
+  out(pks);
+  out(cert_s);
+  (HonestNormal('C', 'S', sks, pks, cert_s) | ServerUnauthenticatedAttack('S') | ServerRetryOnly('S') | ClientRetryOnly('C', 'S'))
+
+lemma exec:
+  exists-trace
+  "Ex c s session transcript #i #j. Commit(c, s, session, transcript) @ i & ServerFinishedVerified(c, s, transcript) @ j"
+
+lemma execbis:
+  exists-trace
+  "Ex s c tr_cf tr_sf #i #j. ClientFinishedVerified(s, c, tr_cf) @ i & ServerFinishedSent(s, c, tr_sf) @ j & i < j"
+
+lemma false_secserv:
+  "All s c app sats #i #k. (Secret(s, c, sats) @ i & ServerApplicationDataSent(s, c, app, sats) @ k) ==> not (Ex #j. K(sats) @ j)"
+
+lemma auth:
+  "All c s session transcript #i. Commit(c, s, session, transcript) @ i ==> ((Ex #v. ServerFinishedVerified(c, s, transcript) @ v) & ((Ex #j. Running(s, c, session, transcript) @ j & j < i) | (Ex sk #r. RevealServerLongTermKEMKey(s, sk) @ r & r < i)))"
+
+lemma PFS_client:
+  "All cats #i #j. (Secret('C', 'S', cats) @ i & K(cats) @ j) ==> (Ex sk #r. RevealServerLongTermKEMKey('S', sk) @ r & r < i)"
+
+end
