@@ -1,0 +1,85 @@
+theory MCP_Session_Hijacking
+begin
+
+builtins: hashing
+functions: connect_or_auth/1, enqueue/2, poll/1, queue_event/2, async_or_resumed_response/2, call/2
+
+let ClientPrompt() =
+  out(connect_or_auth('Client'));
+  in(sid);
+  in(async_or_resumed_response(sid_resp, payload));
+  if sid_resp = sid then (
+    event ClientActsOnPayload('Client', payload)
+  )
+
+let ServerA() =
+  in(connect_or_auth(client_recv));
+  if client_recv = 'Client' then (
+    new sid;
+    event SessionCreated('ServerA', 'Client', sid);
+    out(sid);
+    out(poll(sid));
+    event QueuePolled('ServerA', sid);
+    in(queue_event(sid_recv, payload));
+    if sid_recv = sid then (
+      event PayloadDelivered('ServerA', 'Client', sid, payload);
+      out(async_or_resumed_response(sid, payload))
+    )
+  )
+
+let ServerB() =
+  in(<sid, payload, context>);
+  event EventEnqueued('ServerB', sid, payload);
+  out(enqueue(sid, payload))
+
+let SharedQueue() =
+  in(enqueue(sid, payload));
+  in(poll(sid_poll));
+  if sid_poll = sid then (
+    out(queue_event(sid, payload))
+  )
+
+let AttackerPromptInjector() =
+  in(sid);
+  event AttackerObtainsSession('Attacker', sid);
+  out(<sid, 'malicious_payload', 'event_context'>)
+
+let MCPServerRole() =
+  in(connect_or_auth(client_recv));
+  if client_recv = 'Client' then (
+    new sid;
+    event SessionCreated('MCPServer', 'Client', sid);
+    out(sid);
+    in(call(sid_call, request));
+    if sid_call = sid then (
+      event CallAcceptedAsSession('MCPServer', 'Attacker', 'Client', sid, request);
+      event UnauthorizedAction('MCPServer', 'Attacker', 'Client', sid, request)
+    )
+  )
+
+let AttackerSessionCaller() =
+  in(sid);
+  event AttackerObtainsSession('Attacker', sid);
+  out(call(sid, 'attacker_request'))
+
+let AuthorizationEvidenceSchema() =
+  in(<server, actor, client, sid, request>);
+  event AuthorizedInboundRequest(server, actor, client, sid, request);
+  in(<serverB, actorB, sidB, payload>);
+  event AuthorizedInboundEvent(serverB, actorB, sidB, payload)
+
+process:
+  (ClientPrompt() | ServerA() | ServerB() | SharedQueue() | AttackerPromptInjector() | MCPServerRole() | AttackerSessionCaller() | AuthorizationEvidenceSchema())
+
+lemma session_hijack_prompt_injection_reachable:
+  exists-trace
+  "Ex sid payload #i #j #k #l #m #n. SessionCreated('ServerA', 'Client', sid) @ #i & AttackerObtainsSession('Attacker', sid) @ #j & EventEnqueued('ServerB', sid, payload) @ #k & QueuePolled('ServerA', sid) @ #l & PayloadDelivered('ServerA', 'Client', sid, payload) @ #m & ClientActsOnPayload('Client', payload) @ #n & #i < #j & #j < #k & #k < #l & #l < #m & #m < #n"
+
+lemma session_hijack_impersonation_reachable:
+  exists-trace
+  "Ex sid request #i #j #k #l. SessionCreated('MCPServer', 'Client', sid) @ #i & AttackerObtainsSession('Attacker', sid) @ #j & CallAcceptedAsSession('MCPServer', 'Attacker', 'Client', sid, request) @ #k & UnauthorizedAction('MCPServer', 'Attacker', 'Client', sid, request) @ #l & #i < #j & #j < #k & #k < #l"
+
+lemma accepted_inbound_requests_are_authorized:
+  "(All server actor client sid request #i. CallAcceptedAsSession(server, actor, client, sid, request) @ #i ==> (Ex #j. AuthorizedInboundRequest(server, actor, client, sid, request) @ #j & #j < #i)) & (All serverB sid payload #i. EventEnqueued(serverB, sid, payload) @ #i ==> (Ex actor #j. AuthorizedInboundEvent(serverB, actor, sid, payload) @ #j & #j < #i))"
+
+end

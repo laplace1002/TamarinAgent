@@ -1,0 +1,691 @@
+theory MCP_Session_Hijacking
+
+begin
+
+// Function signature and definition of the equational theory E
+
+functions: async_or_resumed_response/2, call/2, connect_or_auth/1,
+           enqueue/2, fst/1, h/1, pair/2, poll/1, queue_event/2, snd/1
+equations: fst(<x.1, x.2>) = x.1, snd(<x.1, x.2>) = x.2
+
+heuristic: p
+
+lemma session_hijack_prompt_injection_reachable:
+  exists-trace
+  "∃ sid payload #i #j #k #l #m #n.
+    ((((((((((SessionCreated( 'ServerA', 'Client', sid ) @ #i) ∧
+             (AttackerObtainsSession( 'Attacker', sid ) @ #j)) ∧
+            (EventEnqueued( 'ServerB', sid, payload ) @ #k)) ∧
+           (QueuePolled( 'ServerA', sid ) @ #l)) ∧
+          (PayloadDelivered( 'ServerA', 'Client', sid, payload ) @ #m)) ∧
+         (ClientActsOnPayload( 'Client', payload ) @ #n)) ∧
+        (#i < #j)) ∧
+       (#j < #k)) ∧
+      (#k < #l)) ∧
+     (#l < #m)) ∧
+    (#m < #n)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ sid payload #i #j #k #l #m #n.
+  (SessionCreated( 'ServerA', 'Client', sid ) @ #i) ∧
+  (AttackerObtainsSession( 'Attacker', sid ) @ #j) ∧
+  (EventEnqueued( 'ServerB', sid, payload ) @ #k) ∧
+  (QueuePolled( 'ServerA', sid ) @ #l) ∧
+  (PayloadDelivered( 'ServerA', 'Client', sid, payload ) @ #m) ∧
+  (ClientActsOnPayload( 'Client', payload ) @ #n)
+ ∧
+  (#i < #j) ∧ (#j < #k) ∧ (#k < #l) ∧ (#l < #m) ∧ (#m < #n)"
+*/
+by sorry
+
+lemma session_hijack_impersonation_reachable:
+  exists-trace
+  "∃ sid request #i #j #k #l.
+    ((((((SessionCreated( 'MCPServer', 'Client', sid ) @ #i) ∧
+         (AttackerObtainsSession( 'Attacker', sid ) @ #j)) ∧
+        (CallAcceptedAsSession( 'MCPServer', 'Attacker', 'Client', sid, request
+         ) @ #k)) ∧
+       (UnauthorizedAction( 'MCPServer', 'Attacker', 'Client', sid, request
+        ) @ #l)) ∧
+      (#i < #j)) ∧
+     (#j < #k)) ∧
+    (#k < #l)"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ sid request #i #j #k #l.
+  (SessionCreated( 'MCPServer', 'Client', sid ) @ #i) ∧
+  (AttackerObtainsSession( 'Attacker', sid ) @ #j) ∧
+  (CallAcceptedAsSession( 'MCPServer', 'Attacker', 'Client', sid, request
+   ) @ #k) ∧
+  (UnauthorizedAction( 'MCPServer', 'Attacker', 'Client', sid, request
+   ) @ #l)
+ ∧
+  (#i < #j) ∧ (#j < #k) ∧ (#k < #l)"
+*/
+by sorry
+
+lemma accepted_inbound_requests_are_authorized:
+  all-traces
+  "(∀ server actor client sid request #i.
+     (CallAcceptedAsSession( server, actor, client, sid, request ) @ #i) ⇒
+     (∃ #j.
+       (AuthorizedInboundRequest( server, actor, client, sid, request ) @ #j) ∧
+       (#j < #i))) ∧
+   (∀ serverB sid payload #i.
+     (EventEnqueued( serverB, sid, payload ) @ #i) ⇒
+     (∃ actor #j.
+       (AuthorizedInboundEvent( serverB, actor, sid, payload ) @ #j) ∧
+       (#j < #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"((∃ server actor client sid request #i.
+    (CallAcceptedAsSession( server, actor, client, sid, request ) @ #i)
+   ∧
+    ∀ #j.
+     (AuthorizedInboundRequest( server, actor, client, sid, request ) @ #j)
+    ⇒
+     ¬(#j < #i)) ∨
+  (∃ serverB sid payload #i.
+    (EventEnqueued( serverB, sid, payload ) @ #i)
+   ∧
+    ∀ actor #j.
+     (AuthorizedInboundEvent( serverB, actor, sid, payload ) @ #j)
+    ⇒
+     ¬(#j < #i)))"
+*/
+by sorry
+
+rule (modulo E) Init[color=#ffffff, process="|", issapicrule,
+                     role='Process']:
+   [ ] --[ Init( ) ]-> [ State_( ) ]
+
+rule (modulo E) p_0_[color=#ffffff, process="|", issapicrule,
+                     role='Process']:
+   [ State_( ) ] --> [ State_1( ), State_2( ) ]
+
+rule (modulo E) p_0_1[color=#ffffff, process="|", issapicrule,
+                      role='Process']:
+   [ State_1( ) ] --> [ State_11( ), State_12( ) ]
+
+rule (modulo E) p_0_11[color=#ffffff, process="|", issapicrule,
+                       role='Process']:
+   [ State_11( ) ] --> [ State_111( ), State_112( ) ]
+
+rule (modulo E) p_0_111[color=#ffffff, process="|", issapicrule,
+                        role='Process']:
+   [ State_111( ) ] --> [ State_1111( ), State_1112( ) ]
+
+rule (modulo E) p_0_1111[color=#ffffff, process="|", issapicrule,
+                         role='Process']:
+   [ State_1111( ) ] --> [ State_11111( ), State_11112( ) ]
+
+rule (modulo E) p_0_11111[color=#ffffff, process="|", issapicrule,
+                          role='Process']:
+   [ State_11111( ) ] --> [ State_111111( ), State_111112( ) ]
+
+rule (modulo E) p_0_111111[color=#ffffff, process="|", issapicrule,
+                           role='Process']:
+   [ State_111111( ) ] --> [ State_1111111( ), State_1111112( ) ]
+
+rule (modulo E) ClientPrompt_0_1111111[color=#ffffff,
+                                       process="ClientPrompt()", issapicrule, role='Process']:
+   [ State_1111111( ) ] --> [ State_11111111( ), State_11111112( ) ]
+
+rule (modulo E) outconnectorauthClient_0_11111111[color=#40805f,
+                                                  process="out(connect_or_auth('Client'));", issapicrule,
+                                                  role='ClientPrompt']:
+   [ State_11111111( ) ]
+  -->
+   [ State_111111111( ), Out( connect_or_auth('Client') ) ]
+
+rule (modulo E) insid_0_111111111[color=#40805f, process="in(sid.1);",
+                                  issapicrule, role='ClientPrompt']:
+   [ State_111111111( ), In( sid.1 ) ] --> [ State_1111111111( sid.1 ) ]
+
+rule (modulo E) inasyncorresumedresponsesidresppayload_0_1111111111[color=#40805f,
+                                                                    process="in(async_or_resumed_response(sid_resp.1, payload.1));",
+                                                                    issapicrule, role='ClientPrompt']:
+   [
+   State_1111111111( sid.1 ),
+   In( async_or_resumed_response(sid_resp.1, payload.1) )
+   ]
+  -->
+   [ State_11111111111( payload.1, sid.1, sid_resp.1 ) ]
+
+rule (modulo E) ifsidrespsid_0_11111111111[color=#40805f,
+                                           process="if sid_resp.1=sid.1", issapicrule, role='ClientPrompt']:
+   [ State_11111111111( payload.1, sid.1, sid_resp.1 ) ]
+  --[ Pred_Eq( sid_resp.1, sid.1 ) ]->
+   [ State_111111111111( payload.1, sid.1, sid_resp.1 ) ]
+
+rule (modulo E) ifsidrespsid_1_11111111111[color=#40805f,
+                                           process="if sid_resp.1=sid.1", issapicrule, role='ClientPrompt']:
+   [ State_11111111111( payload.1, sid.1, sid_resp.1 ) ]
+  --[ Pred_Not_Eq( sid_resp.1, sid.1 ) ]->
+   [ State_111111111112( payload.1, sid.1, sid_resp.1 ) ]
+
+rule (modulo E) eventClientActsOnPayloadClientpayload_0_111111111111[color=#40805f,
+                                                                     process="event ClientActsOnPayload( 'Client', payload.1 );",
+                                                                     issapicrule, role='ClientPrompt']:
+   [ State_111111111111( payload.1, sid.1, sid_resp.1 ) ]
+  --[ ClientActsOnPayload( 'Client', payload.1 ) ]->
+   [ State_1111111111111( payload.1, sid.1, sid_resp.1 ) ]
+
+rule (modulo E) p_0_1111111111111[color=#40805f, process="0",
+                                  issapicrule, role='ClientPrompt']:
+   [ State_1111111111111( payload.1, sid.1, sid_resp.1 ) ] --> [ ]
+
+rule (modulo E) p_0_111111111112[color=#40805f, process="0", issapicrule,
+                                 role='ClientPrompt']:
+   [ State_111111111112( payload.1, sid.1, sid_resp.1 ) ] --> [ ]
+
+rule (modulo E) p_0_11111112[color=#ffffff, process="0", issapicrule,
+                             role='Process']:
+   [ State_11111112( ) ] --> [ ]
+
+rule (modulo E) ServerA_0_1111112[color=#ffffff, process="ServerA()",
+                                  issapicrule, role='Process']:
+   [ State_1111112( ) ] --> [ State_11111121( ), State_11111122( ) ]
+
+rule (modulo E) inconnectorauthclientrecv_0_11111121[color=#804063,
+                                                     process="in(connect_or_auth(client_recv.1));",
+                                                     issapicrule, role='ServerA']:
+   [ State_11111121( ), In( connect_or_auth(client_recv.1) ) ]
+  -->
+   [ State_111111211( client_recv.1 ) ]
+
+rule (modulo E) ifclientrecvClient_0_111111211[color=#804063,
+                                               process="if client_recv.1='Client'", issapicrule,
+                                               role='ServerA']:
+   [ State_111111211( client_recv.1 ) ]
+  --[ Pred_Eq( client_recv.1, 'Client' ) ]->
+   [ State_1111112111( client_recv.1 ) ]
+
+rule (modulo E) ifclientrecvClient_1_111111211[color=#804063,
+                                               process="if client_recv.1='Client'", issapicrule,
+                                               role='ServerA']:
+   [ State_111111211( client_recv.1 ) ]
+  --[ Pred_Not_Eq( client_recv.1, 'Client' ) ]->
+   [ State_1111112112( client_recv.1 ) ]
+
+rule (modulo E) newsid_0_1111112111[color=#804063, process="new sid.2;",
+                                    issapicrule, role='ServerA']:
+   [ State_1111112111( client_recv.1 ), Fr( sid.2 ) ]
+  -->
+   [ State_11111121111( client_recv.1, sid.2 ) ]
+
+rule (modulo E) eventSessionCreatedServerAClientsid_0_11111121111[color=#804063,
+                                                                  process="event SessionCreated( 'ServerA', 'Client', sid.2 );",
+                                                                  issapicrule, role='ServerA']:
+   [ State_11111121111( client_recv.1, sid.2 ) ]
+  --[ SessionCreated( 'ServerA', 'Client', sid.2 ) ]->
+   [ State_111111211111( client_recv.1, sid.2 ) ]
+
+rule (modulo E) outsid_0_111111211111[color=#804063,
+                                      process="out(sid.2);", issapicrule, role='ServerA']:
+   [ State_111111211111( client_recv.1, sid.2 ) ]
+  -->
+   [ State_1111112111111( client_recv.1, sid.2 ), Out( sid.2 ) ]
+
+rule (modulo E) outpollsid_0_1111112111111[color=#804063,
+                                           process="out(poll(sid.2));", issapicrule, role='ServerA']:
+   [ State_1111112111111( client_recv.1, sid.2 ) ]
+  -->
+   [ State_11111121111111( client_recv.1, sid.2 ), Out( poll(sid.2) ) ]
+
+rule (modulo E) eventQueuePolledServerAsid_0_11111121111111[color=#804063,
+                                                            process="event QueuePolled( 'ServerA', sid.2 );",
+                                                            issapicrule, role='ServerA']:
+   [ State_11111121111111( client_recv.1, sid.2 ) ]
+  --[ QueuePolled( 'ServerA', sid.2 ) ]->
+   [ State_111111211111111( client_recv.1, sid.2 ) ]
+
+rule (modulo E) inqueueeventsidrecvpayload_0_111111211111111[color=#804063,
+                                                             process="in(queue_event(sid_recv.1, payload.2));",
+                                                             issapicrule, role='ServerA']:
+   [
+   State_111111211111111( client_recv.1, sid.2 ),
+   In( queue_event(sid_recv.1, payload.2) )
+   ]
+  -->
+   [ State_1111112111111111( client_recv.1, sid_recv.1, payload.2, sid.2 ) ]
+
+rule (modulo E) ifsidrecvsid_0_1111112111111111[color=#804063,
+                                                process="if sid_recv.1=sid.2", issapicrule, role='ServerA']:
+   [ State_1111112111111111( client_recv.1, sid_recv.1, payload.2, sid.2 ) ]
+  --[ Pred_Eq( sid_recv.1, sid.2 ) ]->
+   [ State_11111121111111111( client_recv.1, sid_recv.1, payload.2, sid.2 )
+   ]
+
+rule (modulo E) ifsidrecvsid_1_1111112111111111[color=#804063,
+                                                process="if sid_recv.1=sid.2", issapicrule, role='ServerA']:
+   [ State_1111112111111111( client_recv.1, sid_recv.1, payload.2, sid.2 ) ]
+  --[ Pred_Not_Eq( sid_recv.1, sid.2 ) ]->
+   [ State_11111121111111112( client_recv.1, sid_recv.1, payload.2, sid.2 )
+   ]
+
+rule (modulo E) eventPayloadDeliveredServerAClientsidpayload_0_11111121111111111[color=#804063,
+                                                                                 process="event PayloadDelivered( 'ServerA', 'Client', sid.2, payload.2 );",
+                                                                                 issapicrule, role='ServerA']:
+   [ State_11111121111111111( client_recv.1, sid_recv.1, payload.2, sid.2 )
+   ]
+  --[ PayloadDelivered( 'ServerA', 'Client', sid.2, payload.2 ) ]->
+   [ State_111111211111111111( client_recv.1, sid_recv.1, payload.2, sid.2 )
+   ]
+
+rule (modulo E) outasyncorresumedresponsesidpayload_0_111111211111111111[color=#804063,
+                                                                         process="out(async_or_resumed_response(sid.2, payload.2));",
+                                                                         issapicrule, role='ServerA']:
+   [ State_111111211111111111( client_recv.1, sid_recv.1, payload.2, sid.2 )
+   ]
+  -->
+   [
+   State_1111112111111111111( client_recv.1, sid_recv.1, payload.2, sid.2 ),
+   Out( async_or_resumed_response(sid.2, payload.2) )
+   ]
+
+rule (modulo E) p_0_1111112111111111111[color=#804063, process="0",
+                                        issapicrule, role='ServerA']:
+   [
+   State_1111112111111111111( client_recv.1, sid_recv.1, payload.2, sid.2 )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11111121111111112[color=#804063, process="0",
+                                      issapicrule, role='ServerA']:
+   [ State_11111121111111112( client_recv.1, sid_recv.1, payload.2, sid.2 )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_1111112112[color=#804063, process="0", issapicrule,
+                               role='ServerA']:
+   [ State_1111112112( client_recv.1 ) ] --> [ ]
+
+rule (modulo E) p_0_11111122[color=#ffffff, process="0", issapicrule,
+                             role='Process']:
+   [ State_11111122( ) ] --> [ ]
+
+rule (modulo E) ServerB_0_111112[color=#ffffff, process="ServerB()",
+                                 issapicrule, role='Process']:
+   [ State_111112( ) ] --> [ State_1111121( ), State_1111122( ) ]
+
+rule (modulo E) insidpayloadcontext_0_1111121[color=#544080,
+                                              process="in(<sid.3, payload.3, context.1>);", issapicrule,
+                                              role='ServerB']:
+   [ State_1111121( ), In( <sid.3, payload.3, context.1> ) ]
+  -->
+   [ State_11111211( context.1, payload.3, sid.3 ) ]
+
+rule (modulo E) eventEventEnqueuedServerBsidpayload_0_11111211[color=#544080,
+                                                               process="event EventEnqueued( 'ServerB', sid.3, payload.3 );",
+                                                               issapicrule, role='ServerB']:
+   [ State_11111211( context.1, payload.3, sid.3 ) ]
+  --[ EventEnqueued( 'ServerB', sid.3, payload.3 ) ]->
+   [ State_111112111( context.1, payload.3, sid.3 ) ]
+
+rule (modulo E) outenqueuesidpayload_0_111112111[color=#544080,
+                                                 process="out(enqueue(sid.3, payload.3));", issapicrule,
+                                                 role='ServerB']:
+   [ State_111112111( context.1, payload.3, sid.3 ) ]
+  -->
+   [
+   State_1111121111( context.1, payload.3, sid.3 ),
+   Out( enqueue(sid.3, payload.3) )
+   ]
+
+rule (modulo E) p_0_1111121111[color=#544080, process="0", issapicrule,
+                               role='ServerB']:
+   [ State_1111121111( context.1, payload.3, sid.3 ) ] --> [ ]
+
+rule (modulo E) p_0_1111122[color=#ffffff, process="0", issapicrule,
+                            role='Process']:
+   [ State_1111122( ) ] --> [ ]
+
+rule (modulo E) SharedQueue_0_11112[color=#ffffff,
+                                    process="SharedQueue()", issapicrule, role='Process']:
+   [ State_11112( ) ] --> [ State_111121( ), State_111122( ) ]
+
+rule (modulo E) inenqueuesidpayload_0_111121[color=#6e8040,
+                                             process="in(enqueue(sid.4, payload.4));", issapicrule,
+                                             role='SharedQueue']:
+   [ State_111121( ), In( enqueue(sid.4, payload.4) ) ]
+  -->
+   [ State_1111211( payload.4, sid.4 ) ]
+
+rule (modulo E) inpollsidpoll_0_1111211[color=#6e8040,
+                                        process="in(poll(sid_poll.1));", issapicrule, role='SharedQueue']:
+   [ State_1111211( payload.4, sid.4 ), In( poll(sid_poll.1) ) ]
+  -->
+   [ State_11112111( sid_poll.1, payload.4, sid.4 ) ]
+
+rule (modulo E) ifsidpollsid_0_11112111[color=#6e8040,
+                                        process="if sid_poll.1=sid.4", issapicrule, role='SharedQueue']:
+   [ State_11112111( sid_poll.1, payload.4, sid.4 ) ]
+  --[ Pred_Eq( sid_poll.1, sid.4 ) ]->
+   [ State_111121111( sid_poll.1, payload.4, sid.4 ) ]
+
+rule (modulo E) ifsidpollsid_1_11112111[color=#6e8040,
+                                        process="if sid_poll.1=sid.4", issapicrule, role='SharedQueue']:
+   [ State_11112111( sid_poll.1, payload.4, sid.4 ) ]
+  --[ Pred_Not_Eq( sid_poll.1, sid.4 ) ]->
+   [ State_111121112( sid_poll.1, payload.4, sid.4 ) ]
+
+rule (modulo E) outqueueeventsidpayload_0_111121111[color=#6e8040,
+                                                    process="out(queue_event(sid.4, payload.4));",
+                                                    issapicrule, role='SharedQueue']:
+   [ State_111121111( sid_poll.1, payload.4, sid.4 ) ]
+  -->
+   [
+   State_1111211111( sid_poll.1, payload.4, sid.4 ),
+   Out( queue_event(sid.4, payload.4) )
+   ]
+
+rule (modulo E) p_0_1111211111[color=#6e8040, process="0", issapicrule,
+                               role='SharedQueue']:
+   [ State_1111211111( sid_poll.1, payload.4, sid.4 ) ] --> [ ]
+
+rule (modulo E) p_0_111121112[color=#6e8040, process="0", issapicrule,
+                              role='SharedQueue']:
+   [ State_111121112( sid_poll.1, payload.4, sid.4 ) ] --> [ ]
+
+rule (modulo E) p_0_111122[color=#ffffff, process="0", issapicrule,
+                           role='Process']:
+   [ State_111122( ) ] --> [ ]
+
+rule (modulo E) AttackerPromptInjector_0_1112[color=#ffffff,
+                                              process="AttackerPromptInjector()", issapicrule,
+                                              role='Process']:
+   [ State_1112( ) ] --> [ State_11121( ), State_11122( ) ]
+
+rule (modulo E) insid_0_11121[color=#628040, process="in(sid.5);",
+                              issapicrule, role='AttackerPromptInjector']:
+   [ State_11121( ), In( sid.5 ) ] --> [ State_111211( sid.5 ) ]
+
+rule (modulo E) eventAttackerObtainsSessionAttackersid_0_111211[color=#628040,
+                                                                process="event AttackerObtainsSession( 'Attacker', sid.5 );",
+                                                                issapicrule, role='AttackerPromptInjector']:
+   [ State_111211( sid.5 ) ]
+  --[ AttackerObtainsSession( 'Attacker', sid.5 ) ]->
+   [ State_1112111( sid.5 ) ]
+
+rule (modulo E) outsidmaliciouspayloadeventcontext_0_1112111[color=#628040,
+                                                             process="out(<sid.5, 'malicious_payload', 'event_context'>);",
+                                                             issapicrule, role='AttackerPromptInjector']:
+   [ State_1112111( sid.5 ) ]
+  -->
+   [
+   State_11121111( sid.5 ),
+   Out( <sid.5, 'malicious_payload', 'event_context'> )
+   ]
+
+rule (modulo E) p_0_11121111[color=#628040, process="0", issapicrule,
+                             role='AttackerPromptInjector']:
+   [ State_11121111( sid.5 ) ] --> [ ]
+
+rule (modulo E) p_0_11122[color=#ffffff, process="0", issapicrule,
+                          role='Process']:
+   [ State_11122( ) ] --> [ ]
+
+rule (modulo E) MCPServerRole_0_112[color=#ffffff,
+                                    process="MCPServerRole()", issapicrule, role='Process']:
+   [ State_112( ) ] --> [ State_1121( ), State_1122( ) ]
+
+rule (modulo E) inconnectorauthclientrecv_0_1121[color=#5b4080,
+                                                 process="in(connect_or_auth(client_recv.2));", issapicrule,
+                                                 role='MCPServerRole']:
+   [ State_1121( ), In( connect_or_auth(client_recv.2) ) ]
+  -->
+   [ State_11211( client_recv.2 ) ]
+
+rule (modulo E) ifclientrecvClient_0_11211[color=#5b4080,
+                                           process="if client_recv.2='Client'", issapicrule,
+                                           role='MCPServerRole']:
+   [ State_11211( client_recv.2 ) ]
+  --[ Pred_Eq( client_recv.2, 'Client' ) ]->
+   [ State_112111( client_recv.2 ) ]
+
+rule (modulo E) ifclientrecvClient_1_11211[color=#5b4080,
+                                           process="if client_recv.2='Client'", issapicrule,
+                                           role='MCPServerRole']:
+   [ State_11211( client_recv.2 ) ]
+  --[ Pred_Not_Eq( client_recv.2, 'Client' ) ]->
+   [ State_112112( client_recv.2 ) ]
+
+rule (modulo E) newsid_0_112111[color=#5b4080, process="new sid.6;",
+                                issapicrule, role='MCPServerRole']:
+   [ State_112111( client_recv.2 ), Fr( sid.6 ) ]
+  -->
+   [ State_1121111( client_recv.2, sid.6 ) ]
+
+rule (modulo E) eventSessionCreatedMCPServerClientsid_0_1121111[color=#5b4080,
+                                                                process="event SessionCreated( 'MCPServer', 'Client', sid.6 );",
+                                                                issapicrule, role='MCPServerRole']:
+   [ State_1121111( client_recv.2, sid.6 ) ]
+  --[ SessionCreated( 'MCPServer', 'Client', sid.6 ) ]->
+   [ State_11211111( client_recv.2, sid.6 ) ]
+
+rule (modulo E) outsid_0_11211111[color=#5b4080, process="out(sid.6);",
+                                  issapicrule, role='MCPServerRole']:
+   [ State_11211111( client_recv.2, sid.6 ) ]
+  -->
+   [ State_112111111( client_recv.2, sid.6 ), Out( sid.6 ) ]
+
+rule (modulo E) incallsidcallrequest_0_112111111[color=#5b4080,
+                                                 process="in(call(sid_call.1, request.1));", issapicrule,
+                                                 role='MCPServerRole']:
+   [
+   State_112111111( client_recv.2, sid.6 ),
+   In( call(sid_call.1, request.1) )
+   ]
+  -->
+   [ State_1121111111( request.1, sid_call.1, client_recv.2, sid.6 ) ]
+
+rule (modulo E) ifsidcallsid_0_1121111111[color=#5b4080,
+                                          process="if sid_call.1=sid.6", issapicrule, role='MCPServerRole']:
+   [ State_1121111111( request.1, sid_call.1, client_recv.2, sid.6 ) ]
+  --[ Pred_Eq( sid_call.1, sid.6 ) ]->
+   [ State_11211111111( request.1, sid_call.1, client_recv.2, sid.6 ) ]
+
+rule (modulo E) ifsidcallsid_1_1121111111[color=#5b4080,
+                                          process="if sid_call.1=sid.6", issapicrule, role='MCPServerRole']:
+   [ State_1121111111( request.1, sid_call.1, client_recv.2, sid.6 ) ]
+  --[ Pred_Not_Eq( sid_call.1, sid.6 ) ]->
+   [ State_11211111112( request.1, sid_call.1, client_recv.2, sid.6 ) ]
+
+rule (modulo E) eventCallAcceptedAsSessionMCPServerAttackerClientsidrequest_0_11211111111[color=#5b4080,
+                                                                                          process="event CallAcceptedAsSession( 'MCPServer', 'Attacker', 'Client', sid.6,
+                       request.1
+);",
+                                                                                          issapicrule,
+                                                                                          role='MCPServerRole']:
+   [ State_11211111111( request.1, sid_call.1, client_recv.2, sid.6 ) ]
+  --[
+  CallAcceptedAsSession( 'MCPServer', 'Attacker', 'Client', sid.6,
+                         request.1
+  )
+  ]->
+   [ State_112111111111( request.1, sid_call.1, client_recv.2, sid.6 ) ]
+
+rule (modulo E) eventUnauthorizedActionMCPServerAttackerClientsidrequest_0_112111111111[color=#5b4080,
+                                                                                        process="event UnauthorizedAction( 'MCPServer', 'Attacker', 'Client', sid.6,
+                    request.1
+);",
+                                                                                        issapicrule,
+                                                                                        role='MCPServerRole']:
+   [ State_112111111111( request.1, sid_call.1, client_recv.2, sid.6 ) ]
+  --[
+  UnauthorizedAction( 'MCPServer', 'Attacker', 'Client', sid.6, request.1 )
+  ]->
+   [ State_1121111111111( request.1, sid_call.1, client_recv.2, sid.6 ) ]
+
+rule (modulo E) p_0_1121111111111[color=#5b4080, process="0",
+                                  issapicrule, role='MCPServerRole']:
+   [ State_1121111111111( request.1, sid_call.1, client_recv.2, sid.6 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_11211111112[color=#5b4080, process="0", issapicrule,
+                                role='MCPServerRole']:
+   [ State_11211111112( request.1, sid_call.1, client_recv.2, sid.6 ) ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_112112[color=#5b4080, process="0", issapicrule,
+                           role='MCPServerRole']:
+   [ State_112112( client_recv.2 ) ] --> [ ]
+
+rule (modulo E) p_0_1122[color=#ffffff, process="0", issapicrule,
+                         role='Process']:
+   [ State_1122( ) ] --> [ ]
+
+rule (modulo E) AttackerSessionCaller_0_12[color=#ffffff,
+                                           process="AttackerSessionCaller()", issapicrule, role='Process']:
+   [ State_12( ) ] --> [ State_121( ), State_122( ) ]
+
+rule (modulo E) insid_0_121[color=#806040, process="in(sid.7);",
+                            issapicrule, role='AttackerSessionCaller']:
+   [ State_121( ), In( sid.7 ) ] --> [ State_1211( sid.7 ) ]
+
+rule (modulo E) eventAttackerObtainsSessionAttackersid_0_1211[color=#806040,
+                                                              process="event AttackerObtainsSession( 'Attacker', sid.7 );",
+                                                              issapicrule, role='AttackerSessionCaller']:
+   [ State_1211( sid.7 ) ]
+  --[ AttackerObtainsSession( 'Attacker', sid.7 ) ]->
+   [ State_12111( sid.7 ) ]
+
+rule (modulo E) outcallsidattackerrequest_0_12111[color=#806040,
+                                                  process="out(call(sid.7, 'attacker_request'));",
+                                                  issapicrule, role='AttackerSessionCaller']:
+   [ State_12111( sid.7 ) ]
+  -->
+   [ State_121111( sid.7 ), Out( call(sid.7, 'attacker_request') ) ]
+
+rule (modulo E) p_0_121111[color=#806040, process="0", issapicrule,
+                           role='AttackerSessionCaller']:
+   [ State_121111( sid.7 ) ] --> [ ]
+
+rule (modulo E) p_0_122[color=#ffffff, process="0", issapicrule,
+                        role='Process']:
+   [ State_122( ) ] --> [ ]
+
+rule (modulo E) AuthorizationEvidenceSchema_0_2[color=#ffffff,
+                                                process="AuthorizationEvidenceSchema()", issapicrule,
+                                                role='Process']:
+   [ State_2( ) ] --> [ State_21( ), State_22( ) ]
+
+rule (modulo E) inserveractorclientsidrequest_0_21[color=#758040,
+                                                   process="in(<server.1, actor.1, client.1, sid.8, request.2>);",
+                                                   issapicrule, role='AuthorizationEvidenceSchema']:
+   [ State_21( ), In( <server.1, actor.1, client.1, sid.8, request.2> ) ]
+  -->
+   [ State_211( actor.1, client.1, server.1, request.2, sid.8 ) ]
+
+rule (modulo E) eventAuthorizedInboundRequestserveractorclientsidrequest_0_211[color=#758040,
+                                                                               process="event AuthorizedInboundRequest( server.1, actor.1, client.1, sid.8,
+                          request.2
+);",
+                                                                               issapicrule,
+                                                                               role='AuthorizationEvidenceSchema']:
+   [ State_211( actor.1, client.1, server.1, request.2, sid.8 ) ]
+  --[
+  AuthorizedInboundRequest( server.1, actor.1, client.1, sid.8, request.2 )
+  ]->
+   [ State_2111( actor.1, client.1, server.1, request.2, sid.8 ) ]
+
+rule (modulo E) inserverBactorBsidBpayload_0_2111[color=#758040,
+                                                  process="in(<serverB.1, actorB.1, sidB.1, payload.5>);",
+                                                  issapicrule, role='AuthorizationEvidenceSchema']:
+   [
+   State_2111( actor.1, client.1, server.1, request.2, sid.8 ),
+   In( <serverB.1, actorB.1, sidB.1, payload.5> )
+   ]
+  -->
+   [
+   State_21111( actor.1, actorB.1, client.1, server.1, serverB.1, sidB.1,
+                request.2, payload.5, sid.8
+   )
+   ]
+
+rule (modulo E) eventAuthorizedInboundEventserverBactorBsidBpayload_0_21111[color=#758040,
+                                                                            process="event AuthorizedInboundEvent( serverB.1, actorB.1, sidB.1, payload.5 );",
+                                                                            issapicrule,
+                                                                            role='AuthorizationEvidenceSchema']:
+   [
+   State_21111( actor.1, actorB.1, client.1, server.1, serverB.1, sidB.1,
+                request.2, payload.5, sid.8
+   )
+   ]
+  --[ AuthorizedInboundEvent( serverB.1, actorB.1, sidB.1, payload.5 ) ]->
+   [
+   State_211111( actor.1, actorB.1, client.1, server.1, serverB.1, sidB.1,
+                 request.2, payload.5, sid.8
+   )
+   ]
+
+rule (modulo E) p_0_211111[color=#758040, process="0", issapicrule,
+                           role='AuthorizationEvidenceSchema']:
+   [
+   State_211111( actor.1, actorB.1, client.1, server.1, serverB.1, sidB.1,
+                 request.2, payload.5, sid.8
+   )
+   ]
+  -->
+   [ ]
+
+rule (modulo E) p_0_22[color=#ffffff, process="0", issapicrule,
+                       role='Process']:
+   [ State_22( ) ] --> [ ]
+
+restriction predicate_eq:
+  "∀ #i a b. (Pred_Eq( a, b ) @ #i) ⇒ (a = b)"
+  // safety formula
+
+restriction predicate_not_eq:
+  "∀ #i a b. (Pred_Not_Eq( a, b ) @ #i) ⇒ (¬(a = b))"
+  // safety formula
+
+restriction single_session:
+  "∀ #i #j. ((Init( ) @ #i) ∧ (Init( ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+/*
+WARNING: the following wellformedness checks failed!
+
+Message Derivation Checks
+=========================
+
+  The variables of the following rule(s) are not derivable from their premises, you may be performing unintended pattern matching.
+
+Rule inasyncorresumedresponsesidresppayload_0_1111111111: 
+Failed to derive Variable(s): payload.1, sid_resp.1
+
+Rule inconnectorauthclientrecv_0_11111121: 
+Failed to derive Variable(s): client_recv.1
+
+Rule inqueueeventsidrecvpayload_0_111111211111111: 
+Failed to derive Variable(s): sid_recv.1, payload.2
+
+Rule inenqueuesidpayload_0_111121: 
+Failed to derive Variable(s): payload.4, sid.4
+
+Rule inpollsidpoll_0_1111211: 
+Failed to derive Variable(s): sid_poll.1
+
+Rule inconnectorauthclientrecv_0_1121: 
+Failed to derive Variable(s): client_recv.2
+
+Rule incallsidcallrequest_0_112111111: 
+Failed to derive Variable(s): request.1, sid_call.1
+*/
+
+/*
+Generated from:
+Tamarin version 1.12.0
+Maude version 3.5.1
+Git revision: UNKNOWN, branch: UNKNOWN
+Compiled at: 2026-03-08 09:49:47.765662 UTC
+*/
+
+end

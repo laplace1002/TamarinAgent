@@ -1,0 +1,1675 @@
+{
+  "schema": "protocol_ir_pipeline_protocol_ir_v1",
+  "protocol_name": "MCP_Session_Hijacking",
+  "roles": [
+    "Client",
+    "ServerA",
+    "ServerB",
+    "MCPServer",
+    "SharedQueue",
+    "Attacker"
+  ],
+  "principals": [
+    {
+      "name": "Client",
+      "role_hint": "Client"
+    },
+    {
+      "name": "ServerA",
+      "role_hint": "ServerA"
+    },
+    {
+      "name": "ServerB",
+      "role_hint": "ServerB"
+    },
+    {
+      "name": "MCPServer",
+      "role_hint": "MCPServer"
+    },
+    {
+      "name": "SharedQueue",
+      "role_hint": "SharedQueue"
+    },
+    {
+      "name": "Attacker",
+      "role_hint": "Attacker"
+    }
+  ],
+  "crypto": {
+    "builtins": [
+      "hashing"
+    ],
+    "functions": [],
+    "equations": [],
+    "assumptions": []
+  },
+  "fresh_terms": [
+    {
+      "name": "~sid",
+      "owner": "ServerA",
+      "purpose": "session ID generated or provided by the server to the client"
+    }
+  ],
+  "long_term_keys": [],
+  "messages": [
+    {
+      "label": "M1_connect",
+      "step": 1,
+      "from": "Client",
+      "to": "ServerA",
+      "protection": "unspecified HTTP/application request; no cryptographic protection stated",
+      "term": "connect_or_auth(Client)",
+      "meaning": "The client connects to a stateful MCP HTTP server instance and requests or establishes a session.",
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2_session_id",
+      "step": 2,
+      "from": "ServerA",
+      "to": "Client",
+      "protection": "session identifier only; no cryptographic binding stated",
+      "term": "~sid",
+      "meaning": "Server A provides a session ID to the client.",
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M3_attacker_event_to_serverB",
+      "step": 3,
+      "from": "Attacker",
+      "to": "ServerB",
+      "protection": "possession of session ID only in vulnerable flow; no additional authorization check stated",
+      "term": "<~sid, malicious_payload, event_context>",
+      "meaning": "The attacker uses an obtained existing session ID to send a malicious event to Server B.",
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": [
+        "malicious_payload content may be application-level data"
+      ]
+    },
+    {
+      "label": "M4_enqueue_shared_queue",
+      "step": 4,
+      "from": "ServerB",
+      "to": "SharedQueue",
+      "protection": "shared queue association by session ID; no user binding stated in attack variant",
+      "term": "enqueue(~sid, malicious_payload)",
+      "meaning": "Server B enqueues the malicious event in a shared queue associated with the supplied session ID.",
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": [
+        "malicious_payload"
+      ]
+    },
+    {
+      "label": "M5_poll_queue",
+      "step": 5,
+      "from": "ServerA",
+      "to": "SharedQueue",
+      "protection": "queue lookup by session ID",
+      "term": "poll(~sid)",
+      "meaning": "Server A polls the shared queue for events using the session ID.",
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M6_queue_returns_payload",
+      "step": 6,
+      "from": "SharedQueue",
+      "to": "ServerA",
+      "protection": "queue result associated with session ID",
+      "term": "event(~sid, malicious_payload)",
+      "meaning": "The shared queue returns the malicious payload associated with the session ID.",
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": [
+        "malicious_payload until application handling"
+      ]
+    },
+    {
+      "label": "M7_serverA_to_client_payload",
+      "step": 7,
+      "from": "ServerA",
+      "to": "Client",
+      "protection": "server response within session context; no payload authentication stated",
+      "term": "async_or_resumed_response(~sid, malicious_payload)",
+      "meaning": "Server A sends the malicious payload to the client as an asynchronous or resumed response.",
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M8_attacker_call_with_session",
+      "step": 8,
+      "from": "Attacker",
+      "to": "MCPServer",
+      "protection": "session ID used as bearer-style credential in vulnerable flow",
+      "term": "call(~sid, attacker_request)",
+      "meaning": "The attacker makes MCP calls using the obtained session ID.",
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "Client_connects_to_ServerA",
+      "role": "Client",
+      "kind": "send",
+      "generates": [],
+      "message_in": [],
+      "message_out": [
+        "M1_connect"
+      ],
+      "checks": [],
+      "events": []
+    },
+    {
+      "action_id": "ServerA_issues_session_id",
+      "role": "ServerA",
+      "kind": "receive_generate_send",
+      "generates": [
+        "~sid"
+      ],
+      "message_in": [
+        "M1_connect"
+      ],
+      "message_out": [
+        "M2_session_id"
+      ],
+      "checks": [],
+      "events": [
+        "SessionCreated(ServerA, Client, ~sid)"
+      ]
+    },
+    {
+      "action_id": "Attacker_obtains_session_id",
+      "role": "Attacker",
+      "kind": "compromise_or_obtain",
+      "generates": [],
+      "message_in": [],
+      "message_out": [],
+      "checks": [],
+      "events": [
+        "AttackerObtainsSession(Attacker, ~sid)"
+      ]
+    },
+    {
+      "action_id": "Attacker_sends_malicious_event",
+      "role": "Attacker",
+      "kind": "send",
+      "generates": [],
+      "message_in": [],
+      "message_out": [
+        "M3_attacker_event_to_serverB"
+      ],
+      "checks": [
+        "requires attacker knowledge of ~sid"
+      ],
+      "events": []
+    },
+    {
+      "action_id": "ServerB_enqueue_event",
+      "role": "ServerB",
+      "kind": "receive_store_or_forward",
+      "generates": [],
+      "message_in": [
+        "M3_attacker_event_to_serverB"
+      ],
+      "message_out": [
+        "M4_enqueue_shared_queue"
+      ],
+      "checks": [
+        "missing inbound authorization/user binding check in described attack variant"
+      ],
+      "events": [
+        "EventEnqueued(ServerB, ~sid, malicious_payload)"
+      ]
+    },
+    {
+      "action_id": "ServerA_polls_queue",
+      "role": "ServerA",
+      "kind": "send_receive",
+      "generates": [],
+      "message_in": [
+        "M6_queue_returns_payload"
+      ],
+      "message_out": [
+        "M5_poll_queue"
+      ],
+      "checks": [],
+      "events": [
+        "QueuePolled(ServerA, ~sid)"
+      ]
+    },
+    {
+      "action_id": "ServerA_delivers_payload",
+      "role": "ServerA",
+      "kind": "send",
+      "generates": [],
+      "message_in": [
+        "M6_queue_returns_payload"
+      ],
+      "message_out": [
+        "M7_serverA_to_client_payload"
+      ],
+      "checks": [],
+      "events": [
+        "PayloadDelivered(ServerA, Client, ~sid, malicious_payload)"
+      ]
+    },
+    {
+      "action_id": "Client_acts_on_payload",
+      "role": "Client",
+      "kind": "receive_process",
+      "generates": [],
+      "message_in": [
+        "M7_serverA_to_client_payload"
+      ],
+      "message_out": [],
+      "checks": [],
+      "events": [
+        "ClientActsOnPayload(Client, malicious_payload)"
+      ]
+    },
+    {
+      "action_id": "Attacker_makes_call_with_session",
+      "role": "Attacker",
+      "kind": "send",
+      "generates": [],
+      "message_in": [],
+      "message_out": [
+        "M8_attacker_call_with_session"
+      ],
+      "checks": [
+        "requires attacker knowledge of ~sid"
+      ],
+      "events": []
+    },
+    {
+      "action_id": "MCPServer_accepts_attacker_call",
+      "role": "MCPServer",
+      "kind": "receive_accept",
+      "generates": [],
+      "message_in": [
+        "M8_attacker_call_with_session"
+      ],
+      "message_out": [],
+      "checks": [
+        "missing additional authorization check beyond session ID in described impersonation attack variant"
+      ],
+      "events": [
+        "CallAcceptedAsSession(MCPServer, Attacker, Client, ~sid, attacker_request)",
+        "UnauthorizedAction(MCPServer, Attacker, Client, ~sid, attacker_request)"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "role": "ServerB",
+      "condition": "Accept the supplied session ID for routing and enqueue the event under that ID in the documented vulnerable scenario. The source does not specify whether Server B separately authenticates the inbound request.",
+      "source_message": "M3_attacker_event_to_serverB",
+      "action": "ServerB_enqueue_event"
+    },
+    {
+      "role": "MCPServer",
+      "condition": "missing additional authorization check; possession of the session ID is treated as sufficient for the attacker call",
+      "source_message": "M8_attacker_call_with_session",
+      "action": "MCPServer_accepts_attacker_call"
+    },
+    {
+      "role": "Attacker",
+      "condition": "requires attacker knowledge of ~sid",
+      "source_message": "",
+      "action": "Attacker_sends_malicious_event"
+    },
+    {
+      "role": "ServerB",
+      "condition": "Accept the supplied session ID for routing and enqueue the event under that ID in the documented vulnerable scenario. The source does not specify whether Server B separately authenticates the inbound request.",
+      "source_message": "M3_attacker_event_to_serverB",
+      "action": "ServerB_enqueue_event"
+    },
+    {
+      "role": "Attacker",
+      "condition": "requires attacker knowledge of ~sid",
+      "source_message": "",
+      "action": "Attacker_makes_call_with_session"
+    },
+    {
+      "role": "MCPServer",
+      "condition": "missing additional authorization check beyond session ID in described impersonation attack variant",
+      "source_message": "M8_attacker_call_with_session",
+      "action": "MCPServer_accepts_attacker_call"
+    }
+  ],
+  "events": [
+    {
+      "name": "SessionCreated",
+      "role": "ServerA",
+      "when": "after the client connects to Server A and receives a session ID",
+      "arguments": [
+        "server",
+        "client",
+        "sid"
+      ],
+      "proof_relevance": [
+        "session_hijack_prompt_injection_reachable",
+        "session_hijack_impersonation_reachable"
+      ]
+    },
+    {
+      "name": "AttackerObtainsSession",
+      "role": "Attacker",
+      "when": "when the attacker obtains an existing session ID",
+      "arguments": [
+        "attacker",
+        "sid"
+      ],
+      "proof_relevance": [
+        "session_hijack_prompt_injection_reachable",
+        "session_hijack_impersonation_reachable"
+      ]
+    },
+    {
+      "name": "EventEnqueued",
+      "role": "ServerB",
+      "when": "after Server B accepts and enqueues the malicious event associated with the session ID",
+      "arguments": [
+        "serverB",
+        "sid",
+        "payload"
+      ],
+      "proof_relevance": [
+        "session_hijack_prompt_injection_reachable",
+        "accepted_inbound_requests_are_authorized"
+      ]
+    },
+    {
+      "name": "QueuePolled",
+      "role": "ServerA",
+      "when": "when Server A polls the shared queue using the session ID",
+      "arguments": [
+        "serverA",
+        "sid"
+      ],
+      "proof_relevance": [
+        "session_hijack_prompt_injection_reachable"
+      ]
+    },
+    {
+      "name": "PayloadDelivered",
+      "role": "ServerA",
+      "when": "when Server A sends the malicious payload to the client as an asynchronous or resumed response",
+      "arguments": [
+        "serverA",
+        "client",
+        "sid",
+        "payload"
+      ],
+      "proof_relevance": [
+        "session_hijack_prompt_injection_reachable"
+      ]
+    },
+    {
+      "name": "ClientActsOnPayload",
+      "role": "Client",
+      "when": "after the client receives and acts on the malicious payload",
+      "arguments": [
+        "client",
+        "payload"
+      ],
+      "proof_relevance": [
+        "session_hijack_prompt_injection_reachable"
+      ]
+    },
+    {
+      "name": "CallAcceptedAsSession",
+      "role": "MCPServer",
+      "when": "when the MCP server treats an attacker call using the session ID as a legitimate client call",
+      "arguments": [
+        "server",
+        "attacker",
+        "client",
+        "sid",
+        "request"
+      ],
+      "proof_relevance": [
+        "session_hijack_impersonation_reachable",
+        "accepted_inbound_requests_are_authorized"
+      ]
+    },
+    {
+      "name": "UnauthorizedAction",
+      "role": "MCPServer",
+      "when": "when the attacker obtains unauthorized access or performs unauthorized actions through the session ID",
+      "arguments": [
+        "server",
+        "attacker",
+        "client",
+        "sid",
+        "request"
+      ],
+      "proof_relevance": [
+        "session_hijack_impersonation_reachable"
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "lemma_name": "session_hijack_prompt_injection_reachable",
+      "claim_category": "",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "There should be a candidate attack trace in which an attacker who has obtained an existing session ID injects a malicious event through Server B, Server A retrieves it via the shared queue, and the client acts on it.",
+      "event_schema": [
+        "SessionCreated(ServerA, Client, sid)",
+        "AttackerObtainsSession(Attacker, sid)",
+        "EventEnqueued(ServerB, sid, payload)",
+        "QueuePolled(ServerA, sid)",
+        "PayloadDelivered(ServerA, Client, sid, payload)",
+        "ClientActsOnPayload(Client, payload)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "Client receives sid from Server A; attacker obtains sid; attacker sends malicious event with sid to Server B; Server B enqueues under sid; Server A polls by sid and delivers payload to client; client acts on payload."
+    },
+    {
+      "lemma_name": "session_hijack_impersonation_reachable",
+      "claim_category": "",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "There should be a candidate attack trace in which an attacker obtains a persistent session ID and makes MCP calls that the server accepts as the original client.",
+      "event_schema": [
+        "SessionCreated(MCPServer, Client, sid)",
+        "AttackerObtainsSession(Attacker, sid)",
+        "CallAcceptedAsSession(MCPServer, Attacker, Client, sid, request)",
+        "UnauthorizedAction(MCPServer, Attacker, Client, sid, request)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "MCP client authenticates and receives a persistent session ID; attacker obtains the session ID; attacker calls the MCP server using it; server performs no additional authorization check and treats attacker as legitimate."
+    },
+    {
+      "lemma_name": "accepted_inbound_requests_are_authorized",
+      "claim_category": "",
+      "goal_type": "authentication",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "Candidate safety property for review: every inbound request or event accepted as belonging to a client session should be authorized for that client, not merely carry a session ID. The described vulnerable flows are expected to violate this unless the stated mitigation is modeled.",
+      "event_schema": [
+        "CallAcceptedAsSession(server, actor, client, sid, request)",
+        "AuthorizedInboundRequest(server, actor, client, sid, request)",
+        "EventEnqueued(serverB, sid, payload)",
+        "AuthorizedInboundEvent(serverB, actor, sid, payload)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "Unsupported as a guarantee for the vulnerable flow; grounded as a mitigation obligation by the MUST verify language."
+    }
+  ],
+  "compromise": {
+    "reveal_events": [
+      "AttackerObtainsSession(Attacker, sid)"
+    ],
+    "policy": "The attacker obtaining an existing session ID is modeled as an explicit compromise/obtain event. The input does not specify whether the session ID is leaked, stolen, guessed, logged, observed on the network, or obtained by another channel. Lemmas that exclude compromise should state timing exceptions around AttackerObtainsSession."
+  },
+  "abstractions": [
+    "HTTP connection mechanics, TLS, cookies, headers, and MCP payload formats are abstracted into symbolic request/response terms.",
+    "Server-sent events, resumable streams, redelivery, deliberate request termination, and asynchronous responses are represented by async_or_resumed_response and queue polling/delivery events.",
+    "The shared queue is modeled as a separate role that stores events keyed by session ID.",
+    "The malicious payload is symbolic; the specific prompt injection, tool-list change, or unauthorized action semantics are not expanded.",
+    "Mitigations are recorded as obligations and modeling alternatives, not silently applied to the vulnerable attack flow."
+  ],
+  "modeling_assumptions": [
+    "Server A and Server B are distinct stateful MCP HTTP server instances that can share queue state associated with a session ID.",
+    "The attack flow uses the session ID as the effective correlation or bearer value unless additional authorization is explicitly modeled.",
+    "Attacker knowledge of the existing session ID is not derived from guessing in this IR; it is introduced by AttackerObtainsSession because the source says the attacker obtains the session ID.",
+    "No user-specific queue key such as <user_id>:<session_id> is applied in the vulnerable prompt-injection flow.",
+    "No additional inbound request verification is applied in the impersonation flow, matching the source phrase that the server does not check for additional authorization."
+  ],
+  "resolved_open_questions": [],
+  "semantic_constraints": [
+    {
+      "kind": "text_policy",
+      "policy": "ServerB_enqueue_event must consume the same sid value supplied by the attacker in M3_attacker_event_to_serverB and associate malicious_payload with that sid."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "ServerA_polls_queue must use the same sid value that was issued to the client or otherwise belongs to the client session."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "PayloadDelivered and ClientActsOnPayload are only meaningful if malicious_payload originated from the attacker event or queue entry."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "CallAcceptedAsSession in the impersonation variant occurs without an additional authorization check beyond the supplied session ID."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The mitigation requirement that servers MUST verify inbound requests should not be assumed in attack-reachability claims unless a separate hardened variant is explicitly modeled."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "messages.0.protection",
+      "review_status": "needs_review",
+      "priority_score": 0.488,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "messages.1.protection",
+      "review_status": "needs_review",
+      "priority_score": 0.36,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "messages.2.protection",
+      "review_status": "needs_review",
+      "priority_score": 0.342,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.2.intent",
+      "review_status": "needs_review",
+      "priority_score": 0.144,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.2.witness",
+      "review_status": "needs_review",
+      "priority_score": 0.144,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    }
+  ],
+  "field_evidence": [
+    {
+      "field_path": "fresh_terms.0.name",
+      "source_quote": "receives a session ID",
+      "evidence_kind": "direct",
+      "reason": "The input names the session ID but not a symbolic variable; ~sid is the parser's symbolic fresh name.",
+      "priority_llm": 0.55,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "fresh_terms.0.owner",
+      "source_quote": "a client is provided a session ID by the server",
+      "evidence_kind": "direct",
+      "reason": "The server provides the session ID.",
+      "priority_llm": 0.45,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "fresh_terms.0.purpose",
+      "source_quote": "MCP servers MUST use secure, non-deterministic session IDs.",
+      "evidence_kind": "direct",
+      "reason": "The mitigation describes server-generated secure session IDs; the attack also refers to an existing session ID.",
+      "priority_llm": 0.7,
+      "evidence_confidence_score": 0.84,
+      "consistency_confidence_score": 0.72,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.0.label",
+      "source_quote": "The client connects to Server A",
+      "evidence_kind": "nearby",
+      "reason": "Label summarizes the first connection step.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.82,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "messages.0.from",
+      "source_quote": "The client connects to Server A",
+      "evidence_kind": "direct",
+      "reason": "The source explicitly names the client as initiating the connection.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "messages.0.to",
+      "source_quote": "The client connects to Server A",
+      "evidence_kind": "direct",
+      "reason": "The source explicitly names Server A as the connection target.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "messages.0.protection",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No cryptographic or transport protection is specified for the connection request.",
+      "priority_llm": 0.85,
+      "evidence_confidence_score": 0.35,
+      "consistency_confidence_score": 0.7,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.0.term",
+      "source_quote": "The client connects to Server A",
+      "evidence_kind": "nearby",
+      "reason": "connect_or_auth(Client) abstracts the connection/authentication initiation.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.76,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.55
+    },
+    {
+      "field_path": "messages.0.meaning",
+      "source_quote": "The client connects to Server A and receives a session ID.",
+      "evidence_kind": "direct",
+      "reason": "Meaning restates the source step.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.6
+    },
+    {
+      "field_path": "messages.1.label",
+      "source_quote": "receives a session ID",
+      "evidence_kind": "nearby",
+      "reason": "Label summarizes the server-to-client session ID message.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "messages.1.from",
+      "source_quote": "a client is provided a session ID by the server",
+      "evidence_kind": "direct",
+      "reason": "The session ID is provided by the server.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.88,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "messages.1.to",
+      "source_quote": "The client connects to Server A and receives a session ID.",
+      "evidence_kind": "direct",
+      "reason": "The client receives the session ID.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "messages.1.protection",
+      "source_quote": "session ID",
+      "evidence_kind": "nearby",
+      "reason": "The input describes a session identifier but no cryptographic binding.",
+      "priority_llm": 0.85,
+      "evidence_confidence_score": 0.55,
+      "consistency_confidence_score": 0.72,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.1.term",
+      "source_quote": "receives a session ID",
+      "evidence_kind": "direct",
+      "reason": "~sid is the symbolic session ID.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "messages.1.meaning",
+      "source_quote": "receives a session ID",
+      "evidence_kind": "direct",
+      "reason": "Meaning directly restates the server providing the session ID.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "messages.2.label",
+      "source_quote": "The attacker obtains an existing session ID and sends a malicious event to Server B with said session ID.",
+      "evidence_kind": "nearby",
+      "reason": "Label summarizes the attacker event send.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "messages.2.from",
+      "source_quote": "The attacker obtains an existing session ID and sends a malicious event",
+      "evidence_kind": "direct",
+      "reason": "The source explicitly identifies the attacker as sender.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.2.to",
+      "source_quote": "sends a malicious event to Server B",
+      "evidence_kind": "direct",
+      "reason": "The source explicitly names Server B as recipient.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.2.protection",
+      "source_quote": "MCP server does not check for additional authorization and treats the attacker as a legitimate user",
+      "evidence_kind": "nearby",
+      "reason": "The no-additional-authorization phrasing is direct for impersonation and nearby support for bearer-session behavior in the event attack.",
+      "priority_llm": 0.9,
+      "evidence_confidence_score": 0.62,
+      "consistency_confidence_score": 0.68,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.2.term",
+      "source_quote": "sends a malicious event to Server B with said session ID",
+      "evidence_kind": "direct",
+      "reason": "The term includes the session ID and malicious payload/event.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.2.meaning",
+      "source_quote": "The attacker obtains an existing session ID and sends a malicious event to Server B with said session ID.",
+      "evidence_kind": "direct",
+      "reason": "Meaning restates the source step.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "messages.3.label",
+      "source_quote": "Server B enqueues the event",
+      "evidence_kind": "nearby",
+      "reason": "Label summarizes enqueue step.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.84,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "messages.3.from",
+      "source_quote": "Server B enqueues the event",
+      "evidence_kind": "direct",
+      "reason": "Server B performs the enqueue.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.3.to",
+      "source_quote": "into a shared queue",
+      "evidence_kind": "direct",
+      "reason": "The queue is the destination of the enqueue.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.3.protection",
+      "source_quote": "associated with session ID",
+      "evidence_kind": "direct",
+      "reason": "The attack variant says queue association uses the session ID; user binding is only mitigation text.",
+      "priority_llm": 0.8,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.82,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.3.term",
+      "source_quote": "Server B enqueues the event (associated with session ID) into a shared queue.",
+      "evidence_kind": "direct",
+      "reason": "enqueue(~sid, malicious_payload) directly represents this step.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.3.meaning",
+      "source_quote": "Server B enqueues the event (associated with session ID) into a shared queue.",
+      "evidence_kind": "direct",
+      "reason": "Meaning restates the enqueue step.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.4.label",
+      "source_quote": "Server A polls the queue",
+      "evidence_kind": "nearby",
+      "reason": "Label summarizes polling step.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.84,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "messages.4.from",
+      "source_quote": "Server A polls the queue",
+      "evidence_kind": "direct",
+      "reason": "Server A performs the poll.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.4.to",
+      "source_quote": "polls the queue",
+      "evidence_kind": "direct",
+      "reason": "The queue is polled.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "messages.4.protection",
+      "source_quote": "using the session ID",
+      "evidence_kind": "direct",
+      "reason": "The poll uses the session ID as lookup key.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "messages.4.term",
+      "source_quote": "polls the queue for events using the session ID",
+      "evidence_kind": "direct",
+      "reason": "poll(~sid) models this step.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "messages.4.meaning",
+      "source_quote": "Server A polls the queue for events using the session ID",
+      "evidence_kind": "direct",
+      "reason": "Meaning restates the polling step.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "messages.5.label",
+      "source_quote": "retrieves the malicious payload",
+      "evidence_kind": "nearby",
+      "reason": "Label summarizes queue return.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.82,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "messages.5.from",
+      "source_quote": "polls the queue for events using the session ID and retrieves the malicious payload",
+      "evidence_kind": "nearby",
+      "reason": "The queue is the source of the retrieved payload.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.84,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "messages.5.to",
+      "source_quote": "Server A polls the queue for events using the session ID and retrieves the malicious payload",
+      "evidence_kind": "direct",
+      "reason": "Server A receives the retrieved payload.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "messages.5.protection",
+      "source_quote": "associated with session ID",
+      "evidence_kind": "nearby",
+      "reason": "The queue result is tied to session-ID association.",
+      "priority_llm": 0.45,
+      "evidence_confidence_score": 0.78,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.5.term",
+      "source_quote": "retrieves the malicious payload",
+      "evidence_kind": "direct",
+      "reason": "event(~sid, malicious_payload) models the retrieved payload with its session association.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "messages.5.meaning",
+      "source_quote": "retrieves the malicious payload",
+      "evidence_kind": "direct",
+      "reason": "Meaning restates the queue return.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "messages.6.label",
+      "source_quote": "Server A sends the malicious payload to the client",
+      "evidence_kind": "nearby",
+      "reason": "Label summarizes delivery to client.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.84,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "messages.6.from",
+      "source_quote": "Server A sends the malicious payload to the client",
+      "evidence_kind": "direct",
+      "reason": "Server A is explicitly the sender.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.6.to",
+      "source_quote": "to the client",
+      "evidence_kind": "direct",
+      "reason": "Client is explicitly the recipient.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.6.protection",
+      "source_quote": "as an asynchronous or resumed response",
+      "evidence_kind": "direct",
+      "reason": "The source gives response context but no payload authentication.",
+      "priority_llm": 0.6,
+      "evidence_confidence_score": 0.76,
+      "consistency_confidence_score": 0.78,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.6.term",
+      "source_quote": "sends the malicious payload to the client as an asynchronous or resumed response",
+      "evidence_kind": "direct",
+      "reason": "async_or_resumed_response(~sid, malicious_payload) represents this delivery.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "messages.6.meaning",
+      "source_quote": "Server A sends the malicious payload to the client as an asynchronous or resumed response.",
+      "evidence_kind": "direct",
+      "reason": "Meaning restates the source step.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.7.label",
+      "source_quote": "The attacker makes calls to the MCP server using the session ID.",
+      "evidence_kind": "nearby",
+      "reason": "Label summarizes attacker call.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "messages.7.from",
+      "source_quote": "The attacker makes calls",
+      "evidence_kind": "direct",
+      "reason": "The attacker is explicitly the caller.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.7.to",
+      "source_quote": "to the MCP server",
+      "evidence_kind": "direct",
+      "reason": "The MCP server is explicitly the target.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.7.protection",
+      "source_quote": "using the session ID",
+      "evidence_kind": "direct",
+      "reason": "The call uses the session ID; the following text says no additional authorization is checked.",
+      "priority_llm": 0.7,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.88,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.7.term",
+      "source_quote": "The attacker makes calls to the MCP server using the session ID.",
+      "evidence_kind": "direct",
+      "reason": "call(~sid, attacker_request) models an attacker call carrying the session ID.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "messages.7.meaning",
+      "source_quote": "The attacker makes calls to the MCP server using the session ID.",
+      "evidence_kind": "direct",
+      "reason": "Meaning restates the impersonation call.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "checks.0.role",
+      "source_quote": "Server B enqueues the event (associated with session ID) into a shared queue.",
+      "evidence_kind": "nearby",
+      "reason": "The missing authorization/user-binding check is inferred from Server B accepting the attacker event and from mitigation text.",
+      "priority_llm": 0.85,
+      "evidence_confidence_score": 0.72,
+      "consistency_confidence_score": 0.76,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "checks.0.condition",
+      "source_quote": "MCP servers that implement authorization MUST verify all inbound requests. MCP Servers MUST NOT use sessions for authentication.",
+      "evidence_kind": "nearby",
+      "reason": "The mitigation implies the vulnerable attack lacks sufficient inbound verification or user binding.",
+      "priority_llm": 0.9,
+      "evidence_confidence_score": 0.7,
+      "consistency_confidence_score": 0.74,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "checks.0.source_message",
+      "source_quote": "sends a malicious event to Server B with said session ID",
+      "evidence_kind": "direct",
+      "reason": "The check/absence applies to the inbound attacker event message.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "checks.0.action",
+      "source_quote": "Server B enqueues the event",
+      "evidence_kind": "direct",
+      "reason": "The action is the enqueue operation by Server B.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "checks.1.role",
+      "source_quote": "MCP server does not check for additional authorization",
+      "evidence_kind": "direct",
+      "reason": "The MCP server is explicitly the party failing to check additional authorization.",
+      "priority_llm": 0.55,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "checks.1.condition",
+      "source_quote": "MCP server does not check for additional authorization and treats the attacker as a legitimate user",
+      "evidence_kind": "direct",
+      "reason": "Condition directly records the missing check.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 0.98
+    },
+    {
+      "field_path": "checks.1.source_message",
+      "source_quote": "The attacker makes calls to the MCP server using the session ID.",
+      "evidence_kind": "direct",
+      "reason": "The missing check applies to this inbound call.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.1.action",
+      "source_quote": "treats the attacker as a legitimate user",
+      "evidence_kind": "direct",
+      "reason": "The server acceptance action is grounded in this phrase.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "events.0.name",
+      "source_quote": "creating a persistent session ID",
+      "evidence_kind": "nearby",
+      "reason": "SessionCreated names the creation/provisioning event.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.78,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "events.0.role",
+      "source_quote": "provided a session ID by the server",
+      "evidence_kind": "direct",
+      "reason": "The server creates/provides the session ID.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "events.0.when",
+      "source_quote": "The client connects to Server A and receives a session ID.",
+      "evidence_kind": "direct",
+      "reason": "The event occurs after this step.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.6
+    },
+    {
+      "field_path": "events.0.arguments",
+      "source_quote": "client ... Server A ... session ID",
+      "evidence_kind": "direct",
+      "reason": "Arguments are server, client, and session ID.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "events.1.name",
+      "source_quote": "The attacker obtains the session ID.",
+      "evidence_kind": "direct",
+      "reason": "Event name directly reflects the compromise/obtain step.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "events.1.role",
+      "source_quote": "The attacker obtains the session ID.",
+      "evidence_kind": "direct",
+      "reason": "The attacker performs the obtain action.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.1.when",
+      "source_quote": "The attacker obtains an existing session ID",
+      "evidence_kind": "direct",
+      "reason": "The event occurs when the attacker obtains the session ID.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.1.arguments",
+      "source_quote": "attacker obtains ... session ID",
+      "evidence_kind": "direct",
+      "reason": "Arguments are attacker and session ID.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "events.2.name",
+      "source_quote": "Server B enqueues the event",
+      "evidence_kind": "direct",
+      "reason": "EventEnqueued captures this step.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.2.role",
+      "source_quote": "Server B enqueues the event",
+      "evidence_kind": "direct",
+      "reason": "Server B performs the enqueue.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "events.2.when",
+      "source_quote": "enqueues the event (associated with session ID) into a shared queue",
+      "evidence_kind": "direct",
+      "reason": "Event occurs after enqueue.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.2.arguments",
+      "source_quote": "Server B ... event ... associated with session ID",
+      "evidence_kind": "direct",
+      "reason": "Arguments include Server B, sid, and event payload.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "events.3.name",
+      "source_quote": "Server A polls the queue",
+      "evidence_kind": "direct",
+      "reason": "QueuePolled captures this step.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.6
+    },
+    {
+      "field_path": "events.3.role",
+      "source_quote": "Server A polls the queue",
+      "evidence_kind": "direct",
+      "reason": "Server A performs the poll.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.3.when",
+      "source_quote": "polls the queue for events using the session ID",
+      "evidence_kind": "direct",
+      "reason": "Event occurs during queue polling.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.6
+    },
+    {
+      "field_path": "events.3.arguments",
+      "source_quote": "Server A polls the queue for events using the session ID",
+      "evidence_kind": "direct",
+      "reason": "Arguments include Server A and sid.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "events.4.name",
+      "source_quote": "sends the malicious payload to the client",
+      "evidence_kind": "direct",
+      "reason": "PayloadDelivered captures delivery to client.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.4.role",
+      "source_quote": "Server A sends the malicious payload",
+      "evidence_kind": "direct",
+      "reason": "Server A performs the delivery.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.4.when",
+      "source_quote": "as an asynchronous or resumed response",
+      "evidence_kind": "direct",
+      "reason": "Event occurs when sending that response.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "events.4.arguments",
+      "source_quote": "Server A sends the malicious payload to the client",
+      "evidence_kind": "direct",
+      "reason": "Arguments include server, client, session ID context, and payload.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "events.5.name",
+      "source_quote": "The client receives and acts on the malicious payload",
+      "evidence_kind": "direct",
+      "reason": "ClientActsOnPayload captures the final client action.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "events.5.role",
+      "source_quote": "The client receives and acts",
+      "evidence_kind": "direct",
+      "reason": "The client acts on the payload.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.5.when",
+      "source_quote": "leading to potential compromise",
+      "evidence_kind": "direct",
+      "reason": "The event is placed after receipt and action on the malicious payload.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "events.5.arguments",
+      "source_quote": "client ... malicious payload",
+      "evidence_kind": "direct",
+      "reason": "Arguments are the client and payload.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.6.name",
+      "source_quote": "treats the attacker as a legitimate user",
+      "evidence_kind": "direct",
+      "reason": "CallAcceptedAsSession captures the server accepting the attacker call as a legitimate session call.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "events.6.role",
+      "source_quote": "MCP server does not check for additional authorization",
+      "evidence_kind": "direct",
+      "reason": "The MCP server performs the acceptance.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.6.when",
+      "source_quote": "The attacker makes calls to the MCP server using the session ID.",
+      "evidence_kind": "nearby",
+      "reason": "Acceptance follows the attacker call using the session ID.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.6.arguments",
+      "source_quote": "attacker ... MCP server ... legitimate user ... session ID",
+      "evidence_kind": "direct",
+      "reason": "Arguments include server, attacker, original client/user, sid, and request.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.88,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "events.7.name",
+      "source_quote": "allowing unauthorized access or actions",
+      "evidence_kind": "direct",
+      "reason": "UnauthorizedAction directly reflects the described outcome.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "events.7.role",
+      "source_quote": "MCP server ... allowing unauthorized access or actions",
+      "evidence_kind": "direct",
+      "reason": "The server allows the unauthorized action.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.7.when",
+      "source_quote": "treats the attacker as a legitimate user, allowing unauthorized access or actions",
+      "evidence_kind": "direct",
+      "reason": "Event occurs after acceptance as legitimate user.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "events.7.arguments",
+      "source_quote": "attacker ... MCP server ... legitimate user ... unauthorized access or actions",
+      "evidence_kind": "direct",
+      "reason": "Arguments identify server, attacker, original client/user, sid, and request/action.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.88,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "claims.0.lemma_name",
+      "source_quote": "Session Hijack Prompt Injection",
+      "evidence_kind": "nearby",
+      "reason": "No lemma names were supplied; this candidate name is inferred from the section title.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.72,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.35
+    },
+    {
+      "field_path": "claims.0.goal_type",
+      "source_quote": "the following attack vectors are possible",
+      "evidence_kind": "direct",
+      "reason": "The claim is an attack-trace executability/reachability hypothesis.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "claims.0.trace_kind",
+      "source_quote": "attack vectors are possible",
+      "evidence_kind": "direct",
+      "reason": "Attack reachability is an exists-trace property.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.0.expected_state",
+      "source_quote": "the following attack vectors are possible",
+      "evidence_kind": "direct",
+      "reason": "Expected reachable attack trace is a source-grounded hypothesis, not a measured proof result.",
+      "priority_llm": 0.45,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.88,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.0.event_schema",
+      "source_quote": "The attacker obtains an existing session ID ... Server B enqueues ... Server A polls ... sends the malicious payload ... The client receives and acts",
+      "evidence_kind": "direct",
+      "reason": "The event sequence follows the listed prompt-injection attack steps.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.1.lemma_name",
+      "source_quote": "Session Hijack Impersonation",
+      "evidence_kind": "nearby",
+      "reason": "No lemma names were supplied; this candidate name is inferred from the section title.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.72,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.35
+    },
+    {
+      "field_path": "claims.1.goal_type",
+      "source_quote": "The attacker makes calls to the MCP server using the session ID.",
+      "evidence_kind": "direct",
+      "reason": "The claim asserts reachability of the described impersonation attack trace.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "claims.1.trace_kind",
+      "source_quote": "attack vectors are possible",
+      "evidence_kind": "direct",
+      "reason": "Attack reachability is represented as an exists-trace claim.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.1.expected_state",
+      "source_quote": "allowing unauthorized access or actions",
+      "evidence_kind": "direct",
+      "reason": "Expected reachable attack trace follows the described unauthorized outcome; not a measured proof result.",
+      "priority_llm": 0.45,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.88,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.1.event_schema",
+      "source_quote": "MCP client authenticates ... attacker obtains the session ID ... attacker makes calls ... server does not check ... allowing unauthorized access or actions",
+      "evidence_kind": "direct",
+      "reason": "The event schema follows the listed impersonation attack steps.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.2.lemma_name",
+      "source_quote": "MCP servers that implement authorization MUST verify all inbound requests. MCP Servers MUST NOT use sessions for authentication.",
+      "evidence_kind": "nearby",
+      "reason": "No lemma name was supplied; this candidate safety lemma is inferred from the mitigation requirement.",
+      "priority_llm": 0.45,
+      "evidence_confidence_score": 0.68,
+      "consistency_confidence_score": 0.82,
+      "semantic_impact_score": 0.45
+    },
+    {
+      "field_path": "claims.2.goal_type",
+      "source_quote": "MUST verify all inbound requests",
+      "evidence_kind": "direct",
+      "reason": "Inbound request verification is an authentication/authorization safety concern.",
+      "priority_llm": 0.55,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.88,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.2.trace_kind",
+      "source_quote": "MUST verify all inbound requests",
+      "evidence_kind": "direct",
+      "reason": "A MUST safety obligation applies to all accepted inbound requests, so it is all-traces.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.2.expected_state",
+      "source_quote": "MCP server does not check for additional authorization",
+      "evidence_kind": "direct",
+      "reason": "The vulnerable flow is expected to violate the safety obligation unless mitigation is modeled.",
+      "priority_llm": 0.7,
+      "evidence_confidence_score": 0.84,
+      "consistency_confidence_score": 0.84,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.2.event_schema",
+      "source_quote": "MUST verify all inbound requests. MCP Servers MUST NOT use sessions for authentication.",
+      "evidence_kind": "direct",
+      "reason": "The schema encodes that accepted inbound calls/events require authorization beyond mere session possession.",
+      "priority_llm": 0.8,
+      "evidence_confidence_score": 0.82,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.0.required_events",
+      "source_quote": "Client",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.1.required_events",
+      "source_quote": "Client",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.2.required_events",
+      "source_quote": "server",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    }
+  ],
+  "open_questions": []
+}
