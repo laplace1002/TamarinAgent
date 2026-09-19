@@ -1,0 +1,213 @@
+theory AWS_External_ID_Delegation
+begin
+
+builtins: signing
+functions: auth_job/5, assume_role_req/5, sts_response/4, resource_call/5, protected/1, tempcred/3, owner/1, resource_of/1, extid_for/1, trusts_provider/1, cred_cfg/1, cred_role/1, cred_raw/1
+equations: cred_cfg(tempcred(c, r, t)) = c, cred_role(tempcred(c, r, t)) = r, cred_raw(tempcred(c, r, t)) = t
+
+let Customer(originatingCustomer, skCustomer) =
+  new job;
+  in(<cfg, requestedRole, suppliedExternalID>);
+  let msg = auth_job(job, originatingCustomer, cfg, requestedRole, suppliedExternalID) in
+  out(<msg, sign(msg, skCustomer)>)
+
+let ProviderPrincipalOnly(originatingCustomer, pkCustomer, skProvider, pkSTS) =
+  in(<auth_job(job, customerRecv, cfg, requestedRole, suppliedExternalID), sigCustomer>);
+  let customerMsg = auth_job(job, customerRecv, cfg, requestedRole, suppliedExternalID) in
+  if customerRecv = originatingCustomer then
+    if verify(sigCustomer, customerMsg, pkCustomer) = true then
+      if cfg = 'principal_only' then
+        (
+          event CustomerJob(originatingCustomer, 'principal_only', requestedRole, suppliedExternalID, job);
+          let req = assume_role_req('Provider', job, 'principal_only', requestedRole, 'no_external_id') in
+          out(protected(<req, sign(req, skProvider)>));
+          in(protected(<sts_response(jobResp, cfgResp, roleResp, credential), sigSTS>));
+          let resp = sts_response(jobResp, cfgResp, roleResp, credential) in
+          if verify(sigSTS, resp, pkSTS) = true then
+            if jobResp = job then
+              if cfgResp = 'principal_only' then
+                if roleResp = requestedRole then
+                  (
+                    event AssumeRoleSuccess('principal_only', originatingCustomer, requestedRole, requestedRole, job);
+                    let call = resource_call(job, 'principal_only', originatingCustomer, requestedRole, credential) in
+                    out(protected(<call, sign(call, skProvider)>))
+                  )
+        )
+
+let ProviderCallerSupplied(originatingCustomer, pkCustomer, skProvider, pkSTS) =
+  in(<auth_job(job, customerRecv, cfg, requestedRole, suppliedExternalID), sigCustomer>);
+  let customerMsg = auth_job(job, customerRecv, cfg, requestedRole, suppliedExternalID) in
+  if customerRecv = originatingCustomer then
+    if verify(sigCustomer, customerMsg, pkCustomer) = true then
+      if cfg = 'caller_supplied' then
+        (
+          event CustomerJob(originatingCustomer, 'caller_supplied', requestedRole, suppliedExternalID, job);
+          let req = assume_role_req('Provider', job, 'caller_supplied', requestedRole, suppliedExternalID) in
+          out(protected(<req, sign(req, skProvider)>));
+          in(protected(<sts_response(jobResp, cfgResp, roleResp, credential), sigSTS>));
+          let resp = sts_response(jobResp, cfgResp, roleResp, credential) in
+          if verify(sigSTS, resp, pkSTS) = true then
+            if jobResp = job then
+              if cfgResp = 'caller_supplied' then
+                if roleResp = requestedRole then
+                  (
+                    event AssumeRoleSuccess('caller_supplied', originatingCustomer, requestedRole, requestedRole, job);
+                    let call = resource_call(job, 'caller_supplied', originatingCustomer, requestedRole, credential) in
+                    out(protected(<call, sign(call, skProvider)>))
+                  )
+        )
+
+let ProviderBound(originatingCustomer, pkCustomer, skProvider, pkSTS) =
+  in(<auth_job(job, customerRecv, cfg, requestedRole, suppliedExternalID), sigCustomer>);
+  let customerMsg = auth_job(job, customerRecv, cfg, requestedRole, suppliedExternalID) in
+  if customerRecv = originatingCustomer then
+    if verify(sigCustomer, customerMsg, pkCustomer) = true then
+      if cfg = 'provider_bound' then
+        (
+          event CustomerJob(originatingCustomer, 'provider_bound', requestedRole, suppliedExternalID, job);
+          let mappedExternalID = extid_for(originatingCustomer) in
+          let req = assume_role_req('Provider', job, 'provider_bound', requestedRole, mappedExternalID) in
+          out(protected(<req, sign(req, skProvider)>));
+          in(protected(<sts_response(jobResp, cfgResp, roleResp, credential), sigSTS>));
+          let resp = sts_response(jobResp, cfgResp, roleResp, credential) in
+          if verify(sigSTS, resp, pkSTS) = true then
+            if jobResp = job then
+              if cfgResp = 'provider_bound' then
+                if roleResp = requestedRole then
+                  (
+                    event AssumeRoleSuccess('provider_bound', originatingCustomer, requestedRole, requestedRole, job);
+                    let call = resource_call(job, 'provider_bound', originatingCustomer, requestedRole, credential) in
+                    out(protected(<call, sign(call, skProvider)>))
+                  )
+        )
+
+let STSPrincipalOnlyForRole(pkProvider, skSTS, acceptedRole, resourceOwner) =
+  in(protected(<assume_role_req(providerName, job, cfg, requestedRole, externalID), sigProvider>));
+  let req = assume_role_req(providerName, job, cfg, requestedRole, externalID) in
+  if verify(sigProvider, req, pkProvider) = true then
+    if providerName = 'Provider' then
+      if cfg = 'principal_only' then
+        if requestedRole = acceptedRole then
+          (
+            new tempCredRaw;
+            let credential = tempcred('principal_only', acceptedRole, tempCredRaw) in
+            let resp = sts_response(job, 'principal_only', acceptedRole, credential) in
+            out(protected(<resp, sign(resp, skSTS)>))
+          )
+
+let STSCallerSuppliedForRole(pkProvider, skSTS, acceptedRole, resourceOwner) =
+  in(protected(<assume_role_req(providerName, job, cfg, requestedRole, externalID), sigProvider>));
+  let req = assume_role_req(providerName, job, cfg, requestedRole, externalID) in
+  if verify(sigProvider, req, pkProvider) = true then
+    if providerName = 'Provider' then
+      if cfg = 'caller_supplied' then
+        if requestedRole = acceptedRole then
+          (
+            let expectedExternalID = extid_for(resourceOwner) in
+            if externalID = expectedExternalID then
+              (
+                new tempCredRaw;
+                let credential = tempcred('caller_supplied', acceptedRole, tempCredRaw) in
+                let resp = sts_response(job, 'caller_supplied', acceptedRole, credential) in
+                out(protected(<resp, sign(resp, skSTS)>))
+              )
+          )
+
+let STSProviderBoundForRole(pkProvider, skSTS, acceptedRole, resourceOwner) =
+  in(protected(<assume_role_req(providerName, job, cfg, requestedRole, externalID), sigProvider>));
+  let req = assume_role_req(providerName, job, cfg, requestedRole, externalID) in
+  let expectedExternalID = extid_for(resourceOwner) in
+  if verify(sigProvider, req, pkProvider) = true then
+    if providerName = 'Provider' then
+      if cfg = 'provider_bound' then
+        if externalID = expectedExternalID then
+          (
+            new tempCredRaw;
+            let credential = tempcred('provider_bound', acceptedRole, tempCredRaw) in
+            let resp = sts_response(job, 'provider_bound', acceptedRole, credential) in
+            out(protected(<resp, sign(resp, skSTS)>))
+          )
+
+let ResourceServiceForRole(pkProvider, acceptedRole, resourceOwner) =
+  in(protected(<resource_call(job, cfg, originatingCustomer, requestedRole, credential), sigProvider>));
+  let call = resource_call(job, cfg, originatingCustomer, requestedRole, credential) in
+  let cfgCred = cred_cfg(credential) in
+  let roleCred = cred_role(credential) in
+  if verify(sigProvider, call, pkProvider) = true then
+    if requestedRole = acceptedRole then
+      if cfgCred = cfg then
+        if roleCred = acceptedRole then
+          event ResourceOperation(cfg, originatingCustomer, acceptedRole, resourceOwner, job)
+
+process:
+  new skAlice;
+  new skMallory;
+  new skProvider;
+  new skSTS;
+  let pkAlice = pk(skAlice) in
+  let pkMallory = pk(skMallory) in
+  let pkProvider = pk(skProvider) in
+  let pkSTS = pk(skSTS) in
+  out(pkAlice);
+  out(pkMallory);
+  out(pkProvider);
+  out(pkSTS);
+  event PublicRoleIdentifiersAndExternalIDs();
+  out('AliceRole');
+  out('MalloryRole');
+  out(extid_for('Alice'));
+  out(extid_for('Mallory'));
+  event AdversaryHasMalloryLoginCredential();
+  (
+    !Customer('Alice', skAlice)
+  | !Customer('Mallory', skMallory)
+  | !ProviderPrincipalOnly('Alice', pkAlice, skProvider, pkSTS)
+  | !ProviderPrincipalOnly('Mallory', pkMallory, skProvider, pkSTS)
+  | !ProviderCallerSupplied('Alice', pkAlice, skProvider, pkSTS)
+  | !ProviderCallerSupplied('Mallory', pkMallory, skProvider, pkSTS)
+  | !ProviderBound('Alice', pkAlice, skProvider, pkSTS)
+  | !ProviderBound('Mallory', pkMallory, skProvider, pkSTS)
+  | !STSPrincipalOnlyForRole(pkProvider, skSTS, 'AliceRole', 'Alice')
+  | !STSPrincipalOnlyForRole(pkProvider, skSTS, 'MalloryRole', 'Mallory')
+  | !STSCallerSuppliedForRole(pkProvider, skSTS, 'AliceRole', 'Alice')
+  | !STSCallerSuppliedForRole(pkProvider, skSTS, 'MalloryRole', 'Mallory')
+  | !STSProviderBoundForRole(pkProvider, skSTS, 'AliceRole', 'Alice')
+  | !STSProviderBoundForRole(pkProvider, skSTS, 'MalloryRole', 'Mallory')
+  | !ResourceServiceForRole(pkProvider, 'AliceRole', 'Alice')
+  | !ResourceServiceForRole(pkProvider, 'MalloryRole', 'Mallory')
+  )
+
+lemma tenant_isolation_principal_only:
+  "All originatingCustomer requestedRole resourceOwner job #i. ResourceOperation('principal_only', originatingCustomer, requestedRole, resourceOwner, job) @ #i ==> originatingCustomer = resourceOwner"
+
+lemma tenant_isolation_caller_supplied:
+  "All originatingCustomer requestedRole resourceOwner job #i. ResourceOperation('caller_supplied', originatingCustomer, requestedRole, resourceOwner, job) @ #i ==> originatingCustomer = resourceOwner"
+
+lemma tenant_isolation_provider_bound:
+  "All originatingCustomer requestedRole resourceOwner job #i. ResourceOperation('provider_bound', originatingCustomer, requestedRole, resourceOwner, job) @ #i ==> originatingCustomer = resourceOwner"
+
+lemma mallory_can_access_alice_resource_principal_only:
+  exists-trace
+  "Ex suppliedExternalID job #i #j. CustomerJob('Mallory', 'principal_only', 'AliceRole', suppliedExternalID, job) @ #i & ResourceOperation('principal_only', 'Mallory', 'AliceRole', 'Alice', job) @ #j & #i < #j"
+
+lemma mallory_can_access_alice_resource_caller_supplied:
+  exists-trace
+  "Ex job #i #j. CustomerJob('Mallory', 'caller_supplied', 'AliceRole', extid_for('Alice'), job) @ #i & ResourceOperation('caller_supplied', 'Mallory', 'AliceRole', 'Alice', job) @ #j & #i < #j"
+
+lemma mallory_can_access_alice_resource_provider_bound:
+  exists-trace
+  "Ex suppliedExternalID job #i #j. CustomerJob('Mallory', 'provider_bound', 'AliceRole', suppliedExternalID, job) @ #i & ResourceOperation('provider_bound', 'Mallory', 'AliceRole', 'Alice', job) @ #j & #i < #j"
+
+lemma alice_legitimate_job_principal_only_executable:
+  exists-trace
+  "Ex suppliedExternalID job #i #j. CustomerJob('Alice', 'principal_only', 'AliceRole', suppliedExternalID, job) @ #i & ResourceOperation('principal_only', 'Alice', 'AliceRole', 'Alice', job) @ #j & #i < #j"
+
+lemma alice_legitimate_job_caller_supplied_executable:
+  exists-trace
+  "Ex job #i #j. CustomerJob('Alice', 'caller_supplied', 'AliceRole', extid_for('Alice'), job) @ #i & ResourceOperation('caller_supplied', 'Alice', 'AliceRole', 'Alice', job) @ #j & #i < #j"
+
+lemma alice_legitimate_job_provider_bound_executable:
+  exists-trace
+  "Ex suppliedExternalID job #i #j. CustomerJob('Alice', 'provider_bound', 'AliceRole', suppliedExternalID, job) @ #i & ResourceOperation('provider_bound', 'Alice', 'AliceRole', 'Alice', job) @ #j & #i < #j"
+
+end

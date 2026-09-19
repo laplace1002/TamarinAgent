@@ -1,0 +1,124 @@
+{
+  "case": "AWS_External_ID_Delegation",
+  "mode": "reviewed_proof_targets",
+  "source": "reviewed_lemma_specification",
+  "expectations": [
+    {
+      "name": "tenant_isolation_principal_only",
+      "trace_kind": "all-traces",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Tenant isolation in principal_only: every accepted resource operation should have originatingCustomer equal to resourceOwner. The described setup suggests this safety property is violated because Mallory can request Alice's role and no external-ID condition is imposed.",
+      "required_events": [
+        "ResourceOperation(principal_only, originatingCustomer, requestedRole, resourceOwner, job)"
+      ]
+    },
+    {
+      "name": "tenant_isolation_caller_supplied",
+      "trace_kind": "all-traces",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Tenant isolation in caller_supplied: every accepted resource operation should have originatingCustomer equal to resourceOwner. The described setup suggests this safety property is violated because Mallory knows Alice's external ID and may supply it with Alice's role identifier.",
+      "required_events": [
+        "ResourceOperation(caller_supplied, originatingCustomer, requestedRole, resourceOwner, job)"
+      ]
+    },
+    {
+      "name": "tenant_isolation_provider_bound",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Tenant isolation in provider_bound: every accepted resource operation should have originatingCustomer equal to resourceOwner, because the provider uses the trusted external-ID mapping for the authenticated originating customer rather than the caller-supplied field.",
+      "required_events": [
+        "ResourceOperation(provider_bound, originatingCustomer, requestedRole, resourceOwner, job)"
+      ]
+    },
+    {
+      "name": "mallory_can_access_alice_resource_principal_only",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Attack reachability in principal_only: determine whether a Mallory-originated job can cause an operation on Alice's resource.",
+      "required_events": [
+        "CustomerJob(Mallory, principal_only, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(principal_only, Mallory, AliceRole, Alice, job)"
+      ]
+    },
+    {
+      "name": "mallory_can_access_alice_resource_caller_supplied",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Attack reachability in caller_supplied: determine whether a Mallory-originated job can cause an operation on Alice's resource.",
+      "required_events": [
+        "CustomerJob(Mallory, caller_supplied, AliceRole, extid_for(Alice), job)",
+        "ResourceOperation(caller_supplied, Mallory, AliceRole, Alice, job)"
+      ]
+    },
+    {
+      "name": "mallory_can_access_alice_resource_provider_bound",
+      "trace_kind": "exists-trace",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Attack reachability in provider_bound: determine whether a Mallory-originated job can cause an operation on Alice's resource. The described setup suggests this trace should not exist.",
+      "required_events": [
+        "CustomerJob(Mallory, provider_bound, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(provider_bound, Mallory, AliceRole, Alice, job)"
+      ]
+    },
+    {
+      "name": "alice_legitimate_job_principal_only_executable",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Executability: Alice can complete a legitimate job on her own resource in principal_only; rejecting all jobs is not an acceptable repair.",
+      "required_events": [
+        "CustomerJob(Alice, principal_only, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(principal_only, Alice, AliceRole, Alice, job)"
+      ]
+    },
+    {
+      "name": "alice_legitimate_job_caller_supplied_executable",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Executability: Alice can complete a legitimate job on her own resource in caller_supplied; rejecting all jobs is not an acceptable repair.",
+      "required_events": [
+        "CustomerJob(Alice, caller_supplied, AliceRole, extid_for(Alice), job)",
+        "ResourceOperation(caller_supplied, Alice, AliceRole, Alice, job)"
+      ]
+    },
+    {
+      "name": "alice_legitimate_job_provider_bound_executable",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Executability: Alice can complete a legitimate job on her own resource in provider_bound; rejecting all jobs is not an acceptable repair.",
+      "required_events": [
+        "CustomerJob(Alice, provider_bound, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(provider_bound, Alice, AliceRole, Alice, job)"
+      ]
+    }
+  ],
+  "notes": [
+    "Reconstructed from reviewed modeling contract."
+  ]
+}

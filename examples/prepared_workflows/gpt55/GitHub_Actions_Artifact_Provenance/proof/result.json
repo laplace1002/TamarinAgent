@@ -1,0 +1,1376 @@
+{
+  "ok": true,
+  "status": "expected-matched",
+  "returncode": 0,
+  "warnings": [],
+  "lemma_results": {
+    "name_only_fork_artifact_privileged_use_reachable": "verified (12 steps)",
+    "run_bound_fork_artifact_privileged_use_reachable": "verified (13 steps)",
+    "name_only_all_privileged_uses_are_trusted_origin": "falsified - found trace (12 steps)",
+    "run_bound_all_privileged_uses_are_trusted_origin": "falsified - found trace (12 steps)",
+    "trusted_origin_all_privileged_uses_are_trusted_origin": "verified (10 steps)",
+    "name_only_selected_artifact_belongs_to_triggering_run": "falsified - found trace (10 steps)",
+    "run_bound_selected_artifact_belongs_to_triggering_run": "verified (3 steps)",
+    "trusted_origin_selected_artifact_belongs_to_triggering_run": "verified (3 steps)",
+    "legitimate_protected_branch_deployment_executable_all_configs": "verified (29 steps)"
+  },
+  "missing_results": [],
+  "lemma_expected_states": {
+    "name_only_fork_artifact_privileged_use_reachable": "ProvedSatisfying",
+    "run_bound_fork_artifact_privileged_use_reachable": "ProvedSatisfying",
+    "name_only_all_privileged_uses_are_trusted_origin": "CounterexampleFound",
+    "run_bound_all_privileged_uses_are_trusted_origin": "CounterexampleFound",
+    "trusted_origin_all_privileged_uses_are_trusted_origin": "ProvedSatisfying",
+    "name_only_selected_artifact_belongs_to_triggering_run": "CounterexampleFound",
+    "run_bound_selected_artifact_belongs_to_triggering_run": "ProvedSatisfying",
+    "trusted_origin_selected_artifact_belongs_to_triggering_run": "ProvedSatisfying",
+    "legitimate_protected_branch_deployment_executable_all_configs": "ProvedSatisfying"
+  },
+  "lemma_actual_states": {
+    "name_only_fork_artifact_privileged_use_reachable": "ProvedSatisfying",
+    "run_bound_fork_artifact_privileged_use_reachable": "ProvedSatisfying",
+    "name_only_all_privileged_uses_are_trusted_origin": "CounterexampleFound",
+    "run_bound_all_privileged_uses_are_trusted_origin": "CounterexampleFound",
+    "trusted_origin_all_privileged_uses_are_trusted_origin": "ProvedSatisfying",
+    "name_only_selected_artifact_belongs_to_triggering_run": "CounterexampleFound",
+    "run_bound_selected_artifact_belongs_to_triggering_run": "ProvedSatisfying",
+    "trusted_origin_selected_artifact_belongs_to_triggering_run": "ProvedSatisfying",
+    "legitimate_protected_branch_deployment_executable_all_configs": "ProvedSatisfying"
+  },
+  "lemma_matches": {
+    "name_only_fork_artifact_privileged_use_reachable": true,
+    "run_bound_fork_artifact_privileged_use_reachable": true,
+    "name_only_all_privileged_uses_are_trusted_origin": true,
+    "run_bound_all_privileged_uses_are_trusted_origin": true,
+    "trusted_origin_all_privileged_uses_are_trusted_origin": true,
+    "name_only_selected_artifact_belongs_to_triggering_run": true,
+    "run_bound_selected_artifact_belongs_to_triggering_run": true,
+    "trusted_origin_selected_artifact_belongs_to_triggering_run": true,
+    "legitimate_protected_branch_deployment_executable_all_configs": true
+  },
+  "mismatched_results": [],
+  "per_lemma": {
+    "name_only_fork_artifact_privileged_use_reachable": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (12 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/examples/nonstandard_authorization_gpt55_20260919/tamarin_proof_s",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/name_only_fork_artifact_privileged_use_reachable.spthy",
+        "--prove=name_only_fork_artifact_privileged_use_reachable",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/name_only_fork_artifact_privileged_use_reachable.spthy",
+      "elapsed_sec": 15.66
+    },
+    "run_bound_fork_artifact_privileged_use_reachable": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (13 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/examples/nonstandard_authorization_gpt55_20260919/tamarin_proof_s",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/run_bound_fork_artifact_privileged_use_reachable.spthy",
+        "--prove=run_bound_fork_artifact_privileged_use_reachable",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/run_bound_fork_artifact_privileged_use_reachable.spthy",
+      "elapsed_sec": 29.18
+    },
+    "name_only_all_privileged_uses_are_trusted_origin": {
+      "ok": true,
+      "status": "falsified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "falsified - found trace (12 steps)",
+      "expected_state": "CounterexampleFound",
+      "actual_state": "CounterexampleFound",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/examples/nonstandard_authorization_gpt55_20260919/tamarin_proof_s",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/name_only_all_privileged_uses_are_trusted_origin.spthy",
+        "--prove=name_only_all_privileged_uses_are_trusted_origin",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/name_only_all_privileged_uses_are_trusted_origin.spthy",
+      "elapsed_sec": 40.85
+    },
+    "run_bound_all_privileged_uses_are_trusted_origin": {
+      "ok": true,
+      "status": "falsified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "falsified - found trace (12 steps)",
+      "expected_state": "CounterexampleFound",
+      "actual_state": "CounterexampleFound",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/examples/nonstandard_authorization_gpt55_20260919/tamarin_proof_s",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/run_bound_all_privileged_uses_are_trusted_origin.spthy",
+        "--prove=run_bound_all_privileged_uses_are_trusted_origin",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/run_bound_all_privileged_uses_are_trusted_origin.spthy",
+      "elapsed_sec": 33.85
+    },
+    "trusted_origin_all_privileged_uses_are_trusted_origin": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (10 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/examples/nonstandard_authorization_gpt55_20260919/tamarin_proof_s",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/trusted_origin_all_privileged_uses_are_trusted_origin.spthy",
+        "--prove=trusted_origin_all_privileged_uses_are_trusted_origin",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/trusted_origin_all_privileged_uses_are_trusted_origin.spthy",
+      "elapsed_sec": 20.22
+    },
+    "name_only_selected_artifact_belongs_to_triggering_run": {
+      "ok": true,
+      "status": "falsified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "falsified - found trace (10 steps)",
+      "expected_state": "CounterexampleFound",
+      "actual_state": "CounterexampleFound",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/examples/nonstandard_authorization_gpt55_20260919/tamarin_proof_s",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/name_only_selected_artifact_belongs_to_triggering_run.spthy",
+        "--prove=name_only_selected_artifact_belongs_to_triggering_run",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/name_only_selected_artifact_belongs_to_triggering_run.spthy",
+      "elapsed_sec": 24.12
+    },
+    "run_bound_selected_artifact_belongs_to_triggering_run": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (3 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/examples/nonstandard_authorization_gpt55_20260919/tamarin_proof_s",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/run_bound_selected_artifact_belongs_to_triggering_run.spthy",
+        "--prove=run_bound_selected_artifact_belongs_to_triggering_run",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/run_bound_selected_artifact_belongs_to_triggering_run.spthy",
+      "elapsed_sec": 15.14
+    },
+    "trusted_origin_selected_artifact_belongs_to_triggering_run": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (3 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/examples/nonstandard_authorization_gpt55_20260919/tamarin_proof_s",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/trusted_origin_selected_artifact_belongs_to_triggering_run.spthy",
+        "--prove=trusted_origin_selected_artifact_belongs_to_triggering_run",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/trusted_origin_selected_artifact_belongs_to_triggering_run.spthy",
+      "elapsed_sec": 14.82
+    },
+    "legitimate_protected_branch_deployment_executable_all_configs": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (29 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/examples/nonstandard_authorization_gpt55_20260919/tamarin_proof_s",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/legitimate_protected_branch_deployment_executable_all_configs.spthy",
+        "--prove=legitimate_protected_branch_deployment_executable_all_configs",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma/legitimate_protected_branch_deployment_executable_all_configs.spthy",
+      "elapsed_sec": 68.32
+    }
+  },
+  "command": [
+    "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/examples/nonstandard_authorization_gpt55_20260919/tamarin_proof_s",
+    "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/per_lemma",
+    "--prove=<lemma>",
+    "--derivcheck-timeout=0"
+  ],
+  "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/model.spthy",
+  "proof_expectations": [
+    {
+      "name": "name_only_fork_artifact_privileged_use_reachable",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "reachability",
+      "intent": "Check whether name_only permits an attacker-controlled fork artifact named package to be privilegedly used.",
+      "required_events": [
+        "ArtifactStored(artifact_id, producing_run, 'package', body, fork_repo, fork_branch, commit)",
+        "PrivilegedUse(name_only, trigger_run, artifact_id, producing_run, fork_repo, fork_branch, commit, body)"
+      ]
+    },
+    {
+      "name": "run_bound_fork_artifact_privileged_use_reachable",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "reachability",
+      "intent": "Check whether run_bound permits an attacker-controlled fork artifact to be privilegedly used when the triggering run itself is a fork run.",
+      "required_events": [
+        "RunComplete(trigger_run, fork_repo, fork_branch, commit, build_workflow, success)",
+        "PrivilegedUse(run_bound, trigger_run, artifact_id, trigger_run, fork_repo, fork_branch, commit, body)"
+      ]
+    },
+    {
+      "name": "name_only_all_privileged_uses_are_trusted_origin",
+      "trace_kind": "all-traces",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Safety question: whether every name_only privileged use came from protected_repo and protected_branch.",
+      "required_events": [
+        "PrivilegedUse(name_only, trigger_run, artifact_id, producing_run, repo, branch, commit, body)"
+      ]
+    },
+    {
+      "name": "run_bound_all_privileged_uses_are_trusted_origin",
+      "trace_kind": "all-traces",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Safety question: whether every run_bound privileged use came from protected_repo and protected_branch.",
+      "required_events": [
+        "PrivilegedUse(run_bound, trigger_run, artifact_id, producing_run, repo, branch, commit, body)"
+      ]
+    },
+    {
+      "name": "trusted_origin_all_privileged_uses_are_trusted_origin",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Safety question: whether every trusted_origin privileged use came from protected_repo and protected_branch.",
+      "required_events": [
+        "PrivilegedUse(trusted_origin, trigger_run, artifact_id, producing_run, repo, branch, commit, body)"
+      ]
+    },
+    {
+      "name": "name_only_selected_artifact_belongs_to_triggering_run",
+      "trace_kind": "all-traces",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Run-provenance safety question: whether name_only always selects an artifact whose producing run is the triggering run.",
+      "required_events": [
+        "ArtifactSelected(name_only, trigger_run, artifact_id, producing_run, name, body, repo, branch, commit)"
+      ]
+    },
+    {
+      "name": "run_bound_selected_artifact_belongs_to_triggering_run",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Run-provenance safety question: whether run_bound always selects an artifact whose producing run is the triggering run.",
+      "required_events": [
+        "ArtifactSelected(run_bound, trigger_run, artifact_id, producing_run, name, body, repo, branch, commit)"
+      ]
+    },
+    {
+      "name": "trusted_origin_selected_artifact_belongs_to_triggering_run",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Run-provenance safety question: whether trusted_origin always selects an artifact whose producing run is the triggering run.",
+      "required_events": [
+        "ArtifactSelected(trusted_origin, trigger_run, artifact_id, producing_run, name, body, repo, branch, commit)"
+      ]
+    },
+    {
+      "name": "legitimate_protected_branch_deployment_executable_all_configs",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Establish that protected-branch build-to-deployment executions are possible for name_only, run_bound, and trusted_origin configurations.",
+      "required_events": [
+        "PrivilegedUse(name_only, trigger_run1, artifact_id1, producing_run1, protected_repo, protected_branch, commit1, body1)",
+        "PrivilegedUse(run_bound, trigger_run2, artifact_id2, trigger_run2, protected_repo, protected_branch, commit2, body2)",
+        "PrivilegedUse(trusted_origin, trigger_run3, artifact_id3, trigger_run3, protected_repo, protected_branch, commit3, body3)"
+      ]
+    }
+  ],
+  "lint_issues": [],
+  "proof_lint_issues": [],
+  "missing_lemmas": [],
+  "workflow": {
+    "run_dir": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919",
+    "workflow_library_dir": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/ui_benchmark18_nl",
+    "settings": {
+      "abstraction_hints_enabled": false,
+      "abstraction_hints_top_k": 3,
+      "lemma_alignment_route_enabled": false
+    },
+    "current_step": {
+      "timestamp": "2026-09-19T01:18:12",
+      "step": "tamarin_prove",
+      "status": "proof_done",
+      "pipeline_event": "proof_done",
+      "case": "GitHub_Actions_Artifact_Provenance",
+      "ok": true,
+      "returncode": 0,
+      "elapsed_sec": 264.21,
+      "result_status": "expected-matched"
+    },
+    "events": [
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "issue_count": 0,
+        "label": "initial",
+        "pipeline_event": "lint_done",
+        "status": "lint_done",
+        "step": "lint_done",
+        "timestamp": "2026-09-19T01:06:27"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "bytes": 10476,
+        "lint_issue_count": 0,
+        "model": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/final/model.spthy",
+        "pipeline": "run_prepared_pipeline",
+        "status": "done",
+        "step": "sapic_generation",
+        "timestamp": "2026-09-19T01:06:27"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "enabled": false,
+        "label": "initial",
+        "pipeline_event": "abstraction_hints_done",
+        "selected_count": 0,
+        "selected_ids": [],
+        "status": "abstraction_hints_done",
+        "step": "abstraction_hints_done",
+        "timestamp": "2026-09-19T01:06:27"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "max_rounds": 2,
+        "pipeline": "run_prepared_pipeline",
+        "status": "start",
+        "step": "repair_verify",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:06:27"
+      },
+      {
+        "case": "nonstandard_github_gpt55_20260919",
+        "label": "initial",
+        "lint_issue_count": 0,
+        "ok": true,
+        "pipeline_event": "verify_done",
+        "result_status": "clean",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:06:28",
+        "warning_count": 0
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "generation_round": 1,
+        "pipeline_event": "repair_skipped",
+        "reason": "verification clean",
+        "status": "repair_skipped",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:06:28"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "accepted_round": null,
+        "attempt_count": 0,
+        "ok": true,
+        "pipeline": "run_prepared_pipeline",
+        "result_status": "clean",
+        "status": "done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:06:28"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "enabled": false,
+        "label": "initial",
+        "pipeline_event": "abstraction_hints_done",
+        "selected_count": 0,
+        "selected_ids": [],
+        "status": "abstraction_hints_done",
+        "step": "abstraction_hints_done",
+        "timestamp": "2026-09-19T01:06:28"
+      },
+      {
+        "lemma_count": 9,
+        "per_lemma": true,
+        "pipeline": "run_prepared_pipeline",
+        "status": "start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:06:28"
+      },
+      {
+        "case": "nonstandard_github_gpt55_20260919",
+        "label": "initial",
+        "lint_issue_count": 0,
+        "ok": true,
+        "pipeline_event": "verify_done",
+        "result_status": "clean",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:06:28",
+        "warning_count": 0
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "generation_round": 1,
+        "pipeline_event": "repair_skipped",
+        "reason": "verification clean",
+        "status": "repair_skipped",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:06:28"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "expected_count": 9,
+        "extra": [],
+        "missing": [],
+        "ok": true,
+        "pipeline_event": "lemma_coverage_done",
+        "status": "lemma_coverage_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:06:28"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "issue_count": 0,
+        "ok": true,
+        "pipeline_event": "proof_lint_done",
+        "status": "proof_lint_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:06:28"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma_count": 9,
+        "pipeline_event": "proof_start",
+        "status": "proof_start",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:06:28"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "name_only_fork_artifact_privileged_use_reachable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:06:28"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 9.88,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "name_only_fork_artifact_privileged_use_reachable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:06:38"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "run_bound_fork_artifact_privileged_use_reachable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:06:38"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 8.84,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "run_bound_fork_artifact_privileged_use_reachable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:06:47"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "name_only_all_privileged_uses_are_trusted_origin",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:06:47"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 12.11,
+        "expected_state": "CounterexampleFound",
+        "lemma": "name_only_all_privileged_uses_are_trusted_origin",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:06:59"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "run_bound_all_privileged_uses_are_trusted_origin",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:06:59"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 12.62,
+        "expected_state": "CounterexampleFound",
+        "lemma": "run_bound_all_privileged_uses_are_trusted_origin",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:07:12"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "trusted_origin_all_privileged_uses_are_trusted_origin",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:07:12"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 7.32,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "trusted_origin_all_privileged_uses_are_trusted_origin",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:07:19"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "name_only_selected_artifact_belongs_to_triggering_run",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:07:19"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 7.5,
+        "expected_state": "CounterexampleFound",
+        "lemma": "name_only_selected_artifact_belongs_to_triggering_run",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:07:27"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "run_bound_selected_artifact_belongs_to_triggering_run",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:07:27"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 6.29,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "run_bound_selected_artifact_belongs_to_triggering_run",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:07:33"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "trusted_origin_selected_artifact_belongs_to_triggering_run",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:07:33"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 6.2,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "trusted_origin_selected_artifact_belongs_to_triggering_run",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:07:39"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "legitimate_protected_branch_deployment_executable_all_configs",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:07:39"
+      },
+      {
+        "actual_state": "ProofTimeout",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 120.21,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "legitimate_protected_branch_deployment_executable_all_configs",
+        "match": false,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "timeout",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:09:40"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 192.0,
+        "ok": false,
+        "pipeline_event": "proof_done",
+        "result_status": "timeout",
+        "returncode": 124,
+        "status": "proof_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:09:40"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "missing_lemmas": [],
+        "pipeline_event": "proof_repair_start",
+        "proof_lint_issue_count": 0,
+        "proof_status": "timeout",
+        "round": 1,
+        "status": "proof_repair_start",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:09:41"
+      },
+      {
+        "case": "nonstandard_github_gpt55_20260919",
+        "label": "proof_repaired_1",
+        "lint_issue_count": 2,
+        "ok": false,
+        "pipeline_event": "verify_done",
+        "result_status": "warnings",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:11:12",
+        "warning_count": 2
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lint_issue_count": 2,
+        "pipeline_event": "proof_repair_rejected",
+        "reason": "compile_failed",
+        "result_status": "warnings",
+        "round": 1,
+        "status": "proof_repair_rejected",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:11:12",
+        "warning_count": 2
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 91.79,
+        "pipeline_event": "proof_repair_done",
+        "result_status": "compile_failed",
+        "round": 1,
+        "status": "proof_repair_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:11:12"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "missing_lemmas": [],
+        "pipeline_event": "proof_repair_start",
+        "proof_lint_issue_count": 0,
+        "proof_status": "timeout",
+        "round": 2,
+        "status": "proof_repair_start",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:11:13"
+      },
+      {
+        "case": "nonstandard_github_gpt55_20260919",
+        "label": "proof_repaired_2",
+        "lint_issue_count": 0,
+        "ok": true,
+        "pipeline_event": "verify_done",
+        "result_status": "clean",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:11:47",
+        "warning_count": 0
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "expected_count": 9,
+        "extra": [],
+        "missing": [],
+        "ok": true,
+        "pipeline_event": "lemma_coverage_done",
+        "status": "lemma_coverage_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:11:47"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "issue_count": 0,
+        "ok": true,
+        "pipeline_event": "proof_lint_done",
+        "status": "proof_lint_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:11:47"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma_count": 9,
+        "pipeline_event": "proof_start",
+        "status": "proof_start",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:11:47"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "name_only_fork_artifact_privileged_use_reachable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:11:47"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 14.85,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "name_only_fork_artifact_privileged_use_reachable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:12:02"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "run_bound_fork_artifact_privileged_use_reachable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:12:02"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 16.06,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "run_bound_fork_artifact_privileged_use_reachable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:12:18"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "name_only_all_privileged_uses_are_trusted_origin",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:12:18"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 59.4,
+        "expected_state": "CounterexampleFound",
+        "lemma": "name_only_all_privileged_uses_are_trusted_origin",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:13:18"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "run_bound_all_privileged_uses_are_trusted_origin",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:13:18"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "enabled": false,
+        "label": "initial",
+        "pipeline_event": "abstraction_hints_done",
+        "selected_count": 0,
+        "selected_ids": [],
+        "status": "abstraction_hints_done",
+        "step": "abstraction_hints_done",
+        "timestamp": "2026-09-19T01:13:45"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "max_rounds": 0,
+        "pipeline": "run_prepared_pipeline",
+        "status": "start",
+        "step": "repair_verify",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:13:45"
+      },
+      {
+        "case": "nonstandard_github_gpt55_20260919",
+        "label": "initial",
+        "lint_issue_count": 0,
+        "ok": true,
+        "pipeline_event": "verify_done",
+        "result_status": "clean",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:13:47",
+        "warning_count": 0
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "generation_round": 1,
+        "pipeline_event": "repair_skipped",
+        "reason": "verification clean",
+        "status": "repair_skipped",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:13:47"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "accepted_round": null,
+        "attempt_count": 0,
+        "ok": true,
+        "pipeline": "run_prepared_pipeline",
+        "result_status": "clean",
+        "status": "done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:13:47"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "enabled": false,
+        "label": "initial",
+        "pipeline_event": "abstraction_hints_done",
+        "selected_count": 0,
+        "selected_ids": [],
+        "status": "abstraction_hints_done",
+        "step": "abstraction_hints_done",
+        "timestamp": "2026-09-19T01:13:47"
+      },
+      {
+        "lemma_count": 9,
+        "per_lemma": true,
+        "pipeline": "run_prepared_pipeline",
+        "status": "start",
+        "step": "tamarin_prove",
+        "timeout": 180,
+        "timestamp": "2026-09-19T01:13:47"
+      },
+      {
+        "case": "nonstandard_github_gpt55_20260919",
+        "label": "initial",
+        "lint_issue_count": 0,
+        "ok": true,
+        "pipeline_event": "verify_done",
+        "result_status": "clean",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:13:48",
+        "warning_count": 0
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "generation_round": 1,
+        "pipeline_event": "repair_skipped",
+        "reason": "verification clean",
+        "status": "repair_skipped",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:13:48"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "expected_count": 9,
+        "extra": [],
+        "missing": [],
+        "ok": true,
+        "pipeline_event": "lemma_coverage_done",
+        "status": "lemma_coverage_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:13:48"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "issue_count": 0,
+        "ok": true,
+        "pipeline_event": "proof_lint_done",
+        "status": "proof_lint_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:13:48"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma_count": 9,
+        "pipeline_event": "proof_start",
+        "status": "proof_start",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:13:48"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "name_only_fork_artifact_privileged_use_reachable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 180,
+        "timestamp": "2026-09-19T01:13:48"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 15.66,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "name_only_fork_artifact_privileged_use_reachable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:14:03"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "run_bound_fork_artifact_privileged_use_reachable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 180,
+        "timestamp": "2026-09-19T01:14:03"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 29.18,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "run_bound_fork_artifact_privileged_use_reachable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:14:33"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "name_only_all_privileged_uses_are_trusted_origin",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 180,
+        "timestamp": "2026-09-19T01:14:33"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 40.85,
+        "expected_state": "CounterexampleFound",
+        "lemma": "name_only_all_privileged_uses_are_trusted_origin",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:15:14"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "run_bound_all_privileged_uses_are_trusted_origin",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 180,
+        "timestamp": "2026-09-19T01:15:14"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 33.85,
+        "expected_state": "CounterexampleFound",
+        "lemma": "run_bound_all_privileged_uses_are_trusted_origin",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:15:48"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "trusted_origin_all_privileged_uses_are_trusted_origin",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 180,
+        "timestamp": "2026-09-19T01:15:48"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 20.22,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "trusted_origin_all_privileged_uses_are_trusted_origin",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:16:08"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "name_only_selected_artifact_belongs_to_triggering_run",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 180,
+        "timestamp": "2026-09-19T01:16:08"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 24.12,
+        "expected_state": "CounterexampleFound",
+        "lemma": "name_only_selected_artifact_belongs_to_triggering_run",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:16:32"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "run_bound_selected_artifact_belongs_to_triggering_run",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 180,
+        "timestamp": "2026-09-19T01:16:32"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 15.14,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "run_bound_selected_artifact_belongs_to_triggering_run",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:16:48"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "trusted_origin_selected_artifact_belongs_to_triggering_run",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 180,
+        "timestamp": "2026-09-19T01:16:48"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 14.82,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "trusted_origin_selected_artifact_belongs_to_triggering_run",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:17:03"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "lemma": "legitimate_protected_branch_deployment_executable_all_configs",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 180,
+        "timestamp": "2026-09-19T01:17:03"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 68.32,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "legitimate_protected_branch_deployment_executable_all_configs",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:18:11"
+      },
+      {
+        "case": "GitHub_Actions_Artifact_Provenance",
+        "elapsed_sec": 264.21,
+        "ok": true,
+        "pipeline_event": "proof_done",
+        "result_status": "expected-matched",
+        "returncode": 0,
+        "status": "proof_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:18:12"
+      }
+    ],
+    "artifacts": {
+      "case": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/input/case.json",
+      "protocol_ir": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/ir/protocol_ir.json",
+      "field_reviews": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/ir/field_reviews.json",
+      "reviewed_protocol_ir": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/ir/protocol_ir.reviewed.json",
+      "review_decisions": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/ir/review_decisions.json",
+      "contract": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/modeling_contract.json",
+      "reviewed_contract": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/modeling_contract.reviewed.json",
+      "sapic": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/final/model.spthy",
+      "verify": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/verify/initial.json",
+      "repair_verify": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/verify/reviewed_contract_repair_loop.json",
+      "proof": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/proof/result.json",
+      "nl_attempts": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/workflow/nl_attempts",
+      "snapshots": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_github_gpt55_20260919/workflow/snapshots"
+    },
+    "exists": {
+      "case": true,
+      "protocol_ir": true,
+      "contract": true,
+      "reviewed_contract": true,
+      "review_saved": true,
+      "review_complete": false,
+      "sapic": true,
+      "verify": true,
+      "repair_verify": true,
+      "proof": true,
+      "nl_attempts": true,
+      "snapshots": false
+    },
+    "review": {
+      "saved": true,
+      "complete": false,
+      "status": "pending",
+      "total": 101,
+      "unresolved": 16,
+      "status_counts": {
+        "must_review": 0,
+        "needs_review": 16,
+        "system_assumption": 0,
+        "user_confirmed": 0,
+        "high_confidence": 85
+      },
+      "sections": {
+        "fresh": {
+          "status": "done",
+          "total": 12,
+          "unresolved": 0,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 0,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 12
+          }
+        },
+        "setup": {
+          "status": "pending",
+          "total": 4,
+          "unresolved": 1,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 1,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 3
+          }
+        },
+        "messages": {
+          "status": "pending",
+          "total": 18,
+          "unresolved": 3,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 3,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 15
+          }
+        },
+        "checks": {
+          "status": "done",
+          "total": 15,
+          "unresolved": 0,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 0,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 15
+          }
+        },
+        "events": {
+          "status": "done",
+          "total": 24,
+          "unresolved": 0,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 0,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 24
+          }
+        },
+        "proof_targets": {
+          "status": "pending",
+          "total": 28,
+          "unresolved": 12,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 12,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 16
+          }
+        },
+        "attack_surface": {
+          "status": "done",
+          "total": 0,
+          "unresolved": 0,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 0,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 0
+          }
+        }
+      }
+    }
+  },
+  "archive_provenance": {
+    "raw_result_path": "runs/nonstandard_github_gpt55_20260919/proof/result.json",
+    "raw_result_sha256": "644fcf4d52d76ce99f3825fbfe9b8ce35832c92a18bb50dcfab85be1f674373f",
+    "omitted_fields": [
+      "stdout",
+      "stderr",
+      "stdout_tail",
+      "stderr_tail"
+    ],
+    "note": "Diagnostic text omitted recursively for publication; proof outcomes and per-lemma metadata are unchanged. Raw result retained locally, not included in this repository."
+  }
+}

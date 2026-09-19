@@ -1,0 +1,21 @@
+{
+  "retrieved_local_date": "2026-09-19",
+  "input_kind": "source-grounded author-written natural-language scenarios; not verbatim source excerpts",
+  "github": {
+    "sources": [
+      "https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/",
+      "https://securitylab.github.com/resources/github-actions-new-patterns-and-mitigations/",
+      "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows"
+    ],
+    "source_mechanisms": ["low-privilege PR producer and privileged workflow_run consumer", "attacker-controlled artifacts", "artifact handling crosses privilege boundary"],
+    "experiment_design": ["three consumer selection policies", "protected-repository and protected-branch trust criterion", "immutable authenticated platform records", "name-only nondeterministic lookup", "privileged-use abstraction instead of script execution semantics"]
+  },
+  "method": {
+    "model": "gpt-5.5",
+    "input_goals": [],
+    "input_assumptions": [],
+    "assumptions_location": "Explicit experimental scope and setup sections of NL",
+    "proof_targets": "discovered by the existing NL planner; not supplied as formal lemmas",
+    "review_policy": "modify only existing UI-visible cells; use ReviewState.save_reviewed; preserve raw planner output; no manual model or proof-formula edits"
+  }
+}

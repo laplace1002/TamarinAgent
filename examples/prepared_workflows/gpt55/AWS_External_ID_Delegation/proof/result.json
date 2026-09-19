@@ -1,0 +1,1387 @@
+{
+  "ok": true,
+  "status": "expected-matched",
+  "returncode": 0,
+  "warnings": [],
+  "lemma_results": {
+    "tenant_isolation_principal_only": "falsified - found trace (9 steps)",
+    "tenant_isolation_caller_supplied": "falsified - found trace (10 steps)",
+    "tenant_isolation_provider_bound": "verified (48 steps)",
+    "mallory_can_access_alice_resource_principal_only": "verified (12 steps)",
+    "mallory_can_access_alice_resource_caller_supplied": "verified (12 steps)",
+    "mallory_can_access_alice_resource_provider_bound": "falsified - no trace found (40 steps)",
+    "alice_legitimate_job_principal_only_executable": "verified (12 steps)",
+    "alice_legitimate_job_caller_supplied_executable": "verified (12 steps)",
+    "alice_legitimate_job_provider_bound_executable": "verified (12 steps)"
+  },
+  "missing_results": [],
+  "lemma_expected_states": {
+    "tenant_isolation_principal_only": "CounterexampleFound",
+    "tenant_isolation_caller_supplied": "CounterexampleFound",
+    "tenant_isolation_provider_bound": "ProvedSatisfying",
+    "mallory_can_access_alice_resource_principal_only": "ProvedSatisfying",
+    "mallory_can_access_alice_resource_caller_supplied": "ProvedSatisfying",
+    "mallory_can_access_alice_resource_provider_bound": "CounterexampleFound",
+    "alice_legitimate_job_principal_only_executable": "ProvedSatisfying",
+    "alice_legitimate_job_caller_supplied_executable": "ProvedSatisfying",
+    "alice_legitimate_job_provider_bound_executable": "ProvedSatisfying"
+  },
+  "lemma_actual_states": {
+    "tenant_isolation_principal_only": "CounterexampleFound",
+    "tenant_isolation_caller_supplied": "CounterexampleFound",
+    "tenant_isolation_provider_bound": "ProvedSatisfying",
+    "mallory_can_access_alice_resource_principal_only": "ProvedSatisfying",
+    "mallory_can_access_alice_resource_caller_supplied": "ProvedSatisfying",
+    "mallory_can_access_alice_resource_provider_bound": "CounterexampleFound",
+    "alice_legitimate_job_principal_only_executable": "ProvedSatisfying",
+    "alice_legitimate_job_caller_supplied_executable": "ProvedSatisfying",
+    "alice_legitimate_job_provider_bound_executable": "ProvedSatisfying"
+  },
+  "lemma_matches": {
+    "tenant_isolation_principal_only": true,
+    "tenant_isolation_caller_supplied": true,
+    "tenant_isolation_provider_bound": true,
+    "mallory_can_access_alice_resource_principal_only": true,
+    "mallory_can_access_alice_resource_caller_supplied": true,
+    "mallory_can_access_alice_resource_provider_bound": true,
+    "alice_legitimate_job_principal_only_executable": true,
+    "alice_legitimate_job_caller_supplied_executable": true,
+    "alice_legitimate_job_provider_bound_executable": true
+  },
+  "mismatched_results": [],
+  "per_lemma": {
+    "tenant_isolation_principal_only": {
+      "ok": true,
+      "status": "falsified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "falsified - found trace (9 steps)",
+      "expected_state": "CounterexampleFound",
+      "actual_state": "CounterexampleFound",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "tamarin-prover",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/tenant_isolation_principal_only.spthy",
+        "--prove=tenant_isolation_principal_only",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/tenant_isolation_principal_only.spthy",
+      "elapsed_sec": 72.2
+    },
+    "tenant_isolation_caller_supplied": {
+      "ok": true,
+      "status": "falsified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "falsified - found trace (10 steps)",
+      "expected_state": "CounterexampleFound",
+      "actual_state": "CounterexampleFound",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "tamarin-prover",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/tenant_isolation_caller_supplied.spthy",
+        "--prove=tenant_isolation_caller_supplied",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/tenant_isolation_caller_supplied.spthy",
+      "elapsed_sec": 74.01
+    },
+    "tenant_isolation_provider_bound": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (48 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "tamarin-prover",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/tenant_isolation_provider_bound.spthy",
+        "--prove=tenant_isolation_provider_bound",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/tenant_isolation_provider_bound.spthy",
+      "elapsed_sec": 66.34
+    },
+    "mallory_can_access_alice_resource_principal_only": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (12 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "tamarin-prover",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/mallory_can_access_alice_resource_principal_only.spthy",
+        "--prove=mallory_can_access_alice_resource_principal_only",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/mallory_can_access_alice_resource_principal_only.spthy",
+      "elapsed_sec": 70.96
+    },
+    "mallory_can_access_alice_resource_caller_supplied": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (12 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "tamarin-prover",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/mallory_can_access_alice_resource_caller_supplied.spthy",
+        "--prove=mallory_can_access_alice_resource_caller_supplied",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/mallory_can_access_alice_resource_caller_supplied.spthy",
+      "elapsed_sec": 72.56
+    },
+    "mallory_can_access_alice_resource_provider_bound": {
+      "ok": true,
+      "status": "falsified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "falsified - no trace found (40 steps)",
+      "expected_state": "CounterexampleFound",
+      "actual_state": "CounterexampleFound",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "tamarin-prover",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/mallory_can_access_alice_resource_provider_bound.spthy",
+        "--prove=mallory_can_access_alice_resource_provider_bound",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/mallory_can_access_alice_resource_provider_bound.spthy",
+      "elapsed_sec": 69.46
+    },
+    "alice_legitimate_job_principal_only_executable": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (12 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "tamarin-prover",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/alice_legitimate_job_principal_only_executable.spthy",
+        "--prove=alice_legitimate_job_principal_only_executable",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/alice_legitimate_job_principal_only_executable.spthy",
+      "elapsed_sec": 68.49
+    },
+    "alice_legitimate_job_caller_supplied_executable": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (12 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "tamarin-prover",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/alice_legitimate_job_caller_supplied_executable.spthy",
+        "--prove=alice_legitimate_job_caller_supplied_executable",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/alice_legitimate_job_caller_supplied_executable.spthy",
+      "elapsed_sec": 70.68
+    },
+    "alice_legitimate_job_provider_bound_executable": {
+      "ok": true,
+      "status": "verified",
+      "returncode": 0,
+      "warnings": [],
+      "lemma_result": "verified (12 steps)",
+      "expected_state": "ProvedSatisfying",
+      "actual_state": "ProvedSatisfying",
+      "matches_expected": true,
+      "missing_results": [],
+      "command": [
+        "tamarin-prover",
+        "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/alice_legitimate_job_provider_bound_executable.spthy",
+        "--prove=alice_legitimate_job_provider_bound_executable",
+        "--derivcheck-timeout=0",
+        "--quit-on-warning"
+      ],
+      "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma/alice_legitimate_job_provider_bound_executable.spthy",
+      "elapsed_sec": 69.17
+    }
+  },
+  "command": [
+    "tamarin-prover",
+    "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/per_lemma",
+    "--prove=<lemma>",
+    "--derivcheck-timeout=0"
+  ],
+  "output_path": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/model.spthy",
+  "proof_expectations": [
+    {
+      "name": "tenant_isolation_principal_only",
+      "trace_kind": "all-traces",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Tenant isolation in principal_only: every accepted resource operation should have originatingCustomer equal to resourceOwner. The described setup suggests this safety property is violated because Mallory can request Alice's role and no external-ID condition is imposed.",
+      "required_events": [
+        "ResourceOperation(principal_only, originatingCustomer, requestedRole, resourceOwner, job)"
+      ]
+    },
+    {
+      "name": "tenant_isolation_caller_supplied",
+      "trace_kind": "all-traces",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Tenant isolation in caller_supplied: every accepted resource operation should have originatingCustomer equal to resourceOwner. The described setup suggests this safety property is violated because Mallory knows Alice's external ID and may supply it with Alice's role identifier.",
+      "required_events": [
+        "ResourceOperation(caller_supplied, originatingCustomer, requestedRole, resourceOwner, job)"
+      ]
+    },
+    {
+      "name": "tenant_isolation_provider_bound",
+      "trace_kind": "all-traces",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "authentication",
+      "intent": "Tenant isolation in provider_bound: every accepted resource operation should have originatingCustomer equal to resourceOwner, because the provider uses the trusted external-ID mapping for the authenticated originating customer rather than the caller-supplied field.",
+      "required_events": [
+        "ResourceOperation(provider_bound, originatingCustomer, requestedRole, resourceOwner, job)"
+      ]
+    },
+    {
+      "name": "mallory_can_access_alice_resource_principal_only",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Attack reachability in principal_only: determine whether a Mallory-originated job can cause an operation on Alice's resource.",
+      "required_events": [
+        "CustomerJob(Mallory, principal_only, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(principal_only, Mallory, AliceRole, Alice, job)"
+      ]
+    },
+    {
+      "name": "mallory_can_access_alice_resource_caller_supplied",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Attack reachability in caller_supplied: determine whether a Mallory-originated job can cause an operation on Alice's resource.",
+      "required_events": [
+        "CustomerJob(Mallory, caller_supplied, AliceRole, extid_for(Alice), job)",
+        "ResourceOperation(caller_supplied, Mallory, AliceRole, Alice, job)"
+      ]
+    },
+    {
+      "name": "mallory_can_access_alice_resource_provider_bound",
+      "trace_kind": "exists-trace",
+      "expected_state": "CounterexampleFound",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Attack reachability in provider_bound: determine whether a Mallory-originated job can cause an operation on Alice's resource. The described setup suggests this trace should not exist.",
+      "required_events": [
+        "CustomerJob(Mallory, provider_bound, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(provider_bound, Mallory, AliceRole, Alice, job)"
+      ]
+    },
+    {
+      "name": "alice_legitimate_job_principal_only_executable",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Executability: Alice can complete a legitimate job on her own resource in principal_only; rejecting all jobs is not an acceptable repair.",
+      "required_events": [
+        "CustomerJob(Alice, principal_only, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(principal_only, Alice, AliceRole, Alice, job)"
+      ]
+    },
+    {
+      "name": "alice_legitimate_job_caller_supplied_executable",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Executability: Alice can complete a legitimate job on her own resource in caller_supplied; rejecting all jobs is not an acceptable repair.",
+      "required_events": [
+        "CustomerJob(Alice, caller_supplied, AliceRole, extid_for(Alice), job)",
+        "ResourceOperation(caller_supplied, Alice, AliceRole, Alice, job)"
+      ]
+    },
+    {
+      "name": "alice_legitimate_job_provider_bound_executable",
+      "trace_kind": "exists-trace",
+      "expected_state": "ProvedSatisfying",
+      "expected_raw": "",
+      "source": "reviewed_lemma_specification",
+      "goal_type": "executability",
+      "intent": "Executability: Alice can complete a legitimate job on her own resource in provider_bound; rejecting all jobs is not an acceptable repair.",
+      "required_events": [
+        "CustomerJob(Alice, provider_bound, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(provider_bound, Alice, AliceRole, Alice, job)"
+      ]
+    }
+  ],
+  "lint_issues": [],
+  "proof_lint_issues": [],
+  "missing_lemmas": [],
+  "workflow": {
+    "run_dir": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919",
+    "workflow_library_dir": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/ui_benchmark18_nl",
+    "settings": {
+      "abstraction_hints_enabled": false,
+      "abstraction_hints_top_k": 3,
+      "lemma_alignment_route_enabled": false
+    },
+    "current_step": {
+      "timestamp": "2026-09-19T01:39:50",
+      "step": "tamarin_prove",
+      "status": "proof_done",
+      "pipeline_event": "proof_done",
+      "case": "AWS_External_ID_Delegation",
+      "ok": true,
+      "returncode": 0,
+      "elapsed_sec": 636.87,
+      "result_status": "expected-matched"
+    },
+    "events": [
+      {
+        "case": "AWS_External_ID_Delegation",
+        "pipeline_event": "generation_start",
+        "restart": false,
+        "round": 1,
+        "status": "generation_start",
+        "step": "sapic_generation",
+        "timestamp": "2026-09-19T01:03:53"
+      },
+      {
+        "attempt": 1,
+        "bytes": 11897,
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 116.33,
+        "json": true,
+        "pipeline_event": "generation_done",
+        "round": 1,
+        "status": "generation_done",
+        "step": "sapic_generation",
+        "timestamp": "2026-09-19T01:05:49"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma_count": 9,
+        "mode": "reviewed_proof_targets",
+        "pipeline_event": "proof_spec_done",
+        "source": "reviewed_lemma_specification",
+        "status": "proof_spec_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:05:49"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "issue_count": 0,
+        "label": "initial",
+        "pipeline_event": "lint_done",
+        "status": "lint_done",
+        "step": "lint_done",
+        "timestamp": "2026-09-19T01:05:49"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "bytes": 11897,
+        "lint_issue_count": 0,
+        "model": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/final/model.spthy",
+        "pipeline": "run_prepared_pipeline",
+        "status": "done",
+        "step": "sapic_generation",
+        "timestamp": "2026-09-19T01:05:49"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "enabled": false,
+        "label": "initial",
+        "pipeline_event": "abstraction_hints_done",
+        "selected_count": 0,
+        "selected_ids": [],
+        "status": "abstraction_hints_done",
+        "step": "abstraction_hints_done",
+        "timestamp": "2026-09-19T01:05:49"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "max_rounds": 2,
+        "pipeline": "run_prepared_pipeline",
+        "status": "start",
+        "step": "repair_verify",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:05:49"
+      },
+      {
+        "case": "nonstandard_aws_gpt55_20260919",
+        "label": "initial",
+        "lint_issue_count": 0,
+        "ok": false,
+        "pipeline_event": "verify_done",
+        "result_status": "failed",
+        "returncode": 1,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:05:49",
+        "warning_count": 0
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "generation_round": 1,
+        "lint_issue_count": 0,
+        "pipeline_event": "repair_start",
+        "previous_status": "failed",
+        "round": 1,
+        "status": "repair_start",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:05:49"
+      },
+      {
+        "bytes": 11661,
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 118.24,
+        "generation_round": 1,
+        "lint_issue_count": 0,
+        "pipeline_event": "repair_generation_done",
+        "round": 1,
+        "status": "repair_generation_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:07:48"
+      },
+      {
+        "case": "nonstandard_aws_gpt55_20260919",
+        "label": "repaired_1",
+        "lint_issue_count": 0,
+        "ok": false,
+        "pipeline_event": "verify_done",
+        "result_status": "warnings",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:07:49",
+        "warning_count": 2
+      },
+      {
+        "accepted": true,
+        "case": "AWS_External_ID_Delegation",
+        "generation_round": 1,
+        "ok": false,
+        "pipeline_event": "repair_done",
+        "result_status": "warnings",
+        "round": 1,
+        "status": "repair_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:07:49"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "generation_round": 1,
+        "lint_issue_count": 0,
+        "pipeline_event": "repair_start",
+        "previous_status": "warnings",
+        "round": 2,
+        "status": "repair_start",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:07:49"
+      },
+      {
+        "bytes": 11692,
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 78.73,
+        "generation_round": 1,
+        "lint_issue_count": 0,
+        "pipeline_event": "repair_generation_done",
+        "round": 2,
+        "status": "repair_generation_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:09:08"
+      },
+      {
+        "case": "nonstandard_aws_gpt55_20260919",
+        "label": "repaired_2",
+        "lint_issue_count": 0,
+        "ok": true,
+        "pipeline_event": "verify_done",
+        "result_status": "clean",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:09:09",
+        "warning_count": 0
+      },
+      {
+        "accepted": true,
+        "case": "AWS_External_ID_Delegation",
+        "generation_round": 1,
+        "ok": true,
+        "pipeline_event": "repair_done",
+        "result_status": "clean",
+        "round": 2,
+        "status": "repair_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:09:09"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "accepted_round": 2,
+        "attempt_count": 4,
+        "ok": true,
+        "pipeline": "run_prepared_pipeline",
+        "result_status": "clean",
+        "status": "done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:09:09"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "enabled": false,
+        "label": "initial",
+        "pipeline_event": "abstraction_hints_done",
+        "selected_count": 0,
+        "selected_ids": [],
+        "status": "abstraction_hints_done",
+        "step": "abstraction_hints_done",
+        "timestamp": "2026-09-19T01:09:09"
+      },
+      {
+        "lemma_count": 9,
+        "per_lemma": true,
+        "pipeline": "run_prepared_pipeline",
+        "status": "start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:09:09"
+      },
+      {
+        "case": "nonstandard_aws_gpt55_20260919",
+        "label": "initial",
+        "lint_issue_count": 0,
+        "ok": true,
+        "pipeline_event": "verify_done",
+        "result_status": "clean",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:09:09",
+        "warning_count": 0
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "generation_round": 1,
+        "pipeline_event": "repair_skipped",
+        "reason": "verification clean",
+        "status": "repair_skipped",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:09:09"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "expected_count": 9,
+        "extra": [],
+        "missing": [],
+        "ok": true,
+        "pipeline_event": "lemma_coverage_done",
+        "status": "lemma_coverage_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:09:09"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "issue_count": 0,
+        "ok": true,
+        "pipeline_event": "proof_lint_done",
+        "status": "proof_lint_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:09:09"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma_count": 9,
+        "pipeline_event": "proof_start",
+        "status": "proof_start",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:09:09"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "tenant_isolation_principal_only",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:09:09"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 78.05,
+        "expected_state": "CounterexampleFound",
+        "lemma": "tenant_isolation_principal_only",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:10:28"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "tenant_isolation_caller_supplied",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:10:28"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 92.97,
+        "expected_state": "CounterexampleFound",
+        "lemma": "tenant_isolation_caller_supplied",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:12:01"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "tenant_isolation_provider_bound",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:12:01"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 114.13,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "tenant_isolation_provider_bound",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:13:55"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "mallory_can_access_alice_resource_principal_only",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:13:55"
+      },
+      {
+        "actual_state": "ProofTimeout",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 120.23,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "mallory_can_access_alice_resource_principal_only",
+        "match": false,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "timeout",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:15:56"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "mallory_can_access_alice_resource_caller_supplied",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:15:56"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 112.25,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "mallory_can_access_alice_resource_caller_supplied",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:17:48"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "mallory_can_access_alice_resource_provider_bound",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:17:48"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 70.12,
+        "expected_state": "CounterexampleFound",
+        "lemma": "mallory_can_access_alice_resource_provider_bound",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:18:59"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "alice_legitimate_job_principal_only_executable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:18:59"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 67.59,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "alice_legitimate_job_principal_only_executable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:20:07"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "alice_legitimate_job_caller_supplied_executable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:20:07"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 66.27,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "alice_legitimate_job_caller_supplied_executable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:21:13"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "alice_legitimate_job_provider_bound_executable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:21:13"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 72.32,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "alice_legitimate_job_provider_bound_executable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:22:26"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 796.8,
+        "ok": false,
+        "pipeline_event": "proof_done",
+        "result_status": "timeout",
+        "returncode": 124,
+        "status": "proof_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:22:26"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "missing_lemmas": [],
+        "pipeline_event": "proof_repair_start",
+        "proof_lint_issue_count": 0,
+        "proof_status": "timeout",
+        "round": 1,
+        "status": "proof_repair_start",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:22:27"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "enabled": false,
+        "label": "initial",
+        "pipeline_event": "abstraction_hints_done",
+        "selected_count": 0,
+        "selected_ids": [],
+        "status": "abstraction_hints_done",
+        "step": "abstraction_hints_done",
+        "timestamp": "2026-09-19T01:27:56"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "max_rounds": 0,
+        "pipeline": "run_prepared_pipeline",
+        "status": "start",
+        "step": "repair_verify",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:27:56"
+      },
+      {
+        "case": "nonstandard_aws_gpt55_20260919",
+        "label": "initial",
+        "lint_issue_count": 0,
+        "ok": true,
+        "pipeline_event": "verify_done",
+        "result_status": "clean",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:27:57",
+        "warning_count": 0
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "generation_round": 1,
+        "pipeline_event": "repair_skipped",
+        "reason": "verification clean",
+        "status": "repair_skipped",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:27:57"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "accepted_round": 2,
+        "attempt_count": 4,
+        "ok": true,
+        "pipeline": "run_prepared_pipeline",
+        "result_status": "clean",
+        "status": "done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:27:57"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "enabled": false,
+        "label": "initial",
+        "pipeline_event": "abstraction_hints_done",
+        "selected_count": 0,
+        "selected_ids": [],
+        "status": "abstraction_hints_done",
+        "step": "abstraction_hints_done",
+        "timestamp": "2026-09-19T01:29:12"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "max_rounds": 0,
+        "pipeline": "run_prepared_pipeline",
+        "status": "start",
+        "step": "repair_verify",
+        "timeout": 120,
+        "timestamp": "2026-09-19T01:29:12"
+      },
+      {
+        "case": "nonstandard_aws_gpt55_20260919",
+        "label": "initial",
+        "lint_issue_count": 0,
+        "ok": true,
+        "pipeline_event": "verify_done",
+        "result_status": "clean",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:29:12",
+        "warning_count": 0
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "generation_round": 1,
+        "pipeline_event": "repair_skipped",
+        "reason": "verification clean",
+        "status": "repair_skipped",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:29:12"
+      },
+      {
+        "abstraction_hints_enabled": false,
+        "accepted_round": 2,
+        "attempt_count": 4,
+        "ok": true,
+        "pipeline": "run_prepared_pipeline",
+        "result_status": "clean",
+        "status": "done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:29:13"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "enabled": false,
+        "label": "initial",
+        "pipeline_event": "abstraction_hints_done",
+        "selected_count": 0,
+        "selected_ids": [],
+        "status": "abstraction_hints_done",
+        "step": "abstraction_hints_done",
+        "timestamp": "2026-09-19T01:29:13"
+      },
+      {
+        "lemma_count": 9,
+        "per_lemma": true,
+        "pipeline": "run_prepared_pipeline",
+        "status": "start",
+        "step": "tamarin_prove",
+        "timeout": 240,
+        "timestamp": "2026-09-19T01:29:13"
+      },
+      {
+        "case": "nonstandard_aws_gpt55_20260919",
+        "label": "initial",
+        "lint_issue_count": 0,
+        "ok": true,
+        "pipeline_event": "verify_done",
+        "result_status": "clean",
+        "returncode": 0,
+        "status": "verify_done",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:29:14",
+        "warning_count": 0
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "generation_round": 1,
+        "pipeline_event": "repair_skipped",
+        "reason": "verification clean",
+        "status": "repair_skipped",
+        "step": "repair_verify",
+        "timestamp": "2026-09-19T01:29:14"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "expected_count": 9,
+        "extra": [],
+        "missing": [],
+        "ok": true,
+        "pipeline_event": "lemma_coverage_done",
+        "status": "lemma_coverage_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:29:14"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "issue_count": 0,
+        "ok": true,
+        "pipeline_event": "proof_lint_done",
+        "status": "proof_lint_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:29:14"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma_count": 9,
+        "pipeline_event": "proof_start",
+        "status": "proof_start",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:29:14"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "tenant_isolation_principal_only",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 240,
+        "timestamp": "2026-09-19T01:29:14"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 72.2,
+        "expected_state": "CounterexampleFound",
+        "lemma": "tenant_isolation_principal_only",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:30:26"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "tenant_isolation_caller_supplied",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 240,
+        "timestamp": "2026-09-19T01:30:26"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 74.01,
+        "expected_state": "CounterexampleFound",
+        "lemma": "tenant_isolation_caller_supplied",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:31:40"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "tenant_isolation_provider_bound",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 240,
+        "timestamp": "2026-09-19T01:31:40"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 66.34,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "tenant_isolation_provider_bound",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:32:47"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "mallory_can_access_alice_resource_principal_only",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 240,
+        "timestamp": "2026-09-19T01:32:47"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 70.96,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "mallory_can_access_alice_resource_principal_only",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:33:58"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "mallory_can_access_alice_resource_caller_supplied",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 240,
+        "timestamp": "2026-09-19T01:33:58"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 72.56,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "mallory_can_access_alice_resource_caller_supplied",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:35:11"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "mallory_can_access_alice_resource_provider_bound",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 240,
+        "timestamp": "2026-09-19T01:35:11"
+      },
+      {
+        "actual_state": "CounterexampleFound",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 69.46,
+        "expected_state": "CounterexampleFound",
+        "lemma": "mallory_can_access_alice_resource_provider_bound",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "falsified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:36:21"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "alice_legitimate_job_principal_only_executable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 240,
+        "timestamp": "2026-09-19T01:36:21"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 68.49,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "alice_legitimate_job_principal_only_executable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:37:29"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "alice_legitimate_job_caller_supplied_executable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 240,
+        "timestamp": "2026-09-19T01:37:29"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 70.68,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "alice_legitimate_job_caller_supplied_executable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:38:40"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "lemma": "alice_legitimate_job_provider_bound_executable",
+        "pipeline_event": "proof_lemma_start",
+        "status": "proof_lemma_start",
+        "step": "tamarin_prove",
+        "timeout": 240,
+        "timestamp": "2026-09-19T01:38:40"
+      },
+      {
+        "actual_state": "ProvedSatisfying",
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 69.17,
+        "expected_state": "ProvedSatisfying",
+        "lemma": "alice_legitimate_job_provider_bound_executable",
+        "match": true,
+        "pipeline_event": "proof_lemma_done",
+        "result_status": "verified",
+        "status": "proof_lemma_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:39:50"
+      },
+      {
+        "case": "AWS_External_ID_Delegation",
+        "elapsed_sec": 636.87,
+        "ok": true,
+        "pipeline_event": "proof_done",
+        "result_status": "expected-matched",
+        "returncode": 0,
+        "status": "proof_done",
+        "step": "tamarin_prove",
+        "timestamp": "2026-09-19T01:39:50"
+      }
+    ],
+    "artifacts": {
+      "case": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/input/case.json",
+      "protocol_ir": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/ir/protocol_ir.json",
+      "field_reviews": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/ir/field_reviews.json",
+      "reviewed_protocol_ir": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/ir/protocol_ir.reviewed.json",
+      "review_decisions": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/ir/review_decisions.json",
+      "contract": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/modeling_contract.json",
+      "reviewed_contract": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/modeling_contract.reviewed.json",
+      "sapic": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/final/model.spthy",
+      "verify": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/verify/initial.json",
+      "repair_verify": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/verify/reviewed_contract_repair_loop.json",
+      "proof": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/proof/result.json",
+      "nl_attempts": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/workflow/nl_attempts",
+      "snapshots": "/Users/ella/code/TAMARIN-Agent-master/public_contract_review_ui/runs/nonstandard_aws_gpt55_20260919/workflow/snapshots"
+    },
+    "exists": {
+      "case": true,
+      "protocol_ir": true,
+      "contract": true,
+      "reviewed_contract": true,
+      "review_saved": true,
+      "review_complete": false,
+      "sapic": true,
+      "verify": true,
+      "repair_verify": true,
+      "proof": true,
+      "nl_attempts": true,
+      "snapshots": false
+    },
+    "review": {
+      "saved": true,
+      "complete": false,
+      "status": "pending",
+      "total": 89,
+      "unresolved": 18,
+      "status_counts": {
+        "must_review": 0,
+        "needs_review": 18,
+        "system_assumption": 0,
+        "user_confirmed": 0,
+        "high_confidence": 71
+      },
+      "sections": {
+        "fresh": {
+          "status": "done",
+          "total": 3,
+          "unresolved": 0,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 0,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 3
+          }
+        },
+        "setup": {
+          "status": "done",
+          "total": 0,
+          "unresolved": 0,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 0,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 0
+          }
+        },
+        "messages": {
+          "status": "done",
+          "total": 18,
+          "unresolved": 0,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 0,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 18
+          }
+        },
+        "checks": {
+          "status": "done",
+          "total": 15,
+          "unresolved": 0,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 0,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 15
+          }
+        },
+        "events": {
+          "status": "done",
+          "total": 8,
+          "unresolved": 0,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 0,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 8
+          }
+        },
+        "proof_targets": {
+          "status": "pending",
+          "total": 45,
+          "unresolved": 18,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 18,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 27
+          }
+        },
+        "attack_surface": {
+          "status": "done",
+          "total": 0,
+          "unresolved": 0,
+          "status_counts": {
+            "must_review": 0,
+            "needs_review": 0,
+            "system_assumption": 0,
+            "user_confirmed": 0,
+            "high_confidence": 0
+          }
+        }
+      }
+    }
+  },
+  "archive_provenance": {
+    "raw_result_path": "runs/nonstandard_aws_gpt55_20260919/proof/result.json",
+    "raw_result_sha256": "b3a5089e5bd3956bcaeef7df6adce7c7416000b20894af31ff599f2ca24264f3",
+    "omitted_fields": [
+      "stdout",
+      "stderr",
+      "stdout_tail",
+      "stderr_tail"
+    ],
+    "note": "Diagnostic text omitted recursively for publication; proof outcomes and per-lemma metadata are unchanged. Raw result retained locally, not included in this repository."
+  }
+}

@@ -1,0 +1,2250 @@
+{
+  "schema": "protocol_ir_pipeline_protocol_ir_v1",
+  "protocol_name": "GitHub_Actions_Artifact_Provenance",
+  "roles": [
+    "Maintainer",
+    "Attacker",
+    "CIPlatform",
+    "ArtifactStore",
+    "Consumer",
+    "DeploymentService",
+    "Consumer_name_only"
+  ],
+  "principals": [
+    {
+      "name": "Maintainer",
+      "role_hint": "Maintainer"
+    },
+    {
+      "name": "Attacker",
+      "role_hint": "Attacker"
+    },
+    {
+      "name": "CIPlatform",
+      "role_hint": "CIPlatform"
+    },
+    {
+      "name": "ArtifactStore",
+      "role_hint": "ArtifactStore"
+    },
+    {
+      "name": "Consumer_name_only",
+      "role_hint": "Consumer_name_only"
+    },
+    {
+      "name": "Consumer_run_bound",
+      "role_hint": "Consumer_run_bound"
+    },
+    {
+      "name": "Consumer_trusted_origin",
+      "role_hint": "Consumer_trusted_origin"
+    },
+    {
+      "name": "DeploymentService",
+      "role_hint": "DeploymentService"
+    }
+  ],
+  "crypto": {
+    "builtins": [
+      "signing"
+    ],
+    "functions": [
+      "auth_notify/6",
+      "auth_artifact/8",
+      "run_record/9",
+      "cred_submit/10"
+    ],
+    "equations": [],
+    "assumptions": []
+  },
+  "fresh_terms": [
+    {
+      "name": "~run_h",
+      "owner": "CIPlatform",
+      "purpose": "fresh run ID allocated for an honest protected-branch build"
+    },
+    {
+      "name": "~run_a",
+      "owner": "CIPlatform",
+      "purpose": "fresh run ID allocated for an attacker-controlled fork build"
+    },
+    {
+      "name": "~art_h",
+      "owner": "ArtifactStore",
+      "purpose": "distinct artifact identity for the honest protected-branch run"
+    },
+    {
+      "name": "~art_a",
+      "owner": "ArtifactStore",
+      "purpose": "distinct artifact identity for the attacker-controlled fork run"
+    }
+  ],
+  "long_term_keys": [
+    {
+      "name": "depCredC",
+      "owner": "Consumer",
+      "public_term": "cred_id(depCredC)",
+      "policy": "protected deployment credential held by the consumer; never handed to producer; reveal only via explicit compromise if modeled"
+    }
+  ],
+  "messages": [
+    {
+      "label": "M1",
+      "step": 1,
+      "from": "CIPlatform",
+      "to": "ArtifactStore",
+      "term": "run_record(~run_h, protected_repo, protected_branch, commit_h, build_workflow, success, ~art_h, 'package', body_h)",
+      "meaning": "The platform records an immutable successful protected-repository protected-branch build and its package artifact.",
+      "protection": "authenticated-platform-state",
+      "sender_knows": [
+        "~run_h",
+        "protected_repo",
+        "protected_branch",
+        "commit_h",
+        "build_workflow",
+        "success",
+        "~art_h",
+        "'package'",
+        "body_h"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2",
+      "step": 2,
+      "from": "CIPlatform",
+      "to": "ArtifactStore",
+      "term": "run_record(~run_a, fork_repo, fork_branch, commit_a, build_workflow, success, ~art_a, 'package', body_a)",
+      "meaning": "The platform records an immutable successful attacker-controlled fork build and its package artifact body.",
+      "protection": "authenticated-platform-state",
+      "sender_knows": [
+        "~run_a",
+        "fork_repo",
+        "fork_branch",
+        "commit_a",
+        "build_workflow",
+        "success",
+        "~art_a",
+        "'package'",
+        "body_a"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M3",
+      "step": 3,
+      "from": "CIPlatform",
+      "to": "Consumer",
+      "term": "auth_notify(trigger_run, src_repo, src_branch, commit, build_workflow, success)",
+      "meaning": "An authenticated successful completion notification for the designated build workflow triggers a consumer configuration.",
+      "protection": "authenticated-platform-statement",
+      "sender_knows": [
+        "trigger_run",
+        "src_repo",
+        "src_branch",
+        "commit",
+        "build_workflow",
+        "success"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M4",
+      "step": 4,
+      "from": "ArtifactStore",
+      "to": "Consumer_name_only",
+      "term": "auth_artifact(artifact_id, producing_run, 'package', body, src_repo, src_branch, commit, store_record_id)",
+      "meaning": "The name_only consumer receives an authenticated artifact-store response for some stored artifact named package, not necessarily from the triggering run.",
+      "protection": "authenticated-platform-statement",
+      "sender_knows": [
+        "artifact_id",
+        "producing_run",
+        "'package'",
+        "body",
+        "src_repo",
+        "src_branch",
+        "commit",
+        "store_record_id"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M5",
+      "step": 5,
+      "from": "ArtifactStore",
+      "to": "Consumer",
+      "term": "auth_artifact(artifact_id, trigger_run, 'package', body, src_repo, src_branch, commit, store_record_id)",
+      "meaning": "The run_bound and trusted_origin consumers receive an authenticated artifact-store response for package from the exact triggering run.",
+      "protection": "authenticated-platform-statement",
+      "sender_knows": [
+        "artifact_id",
+        "trigger_run",
+        "'package'",
+        "body",
+        "src_repo",
+        "src_branch",
+        "commit",
+        "store_record_id"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M6",
+      "step": 6,
+      "from": "Consumer",
+      "to": "DeploymentService",
+      "term": "cred_submit(depCredC, cfg, trigger_run, artifact_id, producing_run, src_repo, src_branch, commit, body, store_record_id)",
+      "meaning": "After successful selection checks, the consumer uses its protected deployment credential to submit the selected artifact for privileged operation.",
+      "protection": "credential-authentication",
+      "sender_knows": [
+        "depCredC",
+        "cfg",
+        "trigger_run",
+        "artifact_id",
+        "producing_run",
+        "src_repo",
+        "src_branch",
+        "commit",
+        "body",
+        "store_record_id"
+      ],
+      "receiver_can_decrypt": false,
+      "receiver_must_treat_as_opaque": []
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "CI_record_honest_run",
+      "role": "CIPlatform",
+      "kind": "state-record",
+      "generates": [
+        "~run_h",
+        "~art_h"
+      ],
+      "message_in": [],
+      "message_out": [
+        "M1"
+      ],
+      "checks": [
+        "maintainer protected-repository commit exists",
+        "honest protected-branch run succeeds"
+      ],
+      "events": [
+        "RunComplete(~run_h, protected_repo, protected_branch, commit_h, build_workflow, success)",
+        "ArtifactStored(~art_h, ~run_h, 'package', body_h, protected_repo, protected_branch, commit_h)"
+      ]
+    },
+    {
+      "action_id": "CI_record_attacker_fork_run",
+      "role": "CIPlatform",
+      "kind": "state-record",
+      "generates": [
+        "~run_a",
+        "~art_a"
+      ],
+      "message_in": [],
+      "message_out": [
+        "M2"
+      ],
+      "checks": [
+        "attacker fork commit exists",
+        "fork run succeeds"
+      ],
+      "events": [
+        "RunComplete(~run_a, fork_repo, fork_branch, commit_a, build_workflow, success)",
+        "ArtifactStored(~art_a, ~run_a, 'package', body_a, fork_repo, fork_branch, commit_a)"
+      ]
+    },
+    {
+      "action_id": "Consumer_name_only_select",
+      "role": "Consumer_name_only",
+      "kind": "receive-check-select",
+      "generates": [],
+      "message_in": [
+        "M3",
+        "M4"
+      ],
+      "message_out": [],
+      "checks": [
+        "notification is authenticated",
+        "workflow is designated build workflow",
+        "status is success",
+        "artifact name is package"
+      ],
+      "events": [
+        "ConsumerTriggered(name_only, trigger_run)",
+        "ArtifactSelected(name_only, trigger_run, artifact_id, producing_run, 'package', body, src_repo, src_branch, commit)"
+      ]
+    },
+    {
+      "action_id": "Consumer_run_bound_select",
+      "role": "Consumer_run_bound",
+      "kind": "receive-check-select",
+      "generates": [],
+      "message_in": [
+        "M3",
+        "M5"
+      ],
+      "message_out": [],
+      "checks": [
+        "notification is authenticated",
+        "workflow is designated build workflow",
+        "status is success",
+        "artifact name is package",
+        "artifact producing run equals triggering run"
+      ],
+      "events": [
+        "ConsumerTriggered(run_bound, trigger_run)",
+        "ArtifactSelected(run_bound, trigger_run, artifact_id, trigger_run, 'package', body, src_repo, src_branch, commit)"
+      ]
+    },
+    {
+      "action_id": "Consumer_trusted_origin_select",
+      "role": "Consumer_trusted_origin",
+      "kind": "receive-check-select",
+      "generates": [],
+      "message_in": [
+        "M3",
+        "M5"
+      ],
+      "message_out": [],
+      "checks": [
+        "notification is authenticated",
+        "workflow is designated build workflow",
+        "status is success",
+        "triggering run repository is protected_repo",
+        "triggering run branch is protected_branch",
+        "artifact name is package",
+        "artifact producing run equals triggering run"
+      ],
+      "events": [
+        "ConsumerTriggered(trusted_origin, trigger_run)",
+        "TrustedOriginChecked(trusted_origin, trigger_run, protected_repo, protected_branch)",
+        "ArtifactSelected(trusted_origin, trigger_run, artifact_id, trigger_run, 'package', body, protected_repo, protected_branch, commit)"
+      ]
+    },
+    {
+      "action_id": "Consumer_deploy_selected_artifact",
+      "role": "Consumer",
+      "kind": "privileged-submit",
+      "generates": [],
+      "message_in": [],
+      "message_out": [
+        "M6"
+      ],
+      "checks": [
+        "configuration-specific selection checks succeeded",
+        "consumer has deployment credential"
+      ],
+      "events": [
+        "PrivilegedUse(cfg, trigger_run, artifact_id, producing_run, src_repo, src_branch, commit, body)"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "role": "Consumer",
+      "condition": "accept only authenticated successful completion notifications for the designated build workflow",
+      "source_message": "M3"
+    },
+    {
+      "role": "Consumer_name_only",
+      "condition": "select an authenticated artifact-store record named package without checking that producing_run equals trigger_run",
+      "source_message": "M4"
+    },
+    {
+      "role": "Consumer_run_bound",
+      "condition": "select package only when the authenticated artifact-store record has producing_run equal to trigger_run",
+      "source_message": "M5"
+    },
+    {
+      "role": "Consumer_trusted_origin",
+      "condition": "check authenticated metadata that trigger_run used protected_repo and protected_branch",
+      "source_message": "M3"
+    },
+    {
+      "role": "Consumer_trusted_origin",
+      "condition": "after the trusted-origin check, select package only from the exact triggering run",
+      "source_message": "M5"
+    },
+    {
+      "role": "DeploymentService",
+      "condition": "authenticate the consumer deployment credential and record submitted configuration, triggering run, selected artifact, producing run, source repository, source branch, commit, and body",
+      "source_message": "M6"
+    }
+  ],
+  "events": [
+    {
+      "name": "RunComplete",
+      "arguments": [
+        "run",
+        "repo",
+        "branch",
+        "commit",
+        "workflow",
+        "status"
+      ],
+      "role": "CIPlatform",
+      "when": "the honest CI platform completes a build run"
+    },
+    {
+      "name": "ArtifactStored",
+      "arguments": [
+        "artifact_id",
+        "run",
+        "name",
+        "body",
+        "repo",
+        "branch",
+        "commit"
+      ],
+      "role": "ArtifactStore",
+      "when": "the artifact store creates the immutable artifact identity and record for a completed run"
+    },
+    {
+      "name": "ConsumerTriggered",
+      "arguments": [
+        "cfg",
+        "trigger_run"
+      ],
+      "role": "Consumer",
+      "when": "a consumer configuration is triggered by a successful completion notification"
+    },
+    {
+      "name": "TrustedOriginChecked",
+      "arguments": [
+        "cfg",
+        "trigger_run",
+        "repo",
+        "branch"
+      ],
+      "role": "Consumer_trusted_origin",
+      "when": "the trusted_origin consumer validates authenticated platform metadata for protected repository and protected branch"
+    },
+    {
+      "name": "ArtifactSelected",
+      "arguments": [
+        "cfg",
+        "trigger_run",
+        "artifact_id",
+        "producing_run",
+        "name",
+        "body",
+        "repo",
+        "branch",
+        "commit"
+      ],
+      "role": "Consumer",
+      "when": "a consumer configuration completes artifact selection checks"
+    },
+    {
+      "name": "PrivilegedUse",
+      "arguments": [
+        "cfg",
+        "trigger_run",
+        "artifact_id",
+        "producing_run",
+        "repo",
+        "branch",
+        "commit",
+        "body"
+      ],
+      "role": "DeploymentService",
+      "when": "the deployment service authenticates the consumer and records the privileged operation"
+    }
+  ],
+  "claims": [
+    {
+      "lemma_name": "name_only_fork_artifact_privileged_use_reachable",
+      "claim_category": "",
+      "goal_type": "source",
+      "expected_state": "HypothesizedReachable",
+      "trace_kind": "exists-trace",
+      "intent": "Check whether name_only permits an attacker-controlled fork artifact named package to be privilegedly used.",
+      "required_events": [
+        {
+          "name": "ArtifactStored(artifact_id, producing_run, 'package', body, fork_repo, fork_branch, commit)",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        },
+        {
+          "name": "PrivilegedUse(name_only, trigger_run, artifact_id, producing_run, fork_repo, fork_branch, commit, body)",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        }
+      ],
+      "event_schema": [
+        "ArtifactStored(artifact_id, producing_run, 'package', body, fork_repo, fork_branch, commit)",
+        "PrivilegedUse(name_only, trigger_run, artifact_id, producing_run, fork_repo, fork_branch, commit, body)"
+      ],
+      "preserved_values": [],
+      "holds_under": [],
+      "does_not_hold_under": [],
+      "anti_compression_note": "",
+      "witness": "Attacker fork run succeeds, uploads package, and name_only selects any stored artifact named package.",
+      "expected_raw": "",
+      "evidence": []
+    },
+    {
+      "lemma_name": "run_bound_fork_artifact_privileged_use_reachable",
+      "claim_category": "",
+      "goal_type": "source",
+      "expected_state": "HypothesizedReachable",
+      "trace_kind": "exists-trace",
+      "intent": "Check whether run_bound permits an attacker-controlled fork artifact to be privilegedly used when the triggering run itself is a fork run.",
+      "required_events": [
+        {
+          "name": "RunComplete(trigger_run, fork_repo, fork_branch, commit, build_workflow, success)",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        },
+        {
+          "name": "PrivilegedUse(run_bound, trigger_run, artifact_id, trigger_run, fork_repo, fork_branch, commit, body)",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        }
+      ],
+      "event_schema": [
+        "RunComplete(trigger_run, fork_repo, fork_branch, commit, build_workflow, success)",
+        "PrivilegedUse(run_bound, trigger_run, artifact_id, trigger_run, fork_repo, fork_branch, commit, body)"
+      ],
+      "preserved_values": [],
+      "holds_under": [],
+      "does_not_hold_under": [],
+      "anti_compression_note": "",
+      "witness": "A successful fork run triggers run_bound; run_bound binds artifact to the trigger but accepts completions from either repository.",
+      "expected_raw": "",
+      "evidence": []
+    },
+    {
+      "lemma_name": "name_only_all_privileged_uses_are_trusted_origin",
+      "claim_category": "",
+      "goal_type": "source",
+      "expected_state": "HypothesizedViolated",
+      "trace_kind": "all-traces",
+      "intent": "Safety question: whether every name_only privileged use came from protected_repo and protected_branch.",
+      "required_events": [
+        {
+          "name": "PrivilegedUse(name_only, trigger_run, artifact_id, producing_run, repo, branch, commit, body) ==> repo = protected_repo and branch = protected_branch",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        }
+      ],
+      "event_schema": [
+        "PrivilegedUse(name_only, trigger_run, artifact_id, producing_run, repo, branch, commit, body) ==> repo = protected_repo and branch = protected_branch"
+      ],
+      "preserved_values": [],
+      "holds_under": [],
+      "does_not_hold_under": [],
+      "anti_compression_note": "",
+      "witness": "Expected counterexample is an attacker-controlled fork artifact with ordinary name package selected by name_only.",
+      "expected_raw": "",
+      "evidence": []
+    },
+    {
+      "lemma_name": "run_bound_all_privileged_uses_are_trusted_origin",
+      "claim_category": "",
+      "goal_type": "source",
+      "expected_state": "HypothesizedViolated",
+      "trace_kind": "all-traces",
+      "intent": "Safety question: whether every run_bound privileged use came from protected_repo and protected_branch.",
+      "required_events": [
+        {
+          "name": "PrivilegedUse(run_bound, trigger_run, artifact_id, producing_run, repo, branch, commit, body) ==> repo = protected_repo and branch = protected_branch",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        }
+      ],
+      "event_schema": [
+        "PrivilegedUse(run_bound, trigger_run, artifact_id, producing_run, repo, branch, commit, body) ==> repo = protected_repo and branch = protected_branch"
+      ],
+      "preserved_values": [],
+      "holds_under": [],
+      "does_not_hold_under": [],
+      "anti_compression_note": "",
+      "witness": "Expected counterexample is a successful fork run whose own package artifact is selected because run_bound accepts completions from either repository.",
+      "expected_raw": "",
+      "evidence": []
+    },
+    {
+      "lemma_name": "trusted_origin_all_privileged_uses_are_trusted_origin",
+      "claim_category": "",
+      "goal_type": "source",
+      "expected_state": "HypothesizedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "Safety question: whether every trusted_origin privileged use came from protected_repo and protected_branch.",
+      "required_events": [
+        {
+          "name": "PrivilegedUse(trusted_origin, trigger_run, artifact_id, producing_run, repo, branch, commit, body) ==> repo = protected_repo and branch = protected_branch",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        }
+      ],
+      "event_schema": [
+        "PrivilegedUse(trusted_origin, trigger_run, artifact_id, producing_run, repo, branch, commit, body) ==> repo = protected_repo and branch = protected_branch"
+      ],
+      "preserved_values": [],
+      "holds_under": [],
+      "does_not_hold_under": [],
+      "anti_compression_note": "",
+      "witness": "trusted_origin checks authenticated metadata for protected repository and designated protected branch before exact-run package selection.",
+      "expected_raw": "",
+      "evidence": []
+    },
+    {
+      "lemma_name": "name_only_selected_artifact_belongs_to_triggering_run",
+      "claim_category": "",
+      "goal_type": "authentication",
+      "expected_state": "HypothesizedViolated",
+      "trace_kind": "all-traces",
+      "intent": "Run-provenance safety question: whether name_only always selects an artifact whose producing run is the triggering run.",
+      "required_events": [
+        {
+          "name": "ArtifactSelected(name_only, trigger_run, artifact_id, producing_run, name, body, repo, branch, commit) ==> producing_run = trigger_run",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        }
+      ],
+      "event_schema": [
+        "ArtifactSelected(name_only, trigger_run, artifact_id, producing_run, name, body, repo, branch, commit) ==> producing_run = trigger_run"
+      ],
+      "preserved_values": [],
+      "holds_under": [],
+      "does_not_hold_under": [],
+      "anti_compression_note": "",
+      "witness": "name_only does not tie artifact lookup to the triggering run; any stored package is eligible.",
+      "expected_raw": "",
+      "evidence": []
+    },
+    {
+      "lemma_name": "run_bound_selected_artifact_belongs_to_triggering_run",
+      "claim_category": "",
+      "goal_type": "authentication",
+      "expected_state": "HypothesizedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "Run-provenance safety question: whether run_bound always selects an artifact whose producing run is the triggering run.",
+      "required_events": [
+        {
+          "name": "ArtifactSelected(run_bound, trigger_run, artifact_id, producing_run, name, body, repo, branch, commit) ==> producing_run = trigger_run",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        }
+      ],
+      "event_schema": [
+        "ArtifactSelected(run_bound, trigger_run, artifact_id, producing_run, name, body, repo, branch, commit) ==> producing_run = trigger_run"
+      ],
+      "preserved_values": [],
+      "holds_under": [],
+      "does_not_hold_under": [],
+      "anti_compression_note": "",
+      "witness": "run_bound selects package only from the exact triggering run.",
+      "expected_raw": "",
+      "evidence": []
+    },
+    {
+      "lemma_name": "trusted_origin_selected_artifact_belongs_to_triggering_run",
+      "claim_category": "",
+      "goal_type": "authentication",
+      "expected_state": "HypothesizedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "Run-provenance safety question: whether trusted_origin always selects an artifact whose producing run is the triggering run.",
+      "required_events": [
+        {
+          "name": "ArtifactSelected(trusted_origin, trigger_run, artifact_id, producing_run, name, body, repo, branch, commit) ==> producing_run = trigger_run",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        }
+      ],
+      "event_schema": [
+        "ArtifactSelected(trusted_origin, trigger_run, artifact_id, producing_run, name, body, repo, branch, commit) ==> producing_run = trigger_run"
+      ],
+      "preserved_values": [],
+      "holds_under": [],
+      "does_not_hold_under": [],
+      "anti_compression_note": "",
+      "witness": "trusted_origin selects package from the exact run after checking trusted source metadata.",
+      "expected_raw": "",
+      "evidence": []
+    },
+    {
+      "lemma_name": "legitimate_protected_branch_deployment_executable_all_configs",
+      "claim_category": "",
+      "goal_type": "executability",
+      "expected_state": "HypothesizedReachable",
+      "trace_kind": "exists-trace",
+      "intent": "Establish that protected-branch build-to-deployment executions are possible for name_only, run_bound, and trusted_origin configurations.",
+      "required_events": [
+        {
+          "name": "PrivilegedUse(name_only, trigger_run1, artifact_id1, producing_run1, protected_repo, protected_branch, commit1, body1)",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        },
+        {
+          "name": "PrivilegedUse(run_bound, trigger_run2, artifact_id2, trigger_run2, protected_repo, protected_branch, commit2, body2)",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        },
+        {
+          "name": "PrivilegedUse(trusted_origin, trigger_run3, artifact_id3, trigger_run3, protected_repo, protected_branch, commit3, body3)",
+          "role": "",
+          "when": "",
+          "arguments": [],
+          "source_boundary": ""
+        }
+      ],
+      "event_schema": [
+        "PrivilegedUse(name_only, trigger_run1, artifact_id1, producing_run1, protected_repo, protected_branch, commit1, body1)",
+        "PrivilegedUse(run_bound, trigger_run2, artifact_id2, trigger_run2, protected_repo, protected_branch, commit2, body2)",
+        "PrivilegedUse(trusted_origin, trigger_run3, artifact_id3, trigger_run3, protected_repo, protected_branch, commit3, body3)"
+      ],
+      "preserved_values": [],
+      "holds_under": [],
+      "does_not_hold_under": [],
+      "anti_compression_note": "",
+      "witness": "Honest protected-branch runs succeed; each configuration can be triggered by a successful completion notification and use a package artifact.",
+      "expected_raw": "",
+      "evidence": []
+    }
+  ],
+  "compromise": {
+    "reveal_events": [],
+    "policy": "No compromise/reveal events are in scope. The attacker cannot acquire the deployment credential, forge CI metadata, modify the consumer workflow, or compromise CI infrastructure."
+  },
+  "abstractions": [
+    "GitHub Actions workflows, run records, artifact lookup responses, and deployment submissions are modeled as symbolic protocol actions rather than script semantics.",
+    "Authenticated platform statements are abstracted with auth_notify and auth_artifact terms instead of modeling concrete GitHub authentication mechanisms.",
+    "Artifact body contents are attacker-controlled or maintainer-produced opaque symbolic values; parser vulnerabilities, path traversal, cache poisoning, and arbitrary script semantics are excluded.",
+    "The three consumer configurations are isolated modes sharing the same source mechanisms."
+  ],
+  "modeling_assumptions": [
+    "protected_repo and protected_branch are designated constants representing the trusted origin.",
+    "fork_repo and fork_branch are attacker-controlled origin constants distinct from the protected origin.",
+    "A branch-name string inside an artifact body is not modeled as evidence of origin.",
+    "Failed checks suppress ArtifactSelected and PrivilegedUse events for that attempted execution.",
+    "The selected body and artifact identity are taken from the same immutable artifact-store record."
+  ],
+  "resolved_open_questions": [],
+  "semantic_constraints": [
+    {
+      "kind": "text_policy",
+      "policy": "CIPlatform allocates fresh run IDs and records source repository, source branch, exact commit, workflow identity, completion status, and artifact for each run."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "ArtifactStore creates a distinct artifact identity and records run ID, artifact name, and body; records are immutable after run completion."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Attacker can upload artifacts only as producer of fork runs and may reuse the artifact name package."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Completion notifications and artifact lookup responses are authenticated platform statements and cannot be rewritten by the attacker."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "name_only selection is by artifact name package only and is not bound to the triggering run."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "run_bound selection requires artifact producing_run equal to trigger_run but does not require protected repository or protected branch."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "trusted_origin selection requires authenticated trigger metadata for protected_repo and protected_branch and requires exact-run artifact selection."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Selected artifacts are not relabeled as maintainer-produced merely because a privileged consumer selected them."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "DeploymentService records configuration, triggering run, selected artifact, producing run, source repository, source branch, exact commit, and body."
+    }
+  ],
+  "field_evidence": [
+    {
+      "field_path": "fresh_terms.0.name",
+      "source_quote": "The honest CI platform allocates a fresh run ID to each build.",
+      "evidence_kind": "direct",
+      "reason": "The term names a fresh run ID for an honest build.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "fresh_terms.0.owner",
+      "source_quote": "The honest CI platform allocates a fresh run ID to each build.",
+      "evidence_kind": "direct",
+      "reason": "CIPlatform is explicitly responsible for fresh run IDs.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "fresh_terms.0.purpose",
+      "source_quote": "A maintainer can create trusted commits in the protected repository.",
+      "evidence_kind": "nearby",
+      "reason": "Honest protected-branch build purpose follows from trusted maintainer commits and fresh run allocation.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.91,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "fresh_terms.1.name",
+      "source_quote": "The honest CI platform allocates a fresh run ID to each build.",
+      "evidence_kind": "direct",
+      "reason": "The term names a fresh run ID for an attacker fork build.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "fresh_terms.1.owner",
+      "source_quote": "The honest CI platform allocates a fresh run ID to each build.",
+      "evidence_kind": "direct",
+      "reason": "CIPlatform is explicitly responsible for fresh run IDs.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "fresh_terms.1.purpose",
+      "source_quote": "fork runs can also succeed",
+      "evidence_kind": "direct",
+      "reason": "The purpose is an attacker-controlled fork run that can complete successfully.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "fresh_terms.2.name",
+      "source_quote": "The artifact store creates a distinct artifact identity",
+      "evidence_kind": "direct",
+      "reason": "The term names a distinct artifact identity.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "fresh_terms.2.owner",
+      "source_quote": "The artifact store creates a distinct artifact identity",
+      "evidence_kind": "direct",
+      "reason": "ArtifactStore is the creator/owner of artifact identity allocation.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "fresh_terms.2.purpose",
+      "source_quote": "honest protected-branch runs succeed",
+      "evidence_kind": "nearby",
+      "reason": "The artifact identity is for the artifact of an honest protected-branch run.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.82,
+      "consistency_confidence_score": 0.91,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "fresh_terms.3.name",
+      "source_quote": "The artifact store creates a distinct artifact identity",
+      "evidence_kind": "direct",
+      "reason": "The term names a distinct artifact identity.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "fresh_terms.3.owner",
+      "source_quote": "The artifact store creates a distinct artifact identity",
+      "evidence_kind": "direct",
+      "reason": "ArtifactStore is the creator/owner of artifact identity allocation.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "fresh_terms.3.purpose",
+      "source_quote": "An attacker can submit arbitrary fork commits and control the complete artifact body produced from those commits.",
+      "evidence_kind": "direct",
+      "reason": "The artifact identity is for the attacker-controlled fork artifact.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.93,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "long_term_keys.0.name",
+      "source_quote": "protected deployment credential",
+      "evidence_kind": "direct",
+      "reason": "depCredC is the symbolic name for the consumer's protected deployment credential.",
+      "priority_llm": 0.45,
+      "evidence_confidence_score": 0.75,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "long_term_keys.0.owner",
+      "source_quote": "After selection, the consumer uses its protected deployment credential",
+      "evidence_kind": "direct",
+      "reason": "The consumer is the holder of the credential.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "long_term_keys.0.public_term",
+      "source_quote": "The deployment service authenticates the consumer",
+      "evidence_kind": "assumption",
+      "reason": "A public credential identifier is a modeling artifact for authentication; the source does not name one.",
+      "priority_llm": 0.75,
+      "evidence_confidence_score": 0.45,
+      "consistency_confidence_score": 0.75,
+      "semantic_impact_score": 0.45
+    },
+    {
+      "field_path": "long_term_keys.0.policy",
+      "source_quote": "The deployment credential is never handed to the producer.",
+      "evidence_kind": "direct",
+      "reason": "The source directly states non-disclosure of the deployment credential to producers.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.0.label",
+      "source_quote": "It records the source repository, source branch, exact commit, workflow identity, completion status, and the artifact produced by that run.",
+      "evidence_kind": "none",
+      "reason": "M1 is an inferred compact label for the honest run record.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.0.from",
+      "source_quote": "The honest CI platform allocates a fresh run ID to each build. It records the source repository...",
+      "evidence_kind": "direct",
+      "reason": "The CI platform is the source of run record metadata.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "messages.0.to",
+      "source_quote": "The artifact store creates a distinct artifact identity and records the run ID, artifact name, and body.",
+      "evidence_kind": "nearby",
+      "reason": "The artifact store is modeled as receiving/storing the run artifact record.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.6
+    },
+    {
+      "field_path": "messages.0.protection",
+      "source_quote": "These records are immutable once the run completes.",
+      "evidence_kind": "direct",
+      "reason": "Authenticated platform state represents immutable platform records.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.82,
+      "consistency_confidence_score": 0.91,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.0.term",
+      "source_quote": "It records the source repository, source branch, exact commit, workflow identity, completion status, and the artifact produced by that run.",
+      "evidence_kind": "direct",
+      "reason": "The term preserves the listed run metadata and artifact linkage.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.0.meaning",
+      "source_quote": "honest protected-branch runs succeed",
+      "evidence_kind": "direct",
+      "reason": "The meaning states a successful protected-branch run record.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.93,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.1.label",
+      "source_quote": "fork runs can also succeed",
+      "evidence_kind": "none",
+      "reason": "M2 is an inferred compact label for the attacker fork run record.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.1.from",
+      "source_quote": "The honest CI platform allocates a fresh run ID to each build. It records the source repository...",
+      "evidence_kind": "direct",
+      "reason": "The CI platform records metadata for each run, including fork runs.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "messages.1.to",
+      "source_quote": "The artifact store creates a distinct artifact identity and records the run ID, artifact name, and body.",
+      "evidence_kind": "nearby",
+      "reason": "The artifact store is modeled as receiving/storing the fork artifact record.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.6
+    },
+    {
+      "field_path": "messages.1.protection",
+      "source_quote": "These records are immutable once the run completes.",
+      "evidence_kind": "direct",
+      "reason": "Authenticated platform state represents immutable platform records.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.82,
+      "consistency_confidence_score": 0.91,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.1.term",
+      "source_quote": "An attacker can submit arbitrary fork commits and control the complete artifact body produced from those commits.",
+      "evidence_kind": "direct",
+      "reason": "The term preserves fork repository, fork commit, successful run, package name, and attacker-controlled body.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.1.meaning",
+      "source_quote": "fork runs can also succeed",
+      "evidence_kind": "direct",
+      "reason": "The meaning states a successful attacker-controlled fork build artifact.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.2.label",
+      "source_quote": "Each consumer is triggered by a successful completion notification for the designated build workflow.",
+      "evidence_kind": "none",
+      "reason": "M3 is an inferred compact label for the completion notification.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.2.from",
+      "source_quote": "A completion notification ... are authenticated platform statements",
+      "evidence_kind": "direct",
+      "reason": "The completion notification is a platform statement.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "messages.2.to",
+      "source_quote": "Each consumer is triggered by a successful completion notification",
+      "evidence_kind": "direct",
+      "reason": "The notification is delivered to the consumer configuration.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "messages.2.protection",
+      "source_quote": "A completion notification ... are authenticated platform statements, not unauthenticated caller assertions.",
+      "evidence_kind": "direct",
+      "reason": "The notification is authenticated.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.2.term",
+      "source_quote": "Each consumer is triggered by a successful completion notification for the designated build workflow.",
+      "evidence_kind": "direct",
+      "reason": "The term includes triggering run, workflow, and success status with source metadata.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "messages.2.meaning",
+      "source_quote": "Each consumer is triggered by a successful completion notification for the designated build workflow.",
+      "evidence_kind": "direct",
+      "reason": "The meaning directly follows the source sentence.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.3.label",
+      "source_quote": "In name_only, it selects an artifact named package without tying it to the triggering run",
+      "evidence_kind": "none",
+      "reason": "M4 is an inferred compact label for the name_only artifact response.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.3.from",
+      "source_quote": "An artifact lookup response are authenticated platform statements",
+      "evidence_kind": "direct",
+      "reason": "The artifact lookup response comes from platform artifact storage.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "messages.3.to",
+      "source_quote": "In name_only, it selects an artifact named package",
+      "evidence_kind": "direct",
+      "reason": "The name_only consumer receives the selected artifact response.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "messages.3.protection",
+      "source_quote": "An artifact lookup response are authenticated platform statements, not unauthenticated caller assertions.",
+      "evidence_kind": "direct",
+      "reason": "The lookup response is authenticated.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.3.term",
+      "source_quote": "any stored artifact with that name is eligible",
+      "evidence_kind": "direct",
+      "reason": "The term includes artifact identity, producing run, name, body, and metadata, without trigger-run equality.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "messages.3.meaning",
+      "source_quote": "without tying it to the triggering run; any stored artifact with that name is eligible",
+      "evidence_kind": "direct",
+      "reason": "The meaning preserves the name_only unbound selection semantics.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "messages.4.label",
+      "source_quote": "it selects package only from the exact triggering run",
+      "evidence_kind": "none",
+      "reason": "M5 is an inferred compact label for exact-run artifact lookup.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.4.from",
+      "source_quote": "An artifact lookup response are authenticated platform statements",
+      "evidence_kind": "direct",
+      "reason": "The exact-run artifact lookup response comes from artifact storage.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "messages.4.to",
+      "source_quote": "In run_bound, it selects package only from the exact triggering run... In trusted_origin, it additionally checks...",
+      "evidence_kind": "direct",
+      "reason": "The response is consumed by run_bound and trusted_origin consumers.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "messages.4.protection",
+      "source_quote": "An artifact lookup response are authenticated platform statements, not unauthenticated caller assertions.",
+      "evidence_kind": "direct",
+      "reason": "The lookup response is authenticated.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.4.term",
+      "source_quote": "it selects package only from the exact triggering run",
+      "evidence_kind": "direct",
+      "reason": "The term ties the artifact record's producing run to trigger_run.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.93,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "messages.4.meaning",
+      "source_quote": "It then selects package from that exact run.",
+      "evidence_kind": "direct",
+      "reason": "The meaning captures exact triggering-run artifact selection.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "messages.5.label",
+      "source_quote": "After selection, the consumer uses its protected deployment credential",
+      "evidence_kind": "none",
+      "reason": "M6 is an inferred compact label for the privileged deployment submission.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.5.from",
+      "source_quote": "the consumer uses its protected deployment credential to submit the selected artifact",
+      "evidence_kind": "direct",
+      "reason": "The consumer sends the privileged submission.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.5.to",
+      "source_quote": "The deployment service authenticates the consumer and records the configuration...",
+      "evidence_kind": "direct",
+      "reason": "The deployment service receives and records the submission.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "messages.5.protection",
+      "source_quote": "The deployment service authenticates the consumer",
+      "evidence_kind": "direct",
+      "reason": "The submission is protected by consumer credential authentication.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.93,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.5.term",
+      "source_quote": "records the configuration, triggering run, selected artifact, producing run, source repository, source branch, exact commit, and body",
+      "evidence_kind": "direct",
+      "reason": "The term preserves all recorded deployment fields plus the credential.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "messages.5.meaning",
+      "source_quote": "After selection, the consumer uses its protected deployment credential to submit the selected artifact for a privileged operation.",
+      "evidence_kind": "direct",
+      "reason": "The meaning directly restates the source behavior.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "checks.0.role",
+      "source_quote": "Each consumer is triggered by a successful completion notification",
+      "evidence_kind": "direct",
+      "reason": "All consumers perform the trigger check.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.0.condition",
+      "source_quote": "successful completion notification for the designated build workflow",
+      "evidence_kind": "direct",
+      "reason": "The condition checks authenticated success and workflow identity.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "checks.0.source_message",
+      "source_quote": "A completion notification ... authenticated platform statements",
+      "evidence_kind": "direct",
+      "reason": "The check is over message M3 notification contents.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "checks.1.role",
+      "source_quote": "In name_only, it selects an artifact named package",
+      "evidence_kind": "direct",
+      "reason": "The name_only consumer performs this selection.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.1.condition",
+      "source_quote": "without tying it to the triggering run; any stored artifact with that name is eligible",
+      "evidence_kind": "direct",
+      "reason": "The condition intentionally omits trigger-run binding.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.1.source_message",
+      "source_quote": "An artifact lookup response are authenticated platform statements",
+      "evidence_kind": "direct",
+      "reason": "The check uses the name_only artifact lookup response.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.2.role",
+      "source_quote": "In run_bound, it selects package only from the exact triggering run",
+      "evidence_kind": "direct",
+      "reason": "The run_bound consumer performs this check.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.2.condition",
+      "source_quote": "selects package only from the exact triggering run",
+      "evidence_kind": "direct",
+      "reason": "The condition is the exact-run equality check.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.2.source_message",
+      "source_quote": "An artifact lookup response are authenticated platform statements",
+      "evidence_kind": "direct",
+      "reason": "The check uses the authenticated artifact response.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.3.role",
+      "source_quote": "In trusted_origin, it additionally checks",
+      "evidence_kind": "direct",
+      "reason": "The trusted_origin consumer performs this additional metadata check.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.3.condition",
+      "source_quote": "checks authenticated platform metadata that the triggering run used the protected repository and designated protected branch",
+      "evidence_kind": "direct",
+      "reason": "The condition exactly captures trusted origin metadata validation.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 0.98,
+      "consistency_confidence_score": 0.98,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.3.source_message",
+      "source_quote": "A completion notification ... are authenticated platform statements",
+      "evidence_kind": "direct",
+      "reason": "The trusted source metadata is part of authenticated platform notification/metadata.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "checks.4.role",
+      "source_quote": "In trusted_origin, it additionally checks ... It then selects package from that exact run.",
+      "evidence_kind": "direct",
+      "reason": "The trusted_origin consumer performs exact-run selection after source validation.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.4.condition",
+      "source_quote": "It then selects package from that exact run.",
+      "evidence_kind": "direct",
+      "reason": "The condition captures exact-run package selection.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 0.97,
+      "consistency_confidence_score": 0.97,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.4.source_message",
+      "source_quote": "An artifact lookup response are authenticated platform statements",
+      "evidence_kind": "direct",
+      "reason": "The exact-run artifact is obtained from authenticated artifact response.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.5.role",
+      "source_quote": "The deployment service authenticates the consumer",
+      "evidence_kind": "direct",
+      "reason": "DeploymentService performs the credential authentication and recording.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.5.condition",
+      "source_quote": "records the configuration, triggering run, selected artifact, producing run, source repository, source branch, exact commit, and body",
+      "evidence_kind": "direct",
+      "reason": "The condition records all deployment provenance fields after authentication.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "checks.5.source_message",
+      "source_quote": "the consumer uses its protected deployment credential to submit the selected artifact",
+      "evidence_kind": "direct",
+      "reason": "The check is over the deployment submission message.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.93,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "events.0.name",
+      "source_quote": "Completion of that workflow can trigger a separate workflow_run consumer.",
+      "evidence_kind": "nearby",
+      "reason": "RunComplete is an inferred event name for workflow completion.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.75,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.0.role",
+      "source_quote": "The honest CI platform allocates a fresh run ID to each build. It records...",
+      "evidence_kind": "direct",
+      "reason": "CIPlatform owns run completion metadata.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "events.0.when",
+      "source_quote": "These records are immutable once the run completes.",
+      "evidence_kind": "direct",
+      "reason": "The event occurs when a build run completes.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.0.arguments",
+      "source_quote": "records the source repository, source branch, exact commit, workflow identity, completion status",
+      "evidence_kind": "direct",
+      "reason": "Arguments preserve recorded completion metadata.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "events.1.name",
+      "source_quote": "The artifact store creates a distinct artifact identity and records the run ID, artifact name, and body.",
+      "evidence_kind": "nearby",
+      "reason": "ArtifactStored is an inferred event name for artifact record creation.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.91,
+      "semantic_impact_score": 0.75
+    },
+    {
+      "field_path": "events.1.role",
+      "source_quote": "The artifact store creates a distinct artifact identity",
+      "evidence_kind": "direct",
+      "reason": "ArtifactStore creates the record.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "events.1.when",
+      "source_quote": "These records are immutable once the run completes.",
+      "evidence_kind": "direct",
+      "reason": "Artifact record creation occurs for completed runs and is then immutable.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.1.arguments",
+      "source_quote": "records the run ID, artifact name, and body",
+      "evidence_kind": "direct",
+      "reason": "Arguments include artifact identity, run ID, name, body, and source metadata needed later.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "events.2.name",
+      "source_quote": "Each consumer is triggered by a successful completion notification",
+      "evidence_kind": "nearby",
+      "reason": "ConsumerTriggered is an inferred event name for trigger receipt.",
+      "priority_llm": 0.35,
+      "evidence_confidence_score": 0.78,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.65
+    },
+    {
+      "field_path": "events.2.role",
+      "source_quote": "Each consumer is triggered",
+      "evidence_kind": "direct",
+      "reason": "The consumer is the triggered role.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.6
+    },
+    {
+      "field_path": "events.2.when",
+      "source_quote": "triggered by a successful completion notification",
+      "evidence_kind": "direct",
+      "reason": "The event occurs on successful notification trigger.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.2.arguments",
+      "source_quote": "Compare three isolated consumer configurations.",
+      "evidence_kind": "nearby",
+      "reason": "Arguments identify the configuration and triggering run.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.82,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.3.name",
+      "source_quote": "it additionally checks authenticated platform metadata",
+      "evidence_kind": "nearby",
+      "reason": "TrustedOriginChecked is an inferred event name for the trusted_origin metadata check.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.82,
+      "consistency_confidence_score": 0.91,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.3.role",
+      "source_quote": "In trusted_origin, it additionally checks",
+      "evidence_kind": "direct",
+      "reason": "The trusted_origin consumer performs this check.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.3.when",
+      "source_quote": "checks authenticated platform metadata that the triggering run used the protected repository and designated protected branch",
+      "evidence_kind": "direct",
+      "reason": "The event occurs when that check succeeds.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "events.3.arguments",
+      "source_quote": "protected repository and designated protected branch",
+      "evidence_kind": "direct",
+      "reason": "Arguments include configuration, run, repository, and branch being validated.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "events.4.name",
+      "source_quote": "The selected body and artifact identity must come from the same immutable store record",
+      "evidence_kind": "nearby",
+      "reason": "ArtifactSelected is an inferred event name for selection completion.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.91,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "events.4.role",
+      "source_quote": "Each consumer is triggered... In name_only... In run_bound... In trusted_origin...",
+      "evidence_kind": "direct",
+      "reason": "Artifact selection is done by consumer configurations.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.93,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.7
+    },
+    {
+      "field_path": "events.4.when",
+      "source_quote": "Failed checks prevent privileged use.",
+      "evidence_kind": "nearby",
+      "reason": "Selection event is placed after configuration-specific checks succeed.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.93,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "events.4.arguments",
+      "source_quote": "records the configuration, triggering run, selected artifact, producing run, source repository, source branch, exact commit, and body",
+      "evidence_kind": "direct",
+      "reason": "Arguments preserve the selected artifact and provenance fields used by deployment.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "events.5.name",
+      "source_quote": "submit the selected artifact for a privileged operation",
+      "evidence_kind": "nearby",
+      "reason": "PrivilegedUse is an inferred event name for deployment service use.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.82,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "events.5.role",
+      "source_quote": "The deployment service authenticates the consumer and records",
+      "evidence_kind": "direct",
+      "reason": "The deployment service records privileged use.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.5.when",
+      "source_quote": "After selection, the consumer uses its protected deployment credential to submit the selected artifact for a privileged operation.",
+      "evidence_kind": "direct",
+      "reason": "The event occurs after authenticated submission.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "events.5.arguments",
+      "source_quote": "records the configuration, triggering run, selected artifact, producing run, source repository, source branch, exact commit, and body",
+      "evidence_kind": "direct",
+      "reason": "Arguments exactly preserve recorded deployment provenance fields.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.0.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user lemma names were supplied; name inferred for review.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "claims.0.goal_type",
+      "source_quote": "whether an artifact produced by an attacker-controlled fork can be used",
+      "evidence_kind": "direct",
+      "reason": "This is a source/provenance reachability question.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.0.trace_kind",
+      "source_quote": "whether an artifact produced by an attacker-controlled fork can be used",
+      "evidence_kind": "direct",
+      "reason": "The wording asks for possible attacker artifact use, modeled as exists-trace reachability.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.93,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.0.expected_state",
+      "source_quote": "any stored artifact with that name is eligible",
+      "evidence_kind": "nearby",
+      "reason": "Given coexistence and attacker package reuse, reachability is a grounded hypothesis, not a measured proof result.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.84,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.0.event_schema",
+      "source_quote": "An attacker can ... control the complete artifact body ... may reuse the ordinary artifact name package",
+      "evidence_kind": "direct",
+      "reason": "Schema links attacker fork artifact storage to name_only privileged use.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.93,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.1.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user lemma names were supplied; name inferred for review.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "claims.1.goal_type",
+      "source_quote": "whether an artifact produced by an attacker-controlled fork can be used",
+      "evidence_kind": "direct",
+      "reason": "This is a source/provenance reachability question.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.1.trace_kind",
+      "source_quote": "whether an artifact produced by an attacker-controlled fork can be used",
+      "evidence_kind": "direct",
+      "reason": "The claim asks whether such use can happen, so it is exists-trace.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.93,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.1.expected_state",
+      "source_quote": "In run_bound, it selects package only from the exact triggering run, but accepts completions from either repository.",
+      "evidence_kind": "direct",
+      "reason": "A fork trigger can be accepted and its own package used; reachability is a hypothesis.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.1.event_schema",
+      "source_quote": "accepts completions from either repository",
+      "evidence_kind": "direct",
+      "reason": "Schema links fork triggering run to run_bound privileged use.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.2.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user lemma names were supplied; name inferred for review.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "claims.2.goal_type",
+      "source_quote": "whether every privilegedly used artifact came from a trusted protected-branch build",
+      "evidence_kind": "direct",
+      "reason": "This is a source/trusted-origin safety property.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.2.trace_kind",
+      "source_quote": "whether every privilegedly used artifact came from a trusted protected-branch build",
+      "evidence_kind": "direct",
+      "reason": "The word every indicates all-traces safety.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.2.expected_state",
+      "source_quote": "In name_only, it selects an artifact named package without tying it to the triggering run; any stored artifact with that name is eligible.",
+      "evidence_kind": "direct",
+      "reason": "The unbound selection makes the all-traces trusted-origin property expected to be violated.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.88,
+      "consistency_confidence_score": 0.92,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.2.event_schema",
+      "source_quote": "whether every privilegedly used artifact came from a trusted protected-branch build",
+      "evidence_kind": "direct",
+      "reason": "Schema expresses trusted repository and branch as a postcondition on PrivilegedUse.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.3.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user lemma names were supplied; name inferred for review.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "claims.3.goal_type",
+      "source_quote": "whether every privilegedly used artifact came from a trusted protected-branch build",
+      "evidence_kind": "direct",
+      "reason": "This is a source/trusted-origin safety property.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.3.trace_kind",
+      "source_quote": "whether every privilegedly used artifact came from a trusted protected-branch build",
+      "evidence_kind": "direct",
+      "reason": "The word every indicates all-traces safety.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.3.expected_state",
+      "source_quote": "In run_bound, it selects package only from the exact triggering run, but accepts completions from either repository.",
+      "evidence_kind": "direct",
+      "reason": "Run binding does not imply trusted source; fork-run deployment is expected possible.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.3.event_schema",
+      "source_quote": "whether every privilegedly used artifact came from a trusted protected-branch build",
+      "evidence_kind": "direct",
+      "reason": "Schema expresses trusted repository and branch as a postcondition on run_bound PrivilegedUse.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.4.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user lemma names were supplied; name inferred for review.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "claims.4.goal_type",
+      "source_quote": "whether every privilegedly used artifact came from a trusted protected-branch build",
+      "evidence_kind": "direct",
+      "reason": "This is a trusted-origin source safety property.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.4.trace_kind",
+      "source_quote": "whether every privilegedly used artifact came from a trusted protected-branch build",
+      "evidence_kind": "direct",
+      "reason": "The word every indicates all-traces safety.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.4.expected_state",
+      "source_quote": "In trusted_origin, it additionally checks authenticated platform metadata that the triggering run used the protected repository and designated protected branch.",
+      "evidence_kind": "direct",
+      "reason": "The trusted-origin check supports a satisfying hypothesis for this scoped property.",
+      "priority_llm": 0.25,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.91,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.4.event_schema",
+      "source_quote": "protected repository and designated protected branch",
+      "evidence_kind": "direct",
+      "reason": "Schema encodes protected repository and branch as required source of trusted_origin PrivilegedUse.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.93,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.5.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user lemma names were supplied; name inferred for review.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "claims.5.goal_type",
+      "source_quote": "whether the selected artifact always belongs to the triggering run",
+      "evidence_kind": "direct",
+      "reason": "This is a run-provenance authentication property.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.5.trace_kind",
+      "source_quote": "always belongs to the triggering run",
+      "evidence_kind": "direct",
+      "reason": "Always indicates all-traces safety.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.5.expected_state",
+      "source_quote": "without tying it to the triggering run; any stored artifact with that name is eligible",
+      "evidence_kind": "direct",
+      "reason": "name_only explicitly lacks triggering-run binding.",
+      "priority_llm": 0.05,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.5.event_schema",
+      "source_quote": "whether the selected artifact always belongs to the triggering run",
+      "evidence_kind": "direct",
+      "reason": "Schema encodes producing_run equals trigger_run as the run-provenance postcondition.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.6.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user lemma names were supplied; name inferred for review.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "claims.6.goal_type",
+      "source_quote": "whether the selected artifact always belongs to the triggering run",
+      "evidence_kind": "direct",
+      "reason": "This is a run-provenance authentication property.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.6.trace_kind",
+      "source_quote": "always belongs to the triggering run",
+      "evidence_kind": "direct",
+      "reason": "Always indicates all-traces safety.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.6.expected_state",
+      "source_quote": "In run_bound, it selects package only from the exact triggering run",
+      "evidence_kind": "direct",
+      "reason": "Exact-run selection supports satisfying hypothesis for run provenance.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.6.event_schema",
+      "source_quote": "whether the selected artifact always belongs to the triggering run",
+      "evidence_kind": "direct",
+      "reason": "Schema encodes producing_run equals trigger_run as the run-provenance postcondition.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.7.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user lemma names were supplied; name inferred for review.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "claims.7.goal_type",
+      "source_quote": "whether the selected artifact always belongs to the triggering run",
+      "evidence_kind": "direct",
+      "reason": "This is a run-provenance authentication property.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.7.trace_kind",
+      "source_quote": "always belongs to the triggering run",
+      "evidence_kind": "direct",
+      "reason": "Always indicates all-traces safety.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.7.expected_state",
+      "source_quote": "It then selects package from that exact run.",
+      "evidence_kind": "direct",
+      "reason": "trusted_origin also performs exact-run selection.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.7.event_schema",
+      "source_quote": "whether the selected artifact always belongs to the triggering run",
+      "evidence_kind": "direct",
+      "reason": "Schema encodes producing_run equals trigger_run as the run-provenance postcondition.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.92,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.95
+    },
+    {
+      "field_path": "claims.8.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user lemma names were supplied; name inferred for review.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.86,
+      "semantic_impact_score": 0.25
+    },
+    {
+      "field_path": "claims.8.goal_type",
+      "source_quote": "Establish a legitimate protected-branch build-to-deployment execution for every configuration.",
+      "evidence_kind": "direct",
+      "reason": "This is an executability goal.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.96,
+      "consistency_confidence_score": 0.96,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "claims.8.trace_kind",
+      "source_quote": "Establish a legitimate protected-branch build-to-deployment execution",
+      "evidence_kind": "direct",
+      "reason": "Executability is modeled as exists-trace.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.94,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "claims.8.expected_state",
+      "source_quote": "Within the modeled scope, honest protected-branch runs succeed",
+      "evidence_kind": "direct",
+      "reason": "The source supports existence of successful honest runs, but the result remains a hypothesis until modeled and proved.",
+      "priority_llm": 0.15,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.94,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "claims.8.event_schema",
+      "source_quote": "for every configuration",
+      "evidence_kind": "direct",
+      "reason": "Schema includes privileged uses for name_only, run_bound, and trusted_origin with protected origin metadata.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.86,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.85
+    },
+    {
+      "field_path": "claims.0.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.1.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.2.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.3.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.4.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.5.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.6.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.7.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.8.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    }
+  ],
+  "open_questions": []
+}

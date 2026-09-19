@@ -1,0 +1,20 @@
+{
+  "retrieved_local_date": "2026-09-19",
+  "input_kind": "source-grounded author-written natural-language scenarios; not verbatim source excerpts",
+  "aws": {
+    "sources": [
+      "https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html",
+      "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html"
+    ],
+    "source_mechanisms": ["cross-account delegated access", "provider principal versus originating customer", "provider-assigned customer-specific external IDs", "external ID is not a secret"],
+    "experiment_design": ["two customers", "three explicitly named isolated configurations", "caller_supplied negative control", "ideal authenticated customer and cloud channels", "job correlation", "all identifiers publicly known"]
+  },
+  "method": {
+    "model": "gpt-5.5",
+    "input_goals": [],
+    "input_assumptions": [],
+    "assumptions_location": "Explicit experimental scope and setup sections of NL",
+    "proof_targets": "discovered by the existing NL planner; not supplied as formal lemmas",
+    "review_policy": "modify only existing UI-visible cells; use ReviewState.save_reviewed; preserve raw planner output; no manual model or proof-formula edits"
+  }
+}

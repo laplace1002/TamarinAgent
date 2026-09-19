@@ -1,0 +1,177 @@
+theory GitHub_Actions_Artifact_Provenance
+begin
+builtins: signing
+functions: auth_notify/6, auth_artifact/8, run_record/9, cred_submit/10, cred_id/1
+
+let CIPlatformHonest(sk_ci) =
+  new run_h;
+  event RunComplete(run_h, 'protected_repo', 'protected_branch', 'commit_h', 'build_workflow', 'success');
+  let run_msg = run_record(run_h, 'protected_repo', 'protected_branch', 'commit_h', 'build_workflow', 'success', 'package', 'body_h', 'ci_record') in
+  let run_sig = sign(run_msg, sk_ci) in
+  out(<run_msg, run_sig>);
+  let notify_msg = auth_notify(run_h, 'protected_repo', 'protected_branch', 'commit_h', 'build_workflow', 'success') in
+  let notify_sig = sign(notify_msg, sk_ci) in
+  out(<notify_msg, notify_sig>)
+
+let CIPlatformFork(sk_ci) =
+  in(<commit_a, body_a>);
+  new run_a;
+  event RunComplete(run_a, 'fork_repo', 'fork_branch', commit_a, 'build_workflow', 'success');
+  let run_msg = run_record(run_a, 'fork_repo', 'fork_branch', commit_a, 'build_workflow', 'success', 'package', body_a, 'ci_record') in
+  let run_sig = sign(run_msg, sk_ci) in
+  out(<run_msg, run_sig>);
+  let notify_msg = auth_notify(run_a, 'fork_repo', 'fork_branch', commit_a, 'build_workflow', 'success') in
+  let notify_sig = sign(notify_msg, sk_ci) in
+  out(<notify_msg, notify_sig>)
+
+let ArtifactStore(pk_ci, sk_store) =
+  in(<run_record(run, repo, branch, commit, workflow, status, name, body, record_kind), run_sig>);
+  let run_msg = run_record(run, repo, branch, commit, workflow, status, name, body, record_kind) in
+  if verify(run_sig, run_msg, pk_ci) = true then (
+    if status = 'success' then (
+      new artifact_id;
+      let store_record_id = artifact_id in
+      event ArtifactStored(artifact_id, run, name, body, repo, branch, commit);
+      let artifact_msg = auth_artifact(artifact_id, run, name, body, repo, branch, commit, store_record_id) in
+      let artifact_sig = sign(artifact_msg, sk_store) in
+      out(<artifact_msg, artifact_sig>)
+    )
+  )
+
+let ConsumerNameOnly(pk_ci, pk_store, dep_cred_c, cred_c) =
+  in(<auth_notify(trigger_run, src_repo, src_branch, notify_commit, workflow, status), notify_sig>);
+  let notify_msg = auth_notify(trigger_run, src_repo, src_branch, notify_commit, workflow, status) in
+  if verify(notify_sig, notify_msg, pk_ci) = true then (
+    if workflow = 'build_workflow' then (
+      if status = 'success' then (
+        event ConsumerTriggered('name_only', trigger_run);
+        in(<auth_artifact(artifact_id, producing_run, name, body, repo, branch, commit, store_record_id), artifact_sig>);
+        let artifact_msg = auth_artifact(artifact_id, producing_run, name, body, repo, branch, commit, store_record_id) in
+        if verify(artifact_sig, artifact_msg, pk_store) = true then (
+          if name = 'package' then (
+            event ArtifactSelected('name_only', trigger_run, artifact_id, producing_run, name, body, repo, branch, commit);
+            let submit_msg = cred_submit(cred_c, 'name_only', trigger_run, artifact_id, producing_run, repo, branch, commit, body, store_record_id) in
+            let submit_sig = sign(submit_msg, dep_cred_c) in
+            out(<submit_msg, submit_sig>)
+          )
+        )
+      )
+    )
+  )
+
+let ConsumerRunBound(pk_ci, pk_store, dep_cred_c, cred_c) =
+  in(<auth_notify(trigger_run, src_repo, src_branch, notify_commit, workflow, status), notify_sig>);
+  let notify_msg = auth_notify(trigger_run, src_repo, src_branch, notify_commit, workflow, status) in
+  if verify(notify_sig, notify_msg, pk_ci) = true then (
+    if workflow = 'build_workflow' then (
+      if status = 'success' then (
+        event ConsumerTriggered('run_bound', trigger_run);
+        in(<auth_artifact(artifact_id, producing_run, name, body, repo, branch, commit, store_record_id), artifact_sig>);
+        let artifact_msg = auth_artifact(artifact_id, producing_run, name, body, repo, branch, commit, store_record_id) in
+        if verify(artifact_sig, artifact_msg, pk_store) = true then (
+          if name = 'package' then (
+            if producing_run = trigger_run then (
+              event ArtifactSelected('run_bound', trigger_run, artifact_id, trigger_run, name, body, repo, branch, commit);
+              let submit_msg = cred_submit(cred_c, 'run_bound', trigger_run, artifact_id, trigger_run, repo, branch, commit, body, store_record_id) in
+              let submit_sig = sign(submit_msg, dep_cred_c) in
+              out(<submit_msg, submit_sig>)
+            )
+          )
+        )
+      )
+    )
+  )
+
+let ConsumerTrustedOrigin(pk_ci, pk_store, dep_cred_c, cred_c) =
+  in(<auth_notify(trigger_run, src_repo, src_branch, notify_commit, workflow, status), notify_sig>);
+  let notify_msg = auth_notify(trigger_run, src_repo, src_branch, notify_commit, workflow, status) in
+  if verify(notify_sig, notify_msg, pk_ci) = true then (
+    if workflow = 'build_workflow' then (
+      if status = 'success' then (
+        if src_repo = 'protected_repo' then (
+          if src_branch = 'protected_branch' then (
+            event ConsumerTriggered('trusted_origin', trigger_run);
+            event TrustedOriginChecked('trusted_origin', trigger_run, 'protected_repo', 'protected_branch');
+            in(<auth_artifact(artifact_id, producing_run, name, body, repo, branch, commit, store_record_id), artifact_sig>);
+            let artifact_msg = auth_artifact(artifact_id, producing_run, name, body, repo, branch, commit, store_record_id) in
+            if verify(artifact_sig, artifact_msg, pk_store) = true then (
+              if name = 'package' then (
+                if producing_run = trigger_run then (
+                  if repo = 'protected_repo' then (
+                    if branch = 'protected_branch' then (
+                      event ArtifactSelected('trusted_origin', trigger_run, artifact_id, trigger_run, name, body, 'protected_repo', 'protected_branch', commit);
+                      let submit_msg = cred_submit(cred_c, 'trusted_origin', trigger_run, artifact_id, trigger_run, 'protected_repo', 'protected_branch', commit, body, store_record_id) in
+                      let submit_sig = sign(submit_msg, dep_cred_c) in
+                      out(<submit_msg, submit_sig>)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+let DeploymentService(pk_consumer, cred_c) =
+  in(<cred_submit(cred_recv, cfg, trigger_run, artifact_id, producing_run, repo, branch, commit, body, store_record_id), submit_sig>);
+  let submit_msg = cred_submit(cred_recv, cfg, trigger_run, artifact_id, producing_run, repo, branch, commit, body, store_record_id) in
+  if cred_recv = cred_c then (
+    if verify(submit_sig, submit_msg, pk_consumer) = true then (
+      event PrivilegedUse(cfg, trigger_run, artifact_id, producing_run, repo, branch, commit, body)
+    )
+  )
+
+process:
+  new sk_ci;
+  new sk_store;
+  new dep_cred_c;
+  let pk_ci = pk(sk_ci) in
+  let pk_store = pk(sk_store) in
+  let pk_consumer = pk(dep_cred_c) in
+  let cred_c = cred_id(dep_cred_c) in
+  out(pk_ci);
+  out(pk_store);
+  out(pk_consumer);
+  out(cred_c);
+  (
+    !CIPlatformHonest(sk_ci)
+    | !CIPlatformFork(sk_ci)
+    | !ArtifactStore(pk_ci, sk_store)
+    | !ConsumerNameOnly(pk_ci, pk_store, dep_cred_c, cred_c)
+    | !ConsumerRunBound(pk_ci, pk_store, dep_cred_c, cred_c)
+    | !ConsumerTrustedOrigin(pk_ci, pk_store, dep_cred_c, cred_c)
+    | !DeploymentService(pk_consumer, cred_c)
+  )
+
+lemma name_only_fork_artifact_privileged_use_reachable:
+  exists-trace
+  "Ex artifact_id producing_run body commit trigger_run #i #j. ArtifactStored(artifact_id, producing_run, 'package', body, 'fork_repo', 'fork_branch', commit) @ i & PrivilegedUse('name_only', trigger_run, artifact_id, producing_run, 'fork_repo', 'fork_branch', commit, body) @ j & i < j"
+
+lemma run_bound_fork_artifact_privileged_use_reachable:
+  exists-trace
+  "Ex trigger_run artifact_id commit body #i #j. RunComplete(trigger_run, 'fork_repo', 'fork_branch', commit, 'build_workflow', 'success') @ i & PrivilegedUse('run_bound', trigger_run, artifact_id, trigger_run, 'fork_repo', 'fork_branch', commit, body) @ j & i < j"
+
+lemma name_only_all_privileged_uses_are_trusted_origin:
+  "All trigger_run artifact_id producing_run repo branch commit body #i. PrivilegedUse('name_only', trigger_run, artifact_id, producing_run, repo, branch, commit, body) @ i ==> (repo = 'protected_repo' & branch = 'protected_branch')"
+
+lemma run_bound_all_privileged_uses_are_trusted_origin:
+  "All trigger_run artifact_id producing_run repo branch commit body #i. PrivilegedUse('run_bound', trigger_run, artifact_id, producing_run, repo, branch, commit, body) @ i ==> (repo = 'protected_repo' & branch = 'protected_branch')"
+
+lemma trusted_origin_all_privileged_uses_are_trusted_origin:
+  "All trigger_run artifact_id producing_run repo branch commit body #i. PrivilegedUse('trusted_origin', trigger_run, artifact_id, producing_run, repo, branch, commit, body) @ i ==> (repo = 'protected_repo' & branch = 'protected_branch')"
+
+lemma name_only_selected_artifact_belongs_to_triggering_run:
+  "All trigger_run artifact_id producing_run name body repo branch commit #i. ArtifactSelected('name_only', trigger_run, artifact_id, producing_run, name, body, repo, branch, commit) @ i ==> producing_run = trigger_run"
+
+lemma run_bound_selected_artifact_belongs_to_triggering_run:
+  "All trigger_run artifact_id producing_run name body repo branch commit #i. ArtifactSelected('run_bound', trigger_run, artifact_id, producing_run, name, body, repo, branch, commit) @ i ==> producing_run = trigger_run"
+
+lemma trusted_origin_selected_artifact_belongs_to_triggering_run:
+  "All trigger_run artifact_id producing_run name body repo branch commit #i. ArtifactSelected('trusted_origin', trigger_run, artifact_id, producing_run, name, body, repo, branch, commit) @ i ==> producing_run = trigger_run"
+
+lemma legitimate_protected_branch_deployment_executable_all_configs:
+  exists-trace
+  "Ex trigger_run1 artifact_id1 producing_run1 commit1 body1 trigger_run2 artifact_id2 commit2 body2 trigger_run3 artifact_id3 commit3 body3 #i #j #k. PrivilegedUse('name_only', trigger_run1, artifact_id1, producing_run1, 'protected_repo', 'protected_branch', commit1, body1) @ i & PrivilegedUse('run_bound', trigger_run2, artifact_id2, trigger_run2, 'protected_repo', 'protected_branch', commit2, body2) @ j & PrivilegedUse('trusted_origin', trigger_run3, artifact_id3, trigger_run3, 'protected_repo', 'protected_branch', commit3, body3) @ k"
+end

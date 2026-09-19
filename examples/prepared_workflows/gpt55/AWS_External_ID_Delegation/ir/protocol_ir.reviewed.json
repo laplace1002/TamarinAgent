@@ -1,0 +1,2299 @@
+{
+  "schema": "protocol_ir_pipeline_protocol_ir_v1",
+  "protocol_name": "AWS_External_ID_Delegation",
+  "roles": [
+    "Customer",
+    "Provider",
+    "STS",
+    "ResourceService"
+  ],
+  "principals": [
+    {
+      "name": "Alice",
+      "role_hint": "Alice"
+    },
+    {
+      "name": "Mallory",
+      "role_hint": "Mallory"
+    },
+    {
+      "name": "Provider",
+      "role_hint": "Provider"
+    },
+    {
+      "name": "STS",
+      "role_hint": "STS"
+    },
+    {
+      "name": "ResourceService",
+      "role_hint": "ResourceService"
+    }
+  ],
+  "crypto": {
+    "builtins": [
+      "signing"
+    ],
+    "functions": [
+      "auth_job/4",
+      "assume_role_req/5",
+      "sts_response/4",
+      "resource_call/5",
+      "protected/1",
+      "tempcred/3",
+      "owner/1",
+      "resource_of/1",
+      "extid_for/1",
+      "trusts_provider/1"
+    ],
+    "equations": [],
+    "assumptions": []
+  },
+  "fresh_terms": [
+    {
+      "name": "~tempCred",
+      "owner": "STS",
+      "purpose": "temporary credential issued by STS for a checked role, configuration, and job"
+    }
+  ],
+  "long_term_keys": [],
+  "messages": [
+    {
+      "label": "M1_CustomerJob",
+      "step": 1,
+      "from": "Customer",
+      "to": "Provider",
+      "protection": "customer-login-authentication",
+      "term": "auth_job(job, originatingCustomer, cfg, requestedRole, suppliedExternalID)",
+      "meaning": "An authenticated customer submits a job to the provider containing the selected configuration, requested role identifier, and a customer-supplied external-ID field; Mallory may choose requestedRole and suppliedExternalID arbitrarily.",
+      "sender_knows": [
+        "auth_job",
+        "job",
+        "originatingCustomer",
+        "cfg",
+        "requestedRole",
+        "suppliedExternalID",
+        "An",
+        "authenticated",
+        "customer",
+        "submits",
+        "a",
+        "to"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2_PrincipalOnly_AssumeRole",
+      "step": 2,
+      "from": "Provider",
+      "to": "STS",
+      "protection": "integrity-protected provider-to-cloud traffic",
+      "term": "protected(assume_role_req(Provider, job, principal_only, requestedRole, no_external_id))",
+      "meaning": "In principal_only, the provider requests STS credentials for the requested role under the provider principal and supplies no external ID condition input.",
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2_CallerSupplied_AssumeRole",
+      "step": 2,
+      "from": "Provider",
+      "to": "STS",
+      "protection": "integrity-protected provider-to-cloud traffic",
+      "term": "protected(assume_role_req(Provider, job, caller_supplied, requestedRole, suppliedExternalID))",
+      "meaning": "In caller_supplied, the provider forwards the external-ID field supplied by the customer when assuming the requested role.",
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M2_ProviderBound_AssumeRole",
+      "step": 2,
+      "from": "Provider",
+      "to": "STS",
+      "protection": "integrity-protected provider-to-cloud traffic",
+      "term": "protected(assume_role_req(Provider, job, provider_bound, requestedRole, extid_for(originatingCustomer)))",
+      "meaning": "In provider_bound, the provider ignores the customer-supplied external-ID field and obtains the external ID from its trusted mapping using the authenticated originating customer.",
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M3_STS_Response",
+      "step": 3,
+      "from": "STS",
+      "to": "Provider",
+      "protection": "integrity-protected STS response",
+      "term": "protected(sts_response(job, cfg, requestedRole, ~tempCred))",
+      "meaning": "If STS authentication, trust-policy, and configuration-specific external-ID checks succeed, STS returns temporary credentials for the requested role correlated with the job and configuration.",
+      "sender_knows": [
+        "protected",
+        "sts_response",
+        "job",
+        "cfg",
+        "requestedRole",
+        "~tempCred",
+        "If",
+        "STS",
+        "authentication",
+        "trust",
+        "policy",
+        "and"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    },
+    {
+      "label": "M4_Resource_Call",
+      "step": 4,
+      "from": "Provider",
+      "to": "ResourceService",
+      "protection": "integrity-protected provider-to-cloud traffic",
+      "term": "protected(resource_call(job, cfg, originatingCustomer, requestedRole, ~tempCred))",
+      "meaning": "The provider uses the STS-issued temporary credentials to perform the originating customer's job on the resource authorized by the requested role.",
+      "sender_knows": [
+        "protected",
+        "resource_call",
+        "job",
+        "cfg",
+        "originatingCustomer",
+        "requestedRole",
+        "~tempCred",
+        "The",
+        "provider",
+        "uses",
+        "the",
+        "STS"
+      ],
+      "receiver_can_decrypt": true,
+      "receiver_must_treat_as_opaque": []
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "Customer_submit_M1",
+      "role": "Customer",
+      "kind": "send",
+      "generates": [],
+      "message_in": [],
+      "message_out": [
+        "M1_CustomerJob"
+      ],
+      "checks": [
+        "Customer possesses its own login credential"
+      ],
+      "events": []
+    },
+    {
+      "action_id": "Provider_accept_job",
+      "role": "Provider",
+      "kind": "receive_check_state",
+      "generates": [],
+      "message_in": [
+        "M1_CustomerJob"
+      ],
+      "message_out": [],
+      "checks": [
+        "Authenticate customer login credential",
+        "Bind originatingCustomer to authenticated identity, not to any submitted customer-name field",
+        "Retain originatingCustomer throughout job"
+      ],
+      "events": [
+        "CustomerJob(originatingCustomer, cfg, requestedRole, suppliedExternalID, job)"
+      ]
+    },
+    {
+      "action_id": "Provider_request_STS_principal_only",
+      "role": "Provider",
+      "kind": "send",
+      "generates": [],
+      "message_in": [
+        "M1_CustomerJob"
+      ],
+      "message_out": [
+        "M2_PrincipalOnly_AssumeRole"
+      ],
+      "checks": [
+        "cfg = principal_only"
+      ],
+      "events": []
+    },
+    {
+      "action_id": "Provider_request_STS_caller_supplied",
+      "role": "Provider",
+      "kind": "send",
+      "generates": [],
+      "message_in": [
+        "M1_CustomerJob"
+      ],
+      "message_out": [
+        "M2_CallerSupplied_AssumeRole"
+      ],
+      "checks": [
+        "cfg = caller_supplied"
+      ],
+      "events": []
+    },
+    {
+      "action_id": "Provider_request_STS_provider_bound",
+      "role": "Provider",
+      "kind": "send",
+      "generates": [],
+      "message_in": [
+        "M1_CustomerJob"
+      ],
+      "message_out": [
+        "M2_ProviderBound_AssumeRole"
+      ],
+      "checks": [
+        "cfg = provider_bound",
+        "Lookup extid_for(originatingCustomer) from trusted provider mapping"
+      ],
+      "events": []
+    },
+    {
+      "action_id": "STS_issue_credentials",
+      "role": "STS",
+      "kind": "receive_check_generate_send",
+      "generates": [
+        "~tempCred"
+      ],
+      "message_in": [
+        "M2_PrincipalOnly_AssumeRole",
+        "M2_CallerSupplied_AssumeRole",
+        "M2_ProviderBound_AssumeRole"
+      ],
+      "message_out": [
+        "M3_STS_Response"
+      ],
+      "checks": [
+        "Authenticate provider",
+        "Evaluate requested role trust policy naming provider",
+        "Apply configuration-specific external-ID condition"
+      ],
+      "events": [
+        "AssumeRoleSuccess(cfg, originatingCustomer, requestedRole, owner(requestedRole), job)"
+      ]
+    },
+    {
+      "action_id": "Provider_call_resource",
+      "role": "Provider",
+      "kind": "receive_send",
+      "generates": [],
+      "message_in": [
+        "M3_STS_Response"
+      ],
+      "message_out": [
+        "M4_Resource_Call"
+      ],
+      "checks": [
+        "STS response is protected and correlated with job, configuration, and requestedRole",
+        "Do not disclose temporary credentials to customers"
+      ],
+      "events": []
+    },
+    {
+      "action_id": "Resource_accept_operation",
+      "role": "ResourceService",
+      "kind": "receive_check_event",
+      "generates": [],
+      "message_in": [
+        "M4_Resource_Call"
+      ],
+      "message_out": [],
+      "checks": [
+        "Temporary credentials authorize only the resource of requestedRole",
+        "Configuration identity on credentials matches job configuration"
+      ],
+      "events": [
+        "ResourceOperation(cfg, originatingCustomer, requestedRole, owner(requestedRole), job)"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "role": "Provider",
+      "condition": "Authenticate the customer login credential and bind originatingCustomer to the authenticated identity rather than any submitted customer-name field.",
+      "source_message": "M1_CustomerJob"
+    },
+    {
+      "role": "Provider",
+      "condition": "Retain the authenticated originatingCustomer throughout the job; do not rewrite it to the role owner when STS returns credentials.",
+      "source_message": "M1_CustomerJob"
+    },
+    {
+      "role": "Provider",
+      "condition": "For provider_bound, ignore suppliedExternalID and use extid_for(originatingCustomer) from trusted setup mapping.",
+      "source_message": "M1_CustomerJob"
+    },
+    {
+      "role": "STS",
+      "condition": "Authenticate the provider and evaluate the requested role's trust policy naming the provider.",
+      "source_message": "M2_PrincipalOnly_AssumeRole|M2_CallerSupplied_AssumeRole|M2_ProviderBound_AssumeRole"
+    },
+    {
+      "role": "STS",
+      "condition": "In principal_only, impose no external-ID condition.",
+      "source_message": "M2_PrincipalOnly_AssumeRole"
+    },
+    {
+      "role": "STS",
+      "condition": "In caller_supplied, require the external ID associated with the requested role's owner and compare it to suppliedExternalID forwarded by the provider.",
+      "source_message": "M2_CallerSupplied_AssumeRole"
+    },
+    {
+      "role": "STS",
+      "condition": "In provider_bound, require the external ID associated with the requested role's owner and compare it to extid_for(originatingCustomer) obtained from trusted provider mapping.",
+      "source_message": "M2_ProviderBound_AssumeRole"
+    },
+    {
+      "role": "ResourceService",
+      "condition": "Validate protected caller authentication and an actual STS-issued credential association for the same job, configuration, and requested role before ResourceOperation. This must be a real acceptance dependency, not an unchecked tempCred argument. Do not add customer=owner as a check; determine owner from the requested role. Honest and Mallory jobs must traverse the same configuration-specific logic.",
+      "source_message": "M3_STS_Response|M4_Resource_Call"
+    },
+    {
+      "role": "All",
+      "condition": "Failed checks cause rejection without resource access.",
+      "source_message": "M1_CustomerJob|M2_PrincipalOnly_AssumeRole|M2_CallerSupplied_AssumeRole|M2_ProviderBound_AssumeRole|M3_STS_Response|M4_Resource_Call"
+    },
+    {
+      "role": "Customer",
+      "condition": "Customer possesses its own login credential",
+      "source_message": "",
+      "action": "Customer_submit_M1"
+    },
+    {
+      "role": "Provider",
+      "condition": "Authenticate customer login credential",
+      "source_message": "M1_CustomerJob",
+      "action": "Provider_accept_job"
+    },
+    {
+      "role": "Provider",
+      "condition": "Bind originatingCustomer to authenticated identity, not to any submitted customer-name field",
+      "source_message": "M1_CustomerJob",
+      "action": "Provider_accept_job"
+    },
+    {
+      "role": "Provider",
+      "condition": "Retain originatingCustomer throughout job",
+      "source_message": "M1_CustomerJob",
+      "action": "Provider_accept_job"
+    },
+    {
+      "role": "Provider",
+      "condition": "cfg = principal_only",
+      "source_message": "M1_CustomerJob",
+      "action": "Provider_request_STS_principal_only"
+    },
+    {
+      "role": "Provider",
+      "condition": "cfg = caller_supplied",
+      "source_message": "M1_CustomerJob",
+      "action": "Provider_request_STS_caller_supplied"
+    },
+    {
+      "role": "Provider",
+      "condition": "cfg = provider_bound",
+      "source_message": "M1_CustomerJob",
+      "action": "Provider_request_STS_provider_bound"
+    },
+    {
+      "role": "Provider",
+      "condition": "Lookup extid_for(originatingCustomer) from trusted provider mapping",
+      "source_message": "M1_CustomerJob",
+      "action": "Provider_request_STS_provider_bound"
+    },
+    {
+      "role": "STS",
+      "condition": "Authenticate provider",
+      "source_message": "M2_PrincipalOnly_AssumeRole, M2_CallerSupplied_AssumeRole, M2_ProviderBound_AssumeRole",
+      "action": "STS_issue_credentials"
+    },
+    {
+      "role": "STS",
+      "condition": "Evaluate requested role trust policy naming provider",
+      "source_message": "M2_PrincipalOnly_AssumeRole, M2_CallerSupplied_AssumeRole, M2_ProviderBound_AssumeRole",
+      "action": "STS_issue_credentials"
+    },
+    {
+      "role": "STS",
+      "condition": "Apply configuration-specific external-ID condition",
+      "source_message": "M2_PrincipalOnly_AssumeRole, M2_CallerSupplied_AssumeRole, M2_ProviderBound_AssumeRole",
+      "action": "STS_issue_credentials"
+    },
+    {
+      "role": "Provider",
+      "condition": "STS response is protected and correlated with job, configuration, and requestedRole",
+      "source_message": "M3_STS_Response",
+      "action": "Provider_call_resource"
+    },
+    {
+      "role": "Provider",
+      "condition": "Do not disclose temporary credentials to customers",
+      "source_message": "M3_STS_Response",
+      "action": "Provider_call_resource"
+    },
+    {
+      "role": "ResourceService",
+      "condition": "Temporary credentials authorize only the resource of requestedRole",
+      "source_message": "M4_Resource_Call",
+      "action": "Resource_accept_operation"
+    },
+    {
+      "role": "ResourceService",
+      "condition": "Configuration identity on credentials matches job configuration",
+      "source_message": "M4_Resource_Call",
+      "action": "Resource_accept_operation"
+    }
+  ],
+  "events": [
+    {
+      "name": "CustomerJob",
+      "role": "Provider",
+      "when": "Only in the actual Provider acceptance transition after receiving and authenticating the customer job; carry that transition's job and customer values into subsequent real STS and resource-service operations. Do not emit this event from a separate witness-only role.",
+      "arguments": [
+        "originatingCustomer",
+        "cfg",
+        "requestedRole",
+        "suppliedExternalID",
+        "job"
+      ],
+      "proof_relevance": [
+        "mallory_can_access_alice_resource_principal_only",
+        "mallory_can_access_alice_resource_caller_supplied",
+        "mallory_can_access_alice_resource_provider_bound",
+        "alice_legitimate_job_principal_only_executable",
+        "alice_legitimate_job_caller_supplied_executable",
+        "alice_legitimate_job_provider_bound_executable"
+      ]
+    },
+    {
+      "name": "AssumeRoleSuccess",
+      "role": "Provider",
+      "when": "after Provider validates the protected STS success response against its pending job, configuration, and requested role, retaining the authenticated originatingCustomer",
+      "arguments": [
+        "cfg",
+        "originatingCustomer",
+        "requestedRole",
+        "resourceOwner",
+        "job"
+      ],
+      "proof_relevance": []
+    },
+    {
+      "name": "ResourceOperation",
+      "role": "ResourceService",
+      "when": "Only after the real ResourceService receives the Provider resource call and validates that the STS-issued fresh credential authorizes this exact job, configuration, and requested role. Derive resourceOwner from the role-owner relation and retain the originating customer. No separate success/attack/witness process may emit ResourceOperation without these message/check transitions.",
+      "arguments": [
+        "cfg",
+        "originatingCustomer",
+        "requestedRole",
+        "resourceOwner",
+        "job"
+      ],
+      "proof_relevance": [
+        "tenant_isolation_principal_only",
+        "tenant_isolation_caller_supplied",
+        "tenant_isolation_provider_bound",
+        "mallory_can_access_alice_resource_principal_only",
+        "mallory_can_access_alice_resource_caller_supplied",
+        "mallory_can_access_alice_resource_provider_bound",
+        "alice_legitimate_job_principal_only_executable",
+        "alice_legitimate_job_caller_supplied_executable",
+        "alice_legitimate_job_provider_bound_executable"
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "lemma_name": "tenant_isolation_principal_only",
+      "claim_category": "",
+      "goal_type": "authentication",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "Tenant isolation in principal_only: every accepted resource operation should have originatingCustomer equal to resourceOwner. The described setup suggests this safety property is violated because Mallory can request Alice's role and no external-ID condition is imposed.",
+      "event_schema": [
+        "ResourceOperation(principal_only, originatingCustomer, requestedRole, resourceOwner, job)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "Safety violation candidate: ResourceOperation(principal_only, Mallory, AliceRole, Alice, job) with Mallory != Alice."
+    },
+    {
+      "lemma_name": "tenant_isolation_caller_supplied",
+      "claim_category": "",
+      "goal_type": "authentication",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "all-traces",
+      "intent": "Tenant isolation in caller_supplied: every accepted resource operation should have originatingCustomer equal to resourceOwner. The described setup suggests this safety property is violated because Mallory knows Alice's external ID and may supply it with Alice's role identifier.",
+      "event_schema": [
+        "ResourceOperation(caller_supplied, originatingCustomer, requestedRole, resourceOwner, job)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "Safety violation candidate: ResourceOperation(caller_supplied, Mallory, AliceRole, Alice, job) using suppliedExternalID = extid_for(Alice)."
+    },
+    {
+      "lemma_name": "tenant_isolation_provider_bound",
+      "claim_category": "",
+      "goal_type": "authentication",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "all-traces",
+      "intent": "Tenant isolation in provider_bound: every accepted resource operation should have originatingCustomer equal to resourceOwner, because the provider uses the trusted external-ID mapping for the authenticated originating customer rather than the caller-supplied field.",
+      "event_schema": [
+        "ResourceOperation(provider_bound, originatingCustomer, requestedRole, resourceOwner, job)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "No Mallory-originated operation on Alice's resource should be accepted if extid_for(Mallory) is distinct from extid_for(Alice) and STS checks the requested role owner's external ID."
+    },
+    {
+      "lemma_name": "mallory_can_access_alice_resource_principal_only",
+      "claim_category": "",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "Attack reachability in principal_only: determine whether a Mallory-originated job can cause an operation on Alice's resource.",
+      "event_schema": [
+        "CustomerJob(Mallory, principal_only, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(principal_only, Mallory, AliceRole, Alice, job)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "Mallory submits AliceRole; STS checks only the provider principal; ResourceService accepts credentials for AliceRole."
+    },
+    {
+      "lemma_name": "mallory_can_access_alice_resource_caller_supplied",
+      "claim_category": "",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "Attack reachability in caller_supplied: determine whether a Mallory-originated job can cause an operation on Alice's resource.",
+      "event_schema": [
+        "CustomerJob(Mallory, caller_supplied, AliceRole, extid_for(Alice), job)",
+        "ResourceOperation(caller_supplied, Mallory, AliceRole, Alice, job)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "Mallory submits AliceRole and Alice's public external ID; provider forwards the supplied external ID; STS accepts for AliceRole."
+    },
+    {
+      "lemma_name": "mallory_can_access_alice_resource_provider_bound",
+      "claim_category": "",
+      "goal_type": "executability",
+      "expected_state": "CounterexampleFound",
+      "trace_kind": "exists-trace",
+      "intent": "Attack reachability in provider_bound: determine whether a Mallory-originated job can cause an operation on Alice's resource. The described setup suggests this trace should not exist.",
+      "event_schema": [
+        "CustomerJob(Mallory, provider_bound, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(provider_bound, Mallory, AliceRole, Alice, job)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "Mallory may submit AliceRole and Alice's public external ID, but provider uses extid_for(Mallory), so STS should reject AliceRole's external-ID condition."
+    },
+    {
+      "lemma_name": "alice_legitimate_job_principal_only_executable",
+      "claim_category": "",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "Executability: Alice can complete a legitimate job on her own resource in principal_only; rejecting all jobs is not an acceptable repair.",
+      "event_schema": [
+        "CustomerJob(Alice, principal_only, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(principal_only, Alice, AliceRole, Alice, job)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "Alice authenticates, requests AliceRole, STS checks provider trust policy, and ResourceService accepts AliceRole credentials."
+    },
+    {
+      "lemma_name": "alice_legitimate_job_caller_supplied_executable",
+      "claim_category": "",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "Executability: Alice can complete a legitimate job on her own resource in caller_supplied; rejecting all jobs is not an acceptable repair.",
+      "event_schema": [
+        "CustomerJob(Alice, caller_supplied, AliceRole, extid_for(Alice), job)",
+        "ResourceOperation(caller_supplied, Alice, AliceRole, Alice, job)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "Alice authenticates, requests AliceRole, supplies Alice's external ID, STS checks provider trust policy and external ID, and ResourceService accepts AliceRole credentials."
+    },
+    {
+      "lemma_name": "alice_legitimate_job_provider_bound_executable",
+      "claim_category": "",
+      "goal_type": "executability",
+      "expected_state": "ProvedSatisfying",
+      "trace_kind": "exists-trace",
+      "intent": "Executability: Alice can complete a legitimate job on her own resource in provider_bound; rejecting all jobs is not an acceptable repair.",
+      "event_schema": [
+        "CustomerJob(Alice, provider_bound, AliceRole, suppliedExternalID, job)",
+        "ResourceOperation(provider_bound, Alice, AliceRole, Alice, job)"
+      ],
+      "preserved_values": [],
+      "anti_compression_note": "",
+      "witness": "Alice authenticates and requests AliceRole; provider uses extid_for(Alice) from trusted mapping; STS accepts AliceRole's external-ID condition."
+    }
+  ],
+  "compromise": {
+    "reveal_events": [
+      "AdversaryHasMalloryLoginCredential",
+      "PublicRoleIdentifiersAndExternalIDs"
+    ],
+    "policy": "No compromised Provider, STS, ResourceService, Alice credential, or provider credential is in scope. External IDs and role identifiers remain public, including for provider_bound analysis. Temporary credentials are not disclosed to customers unless explicitly modeled otherwise, which the input excludes."
+  },
+  "abstractions": [
+    "The protocol is an access-control workflow rather than a concrete cryptographic message protocol; authentication, integrity protection, and credential validation are represented by abstract protected/authenticated message constructors and checks.",
+    "AliceRole, MalloryRole, AliceResource, and MalloryResource are represented symbolically via requestedRole, owner(requestedRole), and resource_of(requestedRole).",
+    "The three configurations principal_only, caller_supplied, and provider_bound are modeled as isolated configuration tags attached to jobs and credentials.",
+    "Real IAM policy completeness, credential expiry, compromised providers, and secrecy of external IDs are explicitly out of scope."
+  ],
+  "modeling_assumptions": [
+    "There are two customers in the scenario: Alice is honest and owns AliceRole/AliceResource; Mallory is adversarial but authenticated and owns MalloryRole/MalloryResource.",
+    "extid_for(Alice) and extid_for(Mallory) are distinct, provider-assigned external IDs.",
+    "owner(AliceRole) = Alice and owner(MalloryRole) = Mallory are trusted setup facts.",
+    "The provider-maintained customer-to-external-ID mapping is trusted setup/state and cannot be overwritten by a job request.",
+    "The role-owner relation is trusted setup/state and cannot be overwritten by a job request.",
+    "Network scheduling and customer job submission are adversarial.",
+    "Mallory may choose requestedRole and suppliedExternalID arbitrarily, including Alice's public values.",
+    "Temporary credentials authorize only the resource of their role and are not disclosed to customers.",
+    "The adversary cannot impersonate STS, forge temporary credentials, or modify protected provider-to-cloud traffic."
+  ],
+  "resolved_open_questions": [
+    {
+      "question": "Should external IDs be modeled as secrets?",
+      "resolution": "No. The input explicitly says external IDs are not passwords, not secrets, and public knowledge must remain available even for provider_bound."
+    },
+    {
+      "question": "Can Mallory know Alice's role identifier and external ID?",
+      "resolution": "Yes. The input explicitly states the adversary knows both role identifiers and both external IDs."
+    },
+    {
+      "question": "Can a job request overwrite the provider mapping or role-owner relation?",
+      "resolution": "No. Both are trusted setup and cannot be overwritten through a job request."
+    }
+  ],
+  "semantic_constraints": [
+    {
+      "kind": "text_policy",
+      "policy": "principal_only: STS checks the provider principal and the role trust policy naming Provider, but imposes no external-ID condition."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "caller_supplied: STS checks the provider principal, role trust policy, and external ID associated with owner(requestedRole); the external-ID value reaching STS is the customer-supplied field from M1."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "provider_bound: STS performs the same external-ID check as caller_supplied, but the external-ID value reaching STS is extid_for(originatingCustomer) from trusted provider mapping, not the customer-supplied field."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Failed STS, provider, or resource-service checks cause rejection without ResourceOperation."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Configuration identity remains attached to the job and temporary credentials so credentials from one configuration cannot satisfy another configuration's resource call."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "The provider must carry originatingCustomer from authenticated login evidence; it must not infer the originating customer from requestedRole, role owner, or customer-controlled request fields."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "An accepted ResourceOperation records cfg, originatingCustomer, requestedRole, resourceOwner, and job."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Tenant isolation is represented as the all-traces safety condition that every ResourceOperation has originatingCustomer = resourceOwner."
+    },
+    {
+      "kind": "text_policy",
+      "policy": "Mallory-originated access to Alice's resource is represented as the exists-trace condition ResourceOperation(cfg, Mallory, AliceRole, Alice, job)."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.0.intent",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.0.name",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.0.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.05,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.0.witness",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.1.intent",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.1.name",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.1.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.05,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.1.witness",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.2.intent",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.2.name",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.2.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.05,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.2.witness",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.3.intent",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.3.name",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.3.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.1,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.3.witness",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.4.intent",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.4.name",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.4.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.1,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.4.witness",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.5.intent",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.5.name",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.5.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.1,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.5.witness",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.6.intent",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.6.name",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.6.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.1,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.6.witness",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.7.intent",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.7.name",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.7.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.1,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.7.witness",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.8.intent",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.8.name",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.8.required_events",
+      "review_status": "needs_review",
+      "priority_score": 0.1,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    },
+    {
+      "kind": "field_review_decision",
+      "field_path": "proof_targets.8.witness",
+      "review_status": "needs_review",
+      "priority_score": 0.2,
+      "priority_source": "formula",
+      "policy": "This field still needs review; preserve current IR semantics and report any uncertainty."
+    }
+  ],
+  "field_evidence": [
+    {
+      "field_path": "fresh_terms.0.name",
+      "source_quote": "returns temporary credentials for that role",
+      "evidence_kind": "nearby",
+      "reason": "Fresh symbolic name inferred for STS temporary credentials.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.75,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "fresh_terms.0.owner",
+      "source_quote": "STS authenticates the provider... returns temporary credentials for that role",
+      "evidence_kind": "direct",
+      "reason": "STS is the issuer of the temporary credentials.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "fresh_terms.0.purpose",
+      "source_quote": "returns temporary credentials for that role",
+      "evidence_kind": "direct",
+      "reason": "Purpose is issuing role-scoped credentials after STS checks.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.0.label",
+      "source_quote": "A customer submits an authenticated job containing a requested role identifier and a customer-supplied external-ID field.",
+      "evidence_kind": "nearby",
+      "reason": "Label is parser-assigned for the customer job message.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.0.from",
+      "source_quote": "A customer submits an authenticated job",
+      "evidence_kind": "direct",
+      "reason": "Customer is the sender.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.0.to",
+      "source_quote": "The provider serves multiple customers. To perform a customer's job",
+      "evidence_kind": "nearby",
+      "reason": "Job is submitted to the provider for execution.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.0.protection",
+      "source_quote": "A customer submits an authenticated job",
+      "evidence_kind": "direct",
+      "reason": "Job submission is authenticated by customer login credential.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.0.term",
+      "source_quote": "containing a requested role identifier and a customer-supplied external-ID field",
+      "evidence_kind": "direct",
+      "reason": "Term preserves authenticated customer, configuration, requested role, and supplied external ID.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.0.meaning",
+      "source_quote": "Mallory may choose these two fields arbitrarily, including Alice's public values.",
+      "evidence_kind": "direct",
+      "reason": "Meaning records adversarial choice of requested role and supplied external ID.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.1.label",
+      "source_quote": "In `principal_only`, STS checks the provider principal but imposes no external-ID condition.",
+      "evidence_kind": "nearby",
+      "reason": "Label is parser-assigned for principal_only STS request.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.1.from",
+      "source_quote": "it calls the cloud security token service (STS)",
+      "evidence_kind": "direct",
+      "reason": "Provider calls STS.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.1.to",
+      "source_quote": "calls the cloud security token service (STS)",
+      "evidence_kind": "direct",
+      "reason": "STS is the receiver.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.1.protection",
+      "source_quote": "The STS response and subsequent resource call are integrity-protected and correlated with the job and requested role.",
+      "evidence_kind": "nearby",
+      "reason": "Input also says protected provider-to-cloud traffic cannot be modified; applied to STS request abstraction.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 0.75,
+      "consistency_confidence_score": 0.85,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.1.term",
+      "source_quote": "In `principal_only`, STS checks the provider principal but imposes no external-ID condition.",
+      "evidence_kind": "direct",
+      "reason": "Term includes provider principal, requested role, configuration, and no external ID.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.1.meaning",
+      "source_quote": "imposes no external-ID condition",
+      "evidence_kind": "direct",
+      "reason": "Meaning preserves principal_only behavior.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.2.label",
+      "source_quote": "In `caller_supplied`, STS also requires the external ID associated with the requested role's owner, but the provider forwards the external-ID field supplied by the customer.",
+      "evidence_kind": "nearby",
+      "reason": "Label is parser-assigned for caller_supplied STS request.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.2.from",
+      "source_quote": "the provider forwards the external-ID field",
+      "evidence_kind": "direct",
+      "reason": "Provider sends forwarded external ID to STS.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.2.to",
+      "source_quote": "STS also requires the external ID",
+      "evidence_kind": "direct",
+      "reason": "STS is the receiver and checker.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.2.protection",
+      "source_quote": "modify the protected provider-to-cloud traffic",
+      "evidence_kind": "direct",
+      "reason": "Provider-to-cloud traffic is protected against adversarial modification.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.2.term",
+      "source_quote": "the provider forwards the external-ID field supplied by the customer",
+      "evidence_kind": "direct",
+      "reason": "Term preserves forwarded suppliedExternalID.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.2.meaning",
+      "source_quote": "the provider forwards the external-ID field supplied by the customer",
+      "evidence_kind": "direct",
+      "reason": "Meaning states caller_supplied behavior.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.3.label",
+      "source_quote": "In `provider_bound`, STS performs the same external-ID check, while the provider ignores the customer-supplied field",
+      "evidence_kind": "nearby",
+      "reason": "Label is parser-assigned for provider_bound STS request.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.3.from",
+      "source_quote": "the provider ignores the customer-supplied field and instead obtains the external ID",
+      "evidence_kind": "direct",
+      "reason": "Provider constructs the STS request using trusted mapping.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.3.to",
+      "source_quote": "STS performs the same external-ID check",
+      "evidence_kind": "direct",
+      "reason": "STS receives and checks the external ID.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.3.protection",
+      "source_quote": "modify the protected provider-to-cloud traffic",
+      "evidence_kind": "direct",
+      "reason": "Provider-to-cloud traffic is protected against modification.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.3.term",
+      "source_quote": "obtains the external ID from its trusted mapping using the authenticated originating customer",
+      "evidence_kind": "direct",
+      "reason": "Term uses extid_for(originatingCustomer) rather than suppliedExternalID.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.3.meaning",
+      "source_quote": "the provider ignores the customer-supplied field",
+      "evidence_kind": "direct",
+      "reason": "Meaning states provider_bound behavior.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.4.label",
+      "source_quote": "returns temporary credentials for that role",
+      "evidence_kind": "nearby",
+      "reason": "Label is parser-assigned for STS response.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.4.from",
+      "source_quote": "STS authenticates the provider... returns temporary credentials",
+      "evidence_kind": "direct",
+      "reason": "STS sends credentials.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.4.to",
+      "source_quote": "returns temporary credentials for that role. The provider uses those credentials",
+      "evidence_kind": "direct",
+      "reason": "Provider receives credentials.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.4.protection",
+      "source_quote": "The STS response and subsequent resource call are integrity-protected and correlated with the job and requested role.",
+      "evidence_kind": "direct",
+      "reason": "STS response is integrity-protected and correlated.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.4.term",
+      "source_quote": "if the checks succeed, returns temporary credentials for that role",
+      "evidence_kind": "direct",
+      "reason": "Term encodes job, configuration, role, and issued temporary credential.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.4.meaning",
+      "source_quote": "if the checks succeed, returns temporary credentials for that role",
+      "evidence_kind": "direct",
+      "reason": "Meaning captures STS success response.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.5.label",
+      "source_quote": "The provider uses those credentials to perform the customer's job on the role owner's resource.",
+      "evidence_kind": "nearby",
+      "reason": "Label is parser-assigned for resource call.",
+      "priority_llm": 0.1,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "messages.5.from",
+      "source_quote": "The provider uses those credentials",
+      "evidence_kind": "direct",
+      "reason": "Provider sends the resource call.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.5.to",
+      "source_quote": "subsequent resource call",
+      "evidence_kind": "direct",
+      "reason": "Resource service is the endpoint of the resource call.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "messages.5.protection",
+      "source_quote": "The STS response and subsequent resource call are integrity-protected and correlated with the job and requested role.",
+      "evidence_kind": "direct",
+      "reason": "Resource call is integrity-protected and correlated.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "messages.5.term",
+      "source_quote": "uses those credentials to perform the customer's job on the role owner's resource",
+      "evidence_kind": "direct",
+      "reason": "Term includes job, configuration, originating customer, requested role, and credential.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "messages.5.meaning",
+      "source_quote": "perform the customer's job on the role owner's resource",
+      "evidence_kind": "direct",
+      "reason": "Meaning records provider use of credentials for resource access.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.0.role",
+      "source_quote": "Each customer's login credential authenticates that customer's identity",
+      "evidence_kind": "direct",
+      "reason": "Provider authenticates customer login on job submission.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.0.condition",
+      "source_quote": "authenticates that customer's identity, not a customer-name field submitted in the request",
+      "evidence_kind": "direct",
+      "reason": "Condition preserves identity binding semantics.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.0.source_message",
+      "source_quote": "A customer submits an authenticated job",
+      "evidence_kind": "direct",
+      "reason": "Authentication applies to M1 job submission.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.1.role",
+      "source_quote": "The provider retains the authenticated originating customer throughout the job",
+      "evidence_kind": "direct",
+      "reason": "Provider holds and retains originating customer.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.1.condition",
+      "source_quote": "that identity is not changed to the role owner when STS returns credentials",
+      "evidence_kind": "direct",
+      "reason": "Condition prevents role-owner rewrite.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.1.source_message",
+      "source_quote": "A customer submits an authenticated job",
+      "evidence_kind": "nearby",
+      "reason": "Retained identity originates from M1.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.2.role",
+      "source_quote": "the provider ignores the customer-supplied field",
+      "evidence_kind": "direct",
+      "reason": "Provider implements provider_bound mapping behavior.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.2.condition",
+      "source_quote": "obtains the external ID from its trusted mapping using the authenticated originating customer",
+      "evidence_kind": "direct",
+      "reason": "Condition records trusted lookup source.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.2.source_message",
+      "source_quote": "customer-supplied external-ID field",
+      "evidence_kind": "nearby",
+      "reason": "Provider ignores a field from M1 in provider_bound.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.3.role",
+      "source_quote": "STS authenticates the provider",
+      "evidence_kind": "direct",
+      "reason": "STS performs provider authentication.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.3.condition",
+      "source_quote": "evaluates the role's trust policy",
+      "evidence_kind": "direct",
+      "reason": "Trust policy check names provider.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.3.source_message",
+      "source_quote": "it calls the cloud security token service (STS) with a requested role identifier",
+      "evidence_kind": "direct",
+      "reason": "STS checks apply to assume-role request messages.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.4.role",
+      "source_quote": "STS checks the provider principal",
+      "evidence_kind": "direct",
+      "reason": "STS is checker in principal_only.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.4.condition",
+      "source_quote": "imposes no external-ID condition",
+      "evidence_kind": "direct",
+      "reason": "principal_only has no external-ID condition.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.4.source_message",
+      "source_quote": "In `principal_only`",
+      "evidence_kind": "direct",
+      "reason": "Check applies to principal_only STS request.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.5.role",
+      "source_quote": "STS also requires the external ID",
+      "evidence_kind": "direct",
+      "reason": "STS is checker in caller_supplied.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.5.condition",
+      "source_quote": "requires the external ID associated with the requested role's owner, but the provider forwards the external-ID field supplied by the customer",
+      "evidence_kind": "direct",
+      "reason": "Condition preserves caller_supplied external-ID comparison.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.5.source_message",
+      "source_quote": "In `caller_supplied`",
+      "evidence_kind": "direct",
+      "reason": "Check applies to caller_supplied STS request.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.6.role",
+      "source_quote": "STS performs the same external-ID check",
+      "evidence_kind": "direct",
+      "reason": "STS is checker in provider_bound.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.6.condition",
+      "source_quote": "provider ignores the customer-supplied field and instead obtains the external ID from its trusted mapping using the authenticated originating customer",
+      "evidence_kind": "direct",
+      "reason": "Condition preserves provider_bound external-ID source.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.6.source_message",
+      "source_quote": "In `provider_bound`",
+      "evidence_kind": "direct",
+      "reason": "Check applies to provider_bound STS request.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "checks.7.role",
+      "source_quote": "Temporary credentials authorize only the resource of that role.",
+      "evidence_kind": "direct",
+      "reason": "Resource service enforces credential authorization.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.7.condition",
+      "source_quote": "integrity-protected and correlated with the job and requested role. Temporary credentials authorize only the resource of that role.",
+      "evidence_kind": "direct",
+      "reason": "Condition preserves correlation and role-scoped authorization.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.7.source_message",
+      "source_quote": "STS response and subsequent resource call",
+      "evidence_kind": "direct",
+      "reason": "Credential correlation spans STS response and resource call.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "checks.8.role",
+      "source_quote": "Failed checks cause rejection without resource access.",
+      "evidence_kind": "direct",
+      "reason": "Rejection condition is global across checks.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.8.condition",
+      "source_quote": "Failed checks cause rejection without resource access.",
+      "evidence_kind": "direct",
+      "reason": "Exact rejection behavior.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "checks.8.source_message",
+      "source_quote": "Failed checks cause rejection without resource access.",
+      "evidence_kind": "nearby",
+      "reason": "Applies to all messages participating in checks.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.0.name",
+      "source_quote": "A customer submits an authenticated job",
+      "evidence_kind": "nearby",
+      "reason": "Event name is inferred from authenticated job submission.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.5
+    },
+    {
+      "field_path": "events.0.role",
+      "source_quote": "The provider retains the authenticated originating customer throughout the job",
+      "evidence_kind": "direct",
+      "reason": "Provider records job identity.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.0.when",
+      "source_quote": "A customer submits an authenticated job",
+      "evidence_kind": "direct",
+      "reason": "Event occurs after authenticated job receipt.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.0.arguments",
+      "source_quote": "authenticated originating customer... requested role identifier and a customer-supplied external-ID field",
+      "evidence_kind": "direct",
+      "reason": "Arguments preserve job-relevant fields.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "events.1.name",
+      "source_quote": "if the checks succeed, returns temporary credentials for that role",
+      "evidence_kind": "nearby",
+      "reason": "Event name is inferred for successful STS credential issuance.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.5
+    },
+    {
+      "field_path": "events.1.role",
+      "source_quote": "STS authenticates the provider... returns temporary credentials",
+      "evidence_kind": "direct",
+      "reason": "STS performs success action.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 1.0,
+      "consistency_confidence_score": 1.0,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.1.when",
+      "source_quote": "if the checks succeed, returns temporary credentials",
+      "evidence_kind": "direct",
+      "reason": "Event timing tied to successful STS checks.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.1.arguments",
+      "source_quote": "requested role identifier... resource of that role... configuration identity remains attached",
+      "evidence_kind": "nearby",
+      "reason": "Arguments preserve configuration, customer, role, owner, and job correlation.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "events.2.name",
+      "source_quote": "An accepted resource operation records",
+      "evidence_kind": "direct",
+      "reason": "Event name inferred from accepted resource operation.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "events.2.role",
+      "source_quote": "subsequent resource call",
+      "evidence_kind": "nearby",
+      "reason": "ResourceService accepts the resource operation.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.8
+    },
+    {
+      "field_path": "events.2.when",
+      "source_quote": "An accepted resource operation records",
+      "evidence_kind": "direct",
+      "reason": "Event occurs on accepted operation.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "events.2.arguments",
+      "source_quote": "records its originating authenticated customer, the role used, and the resource owner",
+      "evidence_kind": "direct",
+      "reason": "Arguments preserve recorded customer, role, and owner; cfg and job are added for described correlation/isolation of configurations.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.0.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user-supplied lemma names; name inferred for review.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "claims.0.goal_type",
+      "source_quote": "Tenant isolation means that this customer is the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Tenant isolation is an authentication/authorization safety goal over event agreement.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.0.trace_kind",
+      "source_quote": "Tenant isolation means that this customer is the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Tenant isolation is naturally an all-traces safety property.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.0.expected_state",
+      "source_quote": "In `principal_only`, STS checks the provider principal but imposes no external-ID condition.",
+      "evidence_kind": "nearby",
+      "reason": "Expected violation inferred because Mallory can request Alice's role and no external-ID condition blocks it.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.85,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.0.event_schema",
+      "source_quote": "An accepted resource operation records its originating authenticated customer, the role used, and the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Claim is over ResourceOperation records.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.1.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user-supplied lemma names; name inferred for review.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "claims.1.goal_type",
+      "source_quote": "Tenant isolation means that this customer is the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Tenant isolation is an authentication/authorization safety goal.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.1.trace_kind",
+      "source_quote": "Tenant isolation means that this customer is the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Tenant isolation is an all-traces property.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.1.expected_state",
+      "source_quote": "The adversary knows both role identifiers and both external IDs.",
+      "evidence_kind": "nearby",
+      "reason": "Expected violation inferred because caller_supplied forwards a public Alice external ID chosen by Mallory.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.1.event_schema",
+      "source_quote": "An accepted resource operation records its originating authenticated customer, the role used, and the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Claim is over ResourceOperation records.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.2.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user-supplied lemma names; name inferred for review.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "claims.2.goal_type",
+      "source_quote": "Tenant isolation means that this customer is the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Tenant isolation is an authentication/authorization safety goal.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.2.trace_kind",
+      "source_quote": "Tenant isolation means that this customer is the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Tenant isolation is an all-traces safety property.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.2.expected_state",
+      "source_quote": "provider ignores the customer-supplied field and instead obtains the external ID from its trusted mapping using the authenticated originating customer",
+      "evidence_kind": "nearby",
+      "reason": "Expected satisfaction inferred under trusted mapping and distinct external IDs.",
+      "priority_llm": 0.5,
+      "evidence_confidence_score": 0.8,
+      "consistency_confidence_score": 0.85,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.2.event_schema",
+      "source_quote": "An accepted resource operation records its originating authenticated customer, the role used, and the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Claim is over ResourceOperation records.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.3.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user-supplied lemma names; name inferred for review.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "claims.3.goal_type",
+      "source_quote": "whether a Mallory-originated job can cause an operation on Alice's resource",
+      "evidence_kind": "direct",
+      "reason": "This is an exists-trace reachability/executability attack question.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.3.trace_kind",
+      "source_quote": "whether a Mallory-originated job can cause an operation on Alice's resource",
+      "evidence_kind": "direct",
+      "reason": "Attack reachability is exists-trace.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.3.expected_state",
+      "source_quote": "In `principal_only`, STS checks the provider principal but imposes no external-ID condition.",
+      "evidence_kind": "nearby",
+      "reason": "Expected reachable attack inferred from absent external-ID condition.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.3.event_schema",
+      "source_quote": "whether a Mallory-originated job can cause an operation on Alice's resource",
+      "evidence_kind": "direct",
+      "reason": "Event schema encodes Mallory job and Alice resource operation.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.4.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user-supplied lemma names; name inferred for review.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "claims.4.goal_type",
+      "source_quote": "whether a Mallory-originated job can cause an operation on Alice's resource",
+      "evidence_kind": "direct",
+      "reason": "This is an exists-trace attack reachability goal.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.4.trace_kind",
+      "source_quote": "whether a Mallory-originated job can cause an operation on Alice's resource",
+      "evidence_kind": "direct",
+      "reason": "Attack reachability is exists-trace.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.4.expected_state",
+      "source_quote": "The adversary knows both role identifiers and both external IDs.",
+      "evidence_kind": "nearby",
+      "reason": "Expected reachable attack inferred because Mallory can submit Alice's known role ID and external ID.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.4.event_schema",
+      "source_quote": "whether a Mallory-originated job can cause an operation on Alice's resource",
+      "evidence_kind": "direct",
+      "reason": "Event schema encodes Mallory job and Alice resource operation.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.5.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user-supplied lemma names; name inferred for review.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "claims.5.goal_type",
+      "source_quote": "whether a Mallory-originated job can cause an operation on Alice's resource",
+      "evidence_kind": "direct",
+      "reason": "This is an exists-trace attack reachability goal.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.5.trace_kind",
+      "source_quote": "whether a Mallory-originated job can cause an operation on Alice's resource",
+      "evidence_kind": "direct",
+      "reason": "Attack reachability is exists-trace.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.5.expected_state",
+      "source_quote": "provider ignores the customer-supplied field and instead obtains the external ID from its trusted mapping using the authenticated originating customer",
+      "evidence_kind": "nearby",
+      "reason": "Expected no attack trace inferred from provider-bound external-ID source and STS owner check.",
+      "priority_llm": 0.4,
+      "evidence_confidence_score": 0.85,
+      "consistency_confidence_score": 0.85,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.5.event_schema",
+      "source_quote": "whether a Mallory-originated job can cause an operation on Alice's resource",
+      "evidence_kind": "direct",
+      "reason": "Event schema encodes Mallory job and Alice resource operation.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.6.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user-supplied lemma names; name inferred for review.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "claims.6.goal_type",
+      "source_quote": "Alice can complete a legitimate job on her own resource in each configuration",
+      "evidence_kind": "direct",
+      "reason": "Legitimate completion is an executability claim.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.6.trace_kind",
+      "source_quote": "Alice can complete a legitimate job",
+      "evidence_kind": "direct",
+      "reason": "Executability is exists-trace.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.6.expected_state",
+      "source_quote": "Alice can complete a legitimate job on her own resource in each configuration; rejecting all jobs is not a repair.",
+      "evidence_kind": "direct",
+      "reason": "Input explicitly requests executability in each configuration.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.6.event_schema",
+      "source_quote": "An accepted resource operation records its originating authenticated customer, the role used, and the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Successful Alice job is represented by ResourceOperation.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.7.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user-supplied lemma names; name inferred for review.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "claims.7.goal_type",
+      "source_quote": "Alice can complete a legitimate job on her own resource in each configuration",
+      "evidence_kind": "direct",
+      "reason": "Legitimate completion is an executability claim.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.7.trace_kind",
+      "source_quote": "Alice can complete a legitimate job",
+      "evidence_kind": "direct",
+      "reason": "Executability is exists-trace.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.7.expected_state",
+      "source_quote": "Alice can complete a legitimate job on her own resource in each configuration; rejecting all jobs is not a repair.",
+      "evidence_kind": "direct",
+      "reason": "Input explicitly requests executability in each configuration.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.7.event_schema",
+      "source_quote": "An accepted resource operation records its originating authenticated customer, the role used, and the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Successful Alice job is represented by ResourceOperation.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.8.lemma_name",
+      "source_quote": "",
+      "evidence_kind": "none",
+      "reason": "No user-supplied lemma names; name inferred for review.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.0,
+      "consistency_confidence_score": 0.8,
+      "semantic_impact_score": 0.2
+    },
+    {
+      "field_path": "claims.8.goal_type",
+      "source_quote": "Alice can complete a legitimate job on her own resource in each configuration",
+      "evidence_kind": "direct",
+      "reason": "Legitimate completion is an executability claim.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 0.9
+    },
+    {
+      "field_path": "claims.8.trace_kind",
+      "source_quote": "Alice can complete a legitimate job",
+      "evidence_kind": "direct",
+      "reason": "Executability is exists-trace.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.8.expected_state",
+      "source_quote": "Alice can complete a legitimate job on her own resource in each configuration; rejecting all jobs is not a repair.",
+      "evidence_kind": "direct",
+      "reason": "Input explicitly requests executability in each configuration.",
+      "priority_llm": 0.2,
+      "evidence_confidence_score": 0.95,
+      "consistency_confidence_score": 0.95,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.8.event_schema",
+      "source_quote": "An accepted resource operation records its originating authenticated customer, the role used, and the resource owner.",
+      "evidence_kind": "direct",
+      "reason": "Successful Alice job is represented by ResourceOperation.",
+      "priority_llm": 0.3,
+      "evidence_confidence_score": 0.9,
+      "consistency_confidence_score": 0.9,
+      "semantic_impact_score": 1.0
+    },
+    {
+      "field_path": "claims.0.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.1.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.2.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.3.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.4.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.5.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.6.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.7.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    },
+    {
+      "field_path": "claims.8.required_events",
+      "source_quote": "name",
+      "evidence_kind": "direct",
+      "reason": "Coverage fallback: the LLM did not provide field_evidence for this UI-visible review field.",
+      "coverage_source": "deterministic_fallback"
+    }
+  ],
+  "open_questions": []
+}
